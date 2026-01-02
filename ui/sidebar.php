@@ -83,7 +83,7 @@
                 </a>
             </li>
             <li>
-                <a href="#" class="hud-nav-item">
+                <a href="#" class="hud-nav-item" onclick="event.preventDefault(); openWorldMapModal();">
                     <i data-lucide="map" class="hud-nav-icon"></i>
                     <span>World Map</span>
                 </a>
@@ -135,4 +135,5 @@
 
 <!-- Include Global Modals -->
 <?php include 'modal-character.php'; ?>
+<?php include 'modal-worldmap.php'; ?>
 

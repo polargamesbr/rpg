@@ -10,62 +10,61 @@
     <div class="absolute inset-4 md:inset-10 lg:inset-x-20 lg:inset-y-12 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl flex overflow-hidden transform scale-95 transition-transform duration-300 pointer-events-auto" id="char-modal-content">
         
         <!-- === LEFT COLUMN: HERO PROFILE (40%) === -->
+        <!-- === LEFT COLUMN: HERO PROFILE (40%) === -->
         <div class="w-[400px] lg:w-[480px] relative shrink-0 border-r border-white/5 bg-[#050505] flex flex-col z-10 shadow-2xl">
             
             <!-- Hero Image & Slots Container -->
             <div class="relative flex-1 overflow-hidden group">
-                <!-- Hero Image -->
-                <img src="assets/img/archer-male.png" class="absolute inset-0 w-full h-full object-cover object-top opacity-60 group-hover:opacity-100 transition-opacity duration-700" alt="Hero">
+                <!-- Hero Image: No Filters -->
+                <img src="assets/img/archer-male.png" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700" alt="Hero">
                 
-                <!-- Gradient Overlay -->
-                <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent"></div>
-                <div class="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent"></div>
+                <!-- Radiant Background Effect -->
+                <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent"></div>
+                <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#050505] to-transparent"></div>
 
                 <!-- CONTENT OVERLAY -->
                 <div class="absolute inset-0 p-6 flex flex-col pointer-events-none">
                     
                     <!-- Header -->
-                    <div class="text-center mt-2 pointer-events-auto relative z-20">
-                        <h2 class="text-4xl font-serif text-white tracking-widest drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]" style="font-family: 'Cinzel', serif;">Willian</h2>
-                        <div class="text-amber-500 text-xs font-bold tracking-[0.4em] uppercase mt-1">Swordsman • Lvl 7</div>
+                    <div class="text-center mt-2 pointer-events-auto relative z-20 mb-4">
+                        <h2 class="text-3xl font-serif text-white tracking-widest drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]" style="font-family: 'Cinzel', serif;">Willian</h2>
+                        <div class="text-amber-500 text-[10px] font-bold tracking-[0.4em] uppercase mt-1">Swordsman • Lvl 7</div>
                     </div>
 
-                    <!-- Equipment Sockets Grid (Centralized HUD) -->
-                    <div class="relative flex-1 pointer-events-auto flex items-center justify-center -mt-8">
+                    <!-- Equipment Sockets Grid (Cross Pattern) -->
+                    <div class="relative flex-1 pointer-events-auto flex flex-col items-center justify-center gap-2">
                         
-                        <div class="flex flex-col items-center gap-4 transform scale-90 md:scale-100">
-                            
-                            <!-- Row 1: Head -->
-                            <div class="gear-socket" title="Head">
-                                <span class="placeholder-text">HEAD</span>
-                            </div>
+                        <!-- Row 1: Head -->
+                        <div class="gear-socket" title="Head">
+                            <span class="placeholder-text">HEAD</span>
+                        </div>
 
-                            <!-- Row 2: Acc - Body - Acc -->
-                            <div class="flex items-center gap-6">
-                                <div class="gear-socket small" title="Accessory 1">
-                                    <span class="placeholder-text">ACC 1</span>
-                                </div>
-                                <div class="gear-socket large bg-amber-500/5 border-amber-500/20" title="Body">
-                                    <span class="placeholder-text text-amber-500/50">BODY</span>
-                                </div>
-                                <div class="gear-socket small" title="Accessory 2">
-                                    <span class="placeholder-text">ACC 2</span>
-                                </div>
+                        <!-- Row 2: Left - Body - Right -->
+                        <div class="flex items-center gap-2">
+                            <div class="gear-socket" title="Left Hand">
+                                <span class="placeholder-text">LEFT</span>
                             </div>
-
-                            <!-- Row 3: Wep - Legs - Shield -->
-                            <div class="flex items-center gap-4">
-                                <div class="gear-socket" title="Main Hand">
-                                    <span class="placeholder-text">MAIN</span>
-                                </div>
-                                 <div class="gear-socket" title="Legs">
-                                    <span class="placeholder-text">LEGS</span>
-                                </div>
-                                <div class="gear-socket" title="Off Hand">
-                                    <span class="placeholder-text">OFF</span>
-                                </div>
+                            <div class="gear-socket active-socket" title="Body"> <!-- Added active class for styling if needed -->
+                                <span class="placeholder-text">BODY</span>
                             </div>
+                            <div class="gear-socket" title="Right Hand">
+                                <span class="placeholder-text">RIGHT</span>
+                            </div>
+                        </div>
 
+                        <!-- Row 3: Boots -->
+                        <div class="gear-socket" title="Boots">
+                            <span class="placeholder-text">BOOTS</span>
+                        </div>
+
+                        <!-- Row 4: Accessories -->
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="gear-socket small" title="Accessory 1">
+                                <span class="placeholder-text">ACC 1</span>
+                            </div>
+                            <div class="gear-socket small" title="Accessory 2">
+                                <span class="placeholder-text">ACC 2</span>
+                            </div>
                         </div>
 
                     </div>
@@ -73,38 +72,57 @@
             </div>
 
             <!-- STATS PANEL (Bottom) -->
-            <div class="p-6 bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-white/10 relative z-20">
+            <div class="p-6 bg-[#0a0a0a] border-t border-white/5 relative z-20">
                 
-                <!-- Bars -->
-                <div class="grid grid-cols-1 gap-2 mb-6">
+                <!-- Bars (Sidebar Style) -->
+                <div class="flex flex-col gap-4 mb-6">
+                    
                     <!-- HP -->
-                    <div class="flex items-center gap-3">
-                        <span class="text-[10px] font-bold text-red-500 w-6 text-right">HP</span>
-                        <div class="flex-1 h-1.5 bg-red-900/20 rounded-full overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-red-700 to-red-500 w-[85%] shadow-[0_0_12px_rgba(239,68,68,0.6)]"></div>
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between items-end px-1">
+                            <div class="flex items-center gap-2 text-red-500">
+                                <i data-lucide="heart" class="w-4 h-4 fill-current"></i>
+                                <span class="text-xs font-bold tracking-widest">HP</span>
+                            </div>
+                            <span class="text-xs font-mono text-stone-400">850<span class="text-stone-600">/1000</span></span>
                         </div>
-                        <span class="text-[10px] text-stone-400 font-mono w-16 text-right">850</span>
-                    </div>
-                     <!-- MP -->
-                    <div class="flex items-center gap-3">
-                        <span class="text-[10px] font-bold text-blue-500 w-6 text-right">MP</span>
-                        <div class="flex-1 h-1.5 bg-blue-900/20 rounded-full overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-blue-700 to-blue-500 w-[64%] shadow-[0_0_12px_rgba(59,130,246,0.6)]"></div>
+                        <div class="h-2 w-full bg-red-900/10 rounded-full border border-red-500/10 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-red-900 to-red-500 w-[85%] shadow-[0_0_10px_rgba(239,68,68,0.4)]"></div>
                         </div>
-                        <span class="text-[10px] text-stone-400 font-mono w-16 text-right">320</span>
                     </div>
-                     <!-- EXP -->
-                    <div class="flex items-center gap-3">
-                        <span class="text-[10px] font-bold text-emerald-500 w-6 text-right">XP</span>
-                        <div class="flex-1 h-1 bg-emerald-900/20 rounded-full overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-emerald-700 to-emerald-500 w-[82%] shadow-[0_0_12px_rgba(16,185,129,0.4)]"></div>
+
+                    <!-- MANA -->
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between items-end px-1">
+                            <div class="flex items-center gap-2 text-blue-500">
+                                <i data-lucide="droplet" class="w-4 h-4 fill-current"></i>
+                                <span class="text-xs font-bold tracking-widest">MANA</span>
+                            </div>
+                            <span class="text-xs font-mono text-stone-400">320<span class="text-stone-600">/500</span></span>
                         </div>
-                         <span class="text-[10px] text-stone-400 font-mono w-16 text-right">82%</span>
+                        <div class="h-2 w-full bg-blue-900/10 rounded-full border border-blue-500/10 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-blue-900 to-blue-500 w-[64%] shadow-[0_0_10px_rgba(59,130,246,0.4)]"></div>
+                        </div>
                     </div>
+
+                    <!-- XP -->
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between items-end px-1">
+                            <div class="flex items-center gap-2 text-emerald-500">
+                                <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                                <span class="text-xs font-bold tracking-widest">XP</span>
+                            </div>
+                            <span class="text-xs font-mono text-stone-400">2450<span class="text-stone-600">/3000</span></span>
+                        </div>
+                        <div class="h-2 w-full bg-emerald-900/10 rounded-full border border-emerald-500/10 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-emerald-900 to-emerald-500 w-[82%] shadow-[0_0_10px_rgba(16,185,129,0.4)]"></div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Attributes Grid -->
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-3 gap-3">
                     <div class="stat-pill"><span class="label text-amber-500">STR</span><span class="val">12</span></div>
                     <div class="stat-pill"><span class="label text-green-500">AGI</span><span class="val">15</span></div>
                     <div class="stat-pill"><span class="label text-red-500">VIT</span><span class="val">10</span></div>
@@ -116,51 +134,56 @@
         </div>
 
         <!-- === RIGHT COLUMN: INVENTORY & SKILLS (60%) === -->
-        <div class="flex-1 bg-[#0f0f0f] flex flex-col min-w-0 z-0">
+        <div class="flex-1 bg-[#101010] flex flex-col min-w-0 z-0 border-l border-white/5">
             
             <!-- Header with Close Button -->
-            <div class="flex items-center gap-6 px-8 py-5 border-b border-white/5 bg-[#121212] relative z-20">
+            <div class="flex items-center gap-6 px-10 py-6 border-b border-white/5 bg-[#141414] relative z-20 shadow-lg">
                 <button class="tab-btn active" onclick="switchModalTab('inventory')">Inventory</button>
                 <button class="tab-btn" onclick="switchModalTab('skills')">Skills</button>
                 
-                <div class="ml-auto flex items-center gap-4">
-                    <div class="flex items-center gap-2 text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded border border-amber-500/20">
+                <div class="ml-auto flex items-center gap-6">
+                    <div class="flex items-center gap-3 text-amber-500 bg-black/40 px-4 py-2 rounded-lg border border-amber-500/20 shadow-inner">
                         <i data-lucide="coins" class="w-4 h-4"></i>
-                        <span class="font-bold text-sm font-mono">1,250 G</span>
+                        <span class="font-bold text-sm font-mono tracking-wider">1,250</span>
                     </div>
                     
-                    <!-- CLOSE BUTTON LOCATION -->
-                    <button onclick="closeCharacterModal()" class="w-8 h-8 flex items-center justify-center text-stone-500 hover:text-red-400 hover:bg-white/5 rounded-full transition-all">
-                        <i data-lucide="x" class="w-5 h-5"></i>
+                    <!-- Close Button -->
+                    <button onclick="closeCharacterModal()" class="w-8 h-8 flex items-center justify-center text-stone-500 hover:text-white hover:bg-white/10 rounded transition-all">
+                        <i data-lucide="x" class="w-6 h-6"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="flex-1 overflow-hidden relative p-8 bg-gradient-to-br from-[#0f0f0f] to-[#050505]">
+            <div class="flex-1 overflow-hidden relative p-8 bg-[#0f0f0f]">
                 <!-- INVENTORY TAB -->
                 <div id="tab-inventory" class="tab-content h-full flex flex-col">
-                    <div class="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
+                    
+                    <!-- Filters -->
+                    <div class="flex flex-wrap gap-2 mb-8 items-center">
                         <button class="filter-chip active">All</button>
                         <button class="filter-chip">Weapons</button>
                         <button class="filter-chip">Armor</button>
                         <button class="filter-chip">Potions</button>
+                        <button class="filter-chip">Materials</button>
                     </div>
-                    <div class="grid grid-cols-5 2xl:grid-cols-7 gap-3 overflow-y-auto custom-scrollbar pr-2 pb-20">
+
+                    <!-- Grid -->
+                    <div class="grid grid-cols-5 md:grid-cols-6 xl:grid-cols-8 gap-4 overflow-y-auto custom-scrollbar pr-2 pb-20 content-start">
                          <!-- Filled Slots Sample -->
-                        <div class="inv-slot rare flex flex-col items-center justify-center group bg-slate-900">
-                             <img src="https://via.placeholder.com/64/1e293b/bef264?text=BOW" class="opacity-70 group-hover:opacity-100 transition-opacity">
+                        <div class="inv-slot rare flex flex-col items-center justify-center group bg-[#151b25]">
+                             <img src="https://via.placeholder.com/64/1e293b/bef264?text=BOW" class="opacity-70 group-hover:opacity-100 transition-opacity w-3/4 h-3/4 object-contain">
                             <div class="qty">1</div>
                         </div>
-                         <div class="inv-slot epic flex flex-col items-center justify-center group bg-indigo-950">
-                             <img src="https://via.placeholder.com/64/312e81/e9d5ff?text=SWORD" class="opacity-70 group-hover:opacity-100 transition-opacity">
+                         <div class="inv-slot epic flex flex-col items-center justify-center group bg-[#1e1b2e]">
+                             <img src="https://via.placeholder.com/64/312e81/e9d5ff?text=SWORD" class="opacity-70 group-hover:opacity-100 transition-opacity w-3/4 h-3/4 object-contain">
                             <div class="qty">1</div>
                         </div>
-                         <div class="inv-slot uncommon flex flex-col items-center justify-center group bg-emerald-950">
-                             <img src="https://via.placeholder.com/64/064e3b/6ee7b7?text=POT" class="opacity-70 group-hover:opacity-100 transition-opacity">
+                         <div class="inv-slot uncommon flex flex-col items-center justify-center group bg-[#0f2e22]">
+                             <img src="https://via.placeholder.com/64/064e3b/6ee7b7?text=POT" class="opacity-70 group-hover:opacity-100 transition-opacity w-3/4 h-3/4 object-contain">
                             <div class="qty">5</div>
                         </div>
 
-                        <?php for($i=0; $i<27; $i++): ?>
+                        <?php for($i=0; $i<29; $i++): ?>
                         <div class="inv-slot empty"></div>
                         <?php endfor; ?>
                     </div>
@@ -203,7 +226,7 @@
     .tab-btn::after {
         content: '';
         position: absolute;
-        bottom: -21px; /* aligns with container border */
+        bottom: -25px; /* Aligned to border */
         left: 0; right: 0;
         height: 2px;
         background: #d4af37;
@@ -221,11 +244,11 @@
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.08);
         color: rgba(255,255,255,0.5);
-        padding: 0.4rem 1.2rem;
+        padding: 0.5rem 1.4rem;
         border-radius: 99px;
         font-family: 'Inter', sans-serif;
         font-size: 0.75rem;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         cursor: pointer;
@@ -238,26 +261,24 @@
         color: #fff;
     }
     .filter-chip.active {
-        background: rgba(212,175,55,0.15);
+        background: rgba(212,175,55,0.1);
         border-color: #d4af37;
         color: #d4af37;
-        box-shadow: 0 0 10px rgba(212,175,55,0.1);
+        box-shadow: 0 0 15px rgba(212,175,55,0.1);
     }
 
     /* Socket Styles */
     .gear-socket {
         width: 76px; height: 76px; 
         background: rgba(0,0,0,0.6);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px;
         display: flex; align-items: center; justify-content: center;
         backdrop-filter: blur(4px);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    .gear-socket.small { width: 64px; height: 64px; }
-    .gear-socket.large { width: 90px; height: 90px; }
 
     .gear-socket:hover {
         border-color: #d4af37;
@@ -292,19 +313,28 @@
     .stat-pill .val { color: #fff; font-size: 0.9rem; font-weight: 700; font-family: 'Inter', sans-serif; }
 
     /* Inv Slot Polish */
-    .inv-slot { aspect-ratio: 1; background: rgba(15,15,15,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; position: relative; overflow: hidden; }
-    .inv-slot.empty { opacity: 0.3; border: 1px dashed rgba(255,255,255,0.2); background: transparent; }
+    .inv-slot { 
+        aspect-ratio: 1; 
+        background: rgba(20,20,20,0.6); 
+        border: 1px solid rgba(255,255,255,0.08); 
+        border-radius: 6px; 
+        position: relative; 
+        overflow: hidden; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .inv-slot.empty { opacity: 0.3; border: 1px dashed rgba(255,255,255,0.1); background: transparent; }
     .inv-slot:not(.empty):hover { border-color: rgba(255,255,255,0.4); box-shadow: 0 0 15px rgba(0,0,0,0.5); transform: scale(1.02); z-index: 10; }
 </style>
 
 <script>
-    // Initialize tilt REMOVED
-
-
+    // Safe modal handling
     function openCharacterModal() {
-        // ... previous logic
         const modal = document.getElementById('character-modal');
         const content = document.getElementById('char-modal-content');
+        if(!modal || !content) return; // Safety check
+        
         modal.classList.remove('hidden');
         modal.style.pointerEvents = "auto"; 
         
@@ -313,11 +343,16 @@
             content.classList.remove('scale-95');
             content.classList.add('scale-100');
         }, 10);
+        
+        // Refresh icons if needed
+        if(typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     function closeCharacterModal() {
         const modal = document.getElementById('character-modal');
         const content = document.getElementById('char-modal-content');
+        if(!modal || !content) return; // FIX: Handle null elements safely
+
         modal.classList.add('opacity-0');
         content.classList.remove('scale-100');
         content.classList.add('scale-95');
@@ -330,14 +365,15 @@
 
     function switchModalTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        document.getElementById('tab-' + tabName).classList.remove('hidden');
+        const target = document.getElementById('tab-' + tabName);
+        if(target) target.classList.remove('hidden');
         
         const tabs = document.querySelectorAll('.tab-btn');
         tabs.forEach(t => t.classList.remove('active'));
         
         // Simple active state logic
-        if(tabName === 'inventory') tabs[0].classList.add('active');
-        if(tabName === 'skills') tabs[1].classList.add('active');
+        if(tabName === 'inventory' && tabs[0]) tabs[0].classList.add('active');
+        if(tabName === 'skills' && tabs[1]) tabs[1].classList.add('active');
     }
 </script>
 
