@@ -1,0 +1,30 @@
+<?php
+
+$sql = <<<SQL
+CREATE TABLE IF NOT EXISTS classes (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    display_name VARCHAR(100) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    description TEXT,
+    lore_text TEXT,
+    type_theme VARCHAR(200),
+    starting_city VARCHAR(100) NOT NULL,
+    icon_name VARCHAR(50) NOT NULL,
+    color_hex VARCHAR(7) NOT NULL,
+    color_glow VARCHAR(50),
+    image_prefix VARCHAR(50) NOT NULL,
+    str_base INT UNSIGNED NOT NULL DEFAULT 10,
+    agi_base INT UNSIGNED NOT NULL DEFAULT 10,
+    vit_base INT UNSIGNED NOT NULL DEFAULT 10,
+    int_base INT UNSIGNED NOT NULL DEFAULT 10,
+    dex_base INT UNSIGNED NOT NULL DEFAULT 10,
+    luk_base INT UNSIGNED NOT NULL DEFAULT 10,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_uuid (uuid),
+    INDEX idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+

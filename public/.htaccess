@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Redirecionar tudo para index.php exceto arquivos existentes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Segurança - Apache 2.4 syntax
+<FilesMatch "\.(env|log|ini)$">
+    Require all denied
+</FilesMatch>

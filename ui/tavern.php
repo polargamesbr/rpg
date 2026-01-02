@@ -352,7 +352,7 @@
         <main class="flex-1 ml-[260px] flex flex-col">
             
             <!-- Hero Section com Background -->
-            <div class="relative w-full" style="height: 50vh; min-height: 500px;">
+            <div class="relative w-full" style="height: 38vh; min-height: 300px;">
                 <img src="assets/img/tavern-background.jpg" alt="Tavern" class="w-full h-full object-cover object-center">
                 <div class="absolute bottom-0 left-0 right-0" style="height: 20%; background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);"></div>
                 
@@ -381,7 +381,7 @@
             </div>
 
             <!-- Área Principal -->
-            <div class="flex-1 p-8 -mt-20 relative z-20">
+            <div class="flex-1 p-8 -mt-24 relative z-20">
                 <div class="max-w-7xl mx-auto">
                     
                     <div class="grid grid-cols-12 gap-6">
@@ -494,7 +494,7 @@
                         <!-- Coluna Direita: Quests de Stormhaven -->
                         <div class="col-span-7">
                             <div class="tavern-panel p-4 flex flex-col" style="min-height: 60vh;">
-                                <h2 class="quests-title" style="font-size: 2.2rem; background: linear-gradient(to right, #d4af37, #f7e8c3, #d4af37); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(212, 175, 55, 0.3); letter-spacing: 1px; position: relative; display: inline-block; font-family: 'Playfair Display', serif; margin-bottom: 1.5rem;">Stormhaven Quests</h2>
+                                <h2 class="text-xl font-bold text-amber-400 mb-6">Stormhaven Quests</h2>
                                 <div class="space-y-4">
                                     
                                     <!-- Quest 1: First Steps -->

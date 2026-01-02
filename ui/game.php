@@ -98,7 +98,7 @@
         <div class="relative z-10 flex gap-4">
             <div class="flex items-center bg-white/5 rounded-xl p-1.5 border border-white/5 backdrop-blur-sm gap-2">
                 <!-- Bestiário -->
-                <button class="p-2.5 rounded-lg hover:bg-white/10 transition-all hover:scale-105 active:scale-95 group relative" title="Bestiário">
+                <button onclick="openCombatModal()" class="p-2.5 rounded-lg hover:bg-white/10 transition-all hover:scale-105 active:scale-95 group relative" title="Combate">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-swords text-red-400 group-hover:text-red-300">
                         <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
                         <line x1="13" x2="19" y1="19" y2="13"></line>
@@ -472,6 +472,10 @@
             }
         });
     </script>
+    
+    <?php include 'modal-worldmap.php'; ?>
+    <?php include 'modal-character.php'; ?>
+    <?php include 'modal-combat.php'; ?>
     
 </body>
 </html>
