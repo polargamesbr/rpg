@@ -9,3 +9,4 @@ ADD COLUMN first_name VARCHAR(100) NOT NULL AFTER uuid,
 ADD COLUMN last_name VARCHAR(100) NOT NULL AFTER first_name;
 SQL;
 
+

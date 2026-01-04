@@ -7,6 +7,7 @@ return [
     'name' => 'Thief',
     'display_name' => 'Thief',
     'role' => 'Assassin',
+    'desc' => 'An agile rogue who moves through shadows and strikes from the darkness. Masters of stealth and precision, they excel at quick, deadly attacks and evading danger.',
     'base_level' => 1,
     'images' => [
         'male' => 'assets/img/thief-male.png',
@@ -43,5 +44,6 @@ return [
         ],
     ],
 ];
+
 
 

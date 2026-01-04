@@ -7,6 +7,7 @@ return [
     'name' => 'Swordsman',
     'display_name' => 'Swordsman',
     'role' => 'Warrior',
+    'desc' => 'A disciplined warrior trained in one-handed combat and military tactics. Masters of sword and shield, they excel at both offense and defense, making them reliable front-line fighters.',
     'base_level' => 1,
     'images' => [
         'male' => 'assets/img/swordman-male.png',
@@ -42,5 +43,6 @@ return [
         ],
     ],
 ];
+
 
 

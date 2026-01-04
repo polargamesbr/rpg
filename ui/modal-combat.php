@@ -25,9 +25,6 @@
         <div class="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/90 via-transparent to-black/90"></div>
         <div class="absolute inset-0 pointer-events-none bg-gradient-to-r from-black/60 via-transparent to-black/60"></div>
         
-        <!-- Noise & Particles -->
-        <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 brightness-100 contrast-150 mix-blend-overlay"></div>
-        <div id="particles-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
         
         <!-- Flash/Shake Overlay -->
         <div id="damage-flash-overlay" class="absolute inset-0 bg-red-500/20 mix-blend-overlay opacity-0 pointer-events-none transition-opacity duration-100"></div>
@@ -38,6 +35,17 @@
         <div class="w-full bg-red-900/40 backdrop-blur-md border-y border-red-500/50 py-12 overflow-hidden relative">
             <div class="animate-marquee whitespace-nowrap text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-transparent via-red-500 to-transparent italic" style="font-family: 'Cinzel', serif;">
                 BATTLE BEGIN &nbsp;&bull;&nbsp; BATTLE BEGIN &nbsp;&bull;&nbsp; BATTLE BEGIN &nbsp;&bull;&nbsp;
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay (Asset Preload) -->
+    <div id="loading-overlay" class="absolute inset-0 z-[260] flex flex-col items-center justify-center bg-black/95 backdrop-blur-lg hidden">
+        <div class="text-center space-y-6">
+            <div class="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto"></div>
+            <p id="loading-text" class="text-2xl font-bold text-white tracking-wide">Loading Assets...</p>
+            <div class="w-80 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div id="loading-bar-fill" class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300" style="width: 0%"></div>
             </div>
         </div>
     </div>
@@ -75,7 +83,7 @@
             <h1 class="text-4xl md:text-5xl font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-stone-200 via-white to-stone-200 drop-shadow-[0_0_25px_rgba(255,255,255,0.2)]">Combat Setup</h1>
         </div>
         
-        <div class="flex flex-col md:flex-row gap-12 w-full max-w-6xl px-8 h-[60vh]">
+        <div class="flex flex-col md:flex-row gap-8 w-full max-w-[1800px] px-8 min-h-[75vh] max-h-[85vh]">
             <!-- Hero Selection -->
             <div class="flex-1 flex flex-col gap-4 bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 relative group">
                  <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent opacity-50"></div>
@@ -83,7 +91,7 @@
                     <span>Select Heroes (Max 3)</span>
                     <i data-lucide="users" class="w-4 h-4"></i>
                  </h3>
-                 <div id="setup-hero-list" class="grid grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto custom-scrollbar p-1">
+                 <div id="setup-hero-list" class="grid grid-cols-2 lg:grid-cols-4 gap-4 overflow-y-auto custom-scrollbar p-2 max-h-[calc(75vh-12rem)]">
                      <!-- JS Injected Cards -->
                  </div>
             </div>
@@ -102,17 +110,35 @@
                     <span>Select Opponents (Max 3)</span>
                     <i data-lucide="skull" class="w-4 h-4"></i>
                  </h3>
-                 <div id="setup-enemy-list" class="grid grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto custom-scrollbar p-1">
+                 <div id="setup-enemy-list" class="grid grid-cols-2 lg:grid-cols-4 gap-4 overflow-y-auto custom-scrollbar p-2 max-h-[calc(75vh-12rem)]">
                      <!-- JS Injected Cards -->
                  </div>
             </div>
         </div>
 
-        <!-- Start Button -->
-        <div class="mt-8 flex flex-col items-center gap-2">
-            <button id="btn-start-combat" onclick="combatSystem.startBattle()" class="px-16 py-4 bg-white text-black font-black uppercase tracking-[0.25em] rounded-full shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_60px_rgba(255,255,255,0.3)] hover:bg-stone-200 transition-all transform hover:-translate-y-1 hover:scale-105 disabled:opacity-20 disabled:grayscale disabled:pointer-events-none group">
-                <span class="flex items-center gap-3">Start Battle <i data-lucide="sword" class="w-4 h-4 group-hover:rotate-45 transition-transform"></i></span>
-            </button>
+        <!-- Start Button & AutoGame Toggle -->
+        <div class="mt-8 flex flex-col items-center gap-4">
+            <div class="flex items-center gap-4">
+                <button id="btn-start-combat" onclick="combatSystem.startBattle()" class="px-16 py-4 bg-white text-black font-black uppercase tracking-[0.25em] rounded-full shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_60px_rgba(255,255,255,0.3)] hover:bg-stone-200 transition-all transform hover:-translate-y-1 hover:scale-105 disabled:opacity-20 disabled:grayscale disabled:pointer-events-none group">
+                    <span class="flex items-center gap-3">Start Battle <i data-lucide="sword" class="w-4 h-4 group-hover:rotate-45 transition-transform"></i></span>
+                </button>
+                
+                <!-- AutoGame Toggle -->
+                <button id="btn-toggle-autogame" onclick="combatSystem.toggleAutoGame()" class="px-8 py-4 bg-gradient-to-r from-purple-600/20 to-purple-500/20 border-2 border-purple-500/30 text-purple-300 font-black uppercase tracking-[0.2em] rounded-full shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_40px_rgba(168,85,247,0.4)] hover:from-purple-600/30 hover:to-purple-500/30 transition-all transform hover:-translate-y-1 hover:scale-105 group text-sm">
+                    <span class="flex items-center gap-3">
+                        <i data-lucide="cpu" class="w-4 h-4 group-hover:animate-pulse"></i>
+                        <span id="autogame-status-text">AutoGame: OFF</span>
+                    </span>
+                </button>
+
+                <!-- Quick Combat Toggle -->
+                <button id="btn-toggle-quickcombat" onclick="combatSystem.toggleQuickCombat()" class="px-8 py-4 bg-gradient-to-r from-cyan-600/20 to-cyan-500/20 border-2 border-cyan-500/30 text-cyan-300 font-black uppercase tracking-[0.2em] rounded-full shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] hover:from-cyan-600/30 hover:to-cyan-500/30 transition-all transform hover:-translate-y-1 hover:scale-105 group text-sm">
+                    <span class="flex items-center gap-3">
+                        <i data-lucide="zap" class="w-4 h-4 group-hover:animate-bounce"></i>
+                        <span id="quickcombat-status-text">Quick: OFF</span>
+                    </span>
+                </button>
+            </div>
             <span id="setup-error-msg" class="text-[0.6rem] font-bold text-red-500 uppercase tracking-wider opacity-0 transition-opacity">Select at least 1 Hero and 1 Enemy</span>
         </div>
     </div>
@@ -131,6 +157,24 @@
             </div>
         </div>
 
+        <!-- Center: Audio Controls -->
+        <div class="flex items-center gap-3">
+            <button id="btn-toggle-music" onclick="combatSystem.toggleMusic()" class="px-4 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border-2 border-amber-500/30 transition-all flex items-center gap-2.5 group shadow-lg">
+                <i data-lucide="volume-2" class="w-4 h-4 text-amber-400"></i>
+                <div class="flex flex-col items-start leading-none">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-amber-400/70">Music</span>
+                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-300 music-state">ON</span>
+                </div>
+            </button>
+            <button id="btn-toggle-sfx" onclick="combatSystem.toggleSFX()" class="px-4 py-2.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border-2 border-blue-500/30 transition-all flex items-center gap-2.5 group shadow-lg">
+                <i data-lucide="volume-1" class="w-4 h-4 text-blue-400"></i>
+                <div class="flex flex-col items-start leading-none">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-blue-400/70">SFX</span>
+                    <span class="text-[10px] font-black uppercase tracking-wider text-blue-300 sfx-state">ON</span>
+                </div>
+            </button>
+        </div>
+
         <!-- Right: Horizontal Timeline -->
         <div class="flex items-center gap-6">
             <div class="text-[9px] font-black text-stone-500 uppercase tracking-widest mr-2 opacity-60">Sequence</div>
@@ -143,18 +187,53 @@
     <!-- Global Damage/Floater Overlay -->
     <div id="damage-floaters-overlay" class="fixed inset-0 z-[300] pointer-events-none overflow-visible"></div>
 
-    <!-- Battlefield (Wider Scaling) -->
+    <!-- Battlefield (Flexbox Centered) -->
     <div id="combat-cinema-wrapper" class="absolute inset-0 z-10 flex flex-col pointer-events-none transform transition-transform duration-300 origin-center">
-        <div class="flex-1 w-full h-full flex items-center justify-center relative perspective-2000 pb-20 px-12 xl:px-24" id="battlefield-container">
-            <!-- Heroes -->
-            <div class="absolute left-[5%] xl:left-[8%] z-20 flex items-center gap-8 perspective-1000" id="heroes-container">
-                <!-- JS Injected Hero Cards -->
+        <div class="flex-1 w-full h-full flex items-center justify-center relative pb-20" id="battlefield-container">
+            <!-- Targeting SVG Overlay -->
+            <svg id="targeting-svg" class="absolute inset-0 w-full h-full z-40 pointer-events-none overflow-visible">
+                <defs>
+                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
+                <path id="targeting-path" d="" fill="none" stroke="red" stroke-width="3" stroke-dasharray="8,8" filter="url(#glow)" class="opacity-0 transition-opacity duration-300" />
+                <circle id="targeting-start-dot" r="6" fill="red" class="opacity-0 transition-opacity duration-300" filter="url(#glow)" />
+                <circle id="targeting-end-dot" r="6" fill="red" class="opacity-0 transition-opacity duration-300" filter="url(#glow)" />
+            </svg>
+            
+            <!-- Centered Battlefield Wrapper -->
+            <div id="battlefield-inner" class="flex items-center justify-center gap-32 max-w-[1600px] w-full px-12">
+                <!-- Graveyard (Left - Dead Allies) - Desktop: Left Side, Mobile: Bottom -->
+                <div class="graveyard-allies-container absolute left-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2 md:flex hidden" id="graveyard-allies">
+                    <!-- JS Injected Dead Ally Chips -->
+                </div>
+
+                <!-- Graveyard (Right - Dead Enemies) - Desktop: Right Side, Mobile: Top -->
+                <div class="graveyard-enemies-container absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2 md:flex hidden" id="graveyard-enemies">
+                    <!-- JS Injected Dead Enemy Chips -->
+                </div>
+
+                <!-- Heroes -->
+                <div class="flex items-center gap-8 perspective-1000 z-20" id="heroes-container">
+                    <!-- JS Injected Hero Cards -->
+                </div>
+
+                <!-- Enemies -->
+                <div class="flex items-center gap-8 perspective-1000 z-10" id="enemy-container"></div>
             </div>
 
-            <!-- VS Badge (Removed) -->
+            <!-- Mobile Graveyards (Outside battlefield-inner for better positioning) -->
+            <!-- Graveyard (Top - Dead Enemies) - Mobile Only -->
+            <div class="graveyard-enemies-mobile absolute top-16 left-1/2 -translate-x-1/2 z-30 flex flex-row gap-2 md:hidden max-w-[90vw] overflow-x-auto px-2 pb-1" id="graveyard-enemies-mobile">
+                <!-- JS Injected Dead Enemy Chips -->
+            </div>
 
-            <!-- Enemies -->
-            <div class="absolute right-[5%] xl:right-[8%] w-auto flex items-center gap-8 z-10 perspective-1000" id="enemy-container"></div>
+            <!-- Graveyard (Bottom - Dead Allies) - Mobile Only -->
+            <div class="graveyard-allies-mobile absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-row gap-2 md:hidden max-w-[90vw] overflow-x-auto px-2 pt-1" id="graveyard-allies-mobile">
+                <!-- JS Injected Dead Ally Chips -->
+            </div>
         </div>
         
         <!-- PARRY BAR (Bottom UI) -->
@@ -203,24 +282,64 @@
                     <div class="w-px h-6 bg-white/10"></div>
 
                     <div class="relative">
-                        <button onclick="combatSystem.toggleSkillMenu()" id="btn-skill" class="group relative flex items-center gap-3 px-4 py-2 hover:bg-blue-500/10 rounded-xl transition-all border border-transparent hover:border-blue-500/30">
-                            <div class="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner group-hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                                <i data-lucide="sparkles" class="w-5 h-5 text-blue-400"></i>
+                        <button onclick="combatSystem.toggleSkillMenu()" id="btn-skill" class="group relative flex items-center gap-3 px-4 py-2 hover:bg-purple-500/10 rounded-xl transition-all border border-transparent hover:border-purple-500/30">
+                            <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shadow-inner group-hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                                <i data-lucide="sparkles" class="w-5 h-5 text-purple-400"></i>
                             </div>
                             <span class="text-[0.7rem] font-black uppercase tracking-[0.2em] text-stone-300 group-hover:text-white">Skill</span>
                         </button>
-                        <!-- Premium Skill Menu -->
-                        <div id="skills-menu" class="absolute bottom-[140%] left-1/2 -translate-x-1/2 w-[440px] bg-black/95 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_30px_70px_rgba(0,0,0,1)] hidden opacity-0 transition-all duration-300 z-[100] p-1">
-                             <div class="bg-white/5 px-6 py-3 flex justify-between items-center rounded-t-xl mb-1 border-b border-white/5">
-                                 <span class="text-[0.65rem] font-black uppercase tracking-[0.3em] text-stone-400">Hero Abilities</span>
+                        <!-- Premium Skill Menu (V2: List + Details Panel) -->
+                        <div id="skills-menu" class="combat-skill-menu absolute bottom-[140%] left-1/2 -translate-x-1/2 w-[920px] max-w-[92vw] bg-black/95 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_30px_70px_rgba(0,0,0,1)] hidden opacity-0 transition-all duration-300 z-[120]">
+                             <div class="bg-white/5 px-6 py-3 flex justify-between items-center border-b border-white/5">
+                                 <div class="flex flex-col">
+                                     <span class="text-[0.6rem] font-black uppercase tracking-[0.35em] text-stone-500">Hero Abilities</span>
+                                     <span class="text-sm font-black text-white tracking-wide">Skills</span>
+                                 </div>
                                  <div class="flex items-center gap-2 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
                                      <i data-lucide="zap" class="w-3 h-3 text-blue-400"></i>
-                                     <span class="text-[0.6rem] font-black text-blue-400" id="skill-menu-mp">0</span>
+                                     <span class="text-[0.65rem] font-black text-blue-400"><span id="skill-menu-mp">0</span> MP</span>
                                  </div>
                              </div>
-                             <div id="skill-list-container" class="grid grid-cols-2 gap-2 p-3"></div>
+
+                             <div class="combat-skill-body grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-0">
+                                 <!-- Left: Skill List -->
+                                 <div class="combat-skill-list border-r border-white/5">
+                                     <div class="px-5 py-3 flex items-center justify-between gap-3 border-b border-white/5">
+                                         <div class="text-[0.6rem] font-black uppercase tracking-[0.3em] text-stone-500">Choose a skill</div>
+                                         <div class="text-[0.55rem] font-bold text-stone-600 uppercase tracking-widest">Click to preview • Enter to cast</div>
+                                     </div>
+                                     <div id="skill-list-container" class="combat-skill-list-inner custom-scrollbar"></div>
+                                 </div>
+
+                                 <!-- Right: Skill Details -->
+                                 <div class="combat-skill-detail">
+                                     <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between">
+                                         <div class="text-[0.6rem] font-black uppercase tracking-[0.3em] text-stone-500">Skill Details</div>
+                                         <div class="text-[0.55rem] font-bold text-stone-600 uppercase tracking-widest">Esc to close</div>
+                                     </div>
+                                     <div id="skill-detail-panel" class="combat-skill-detail-inner">
+                                         <div id="skill-detail-empty" class="text-stone-500 text-sm italic p-6">Select a skill to see details.</div>
+                                         <div id="skill-detail-content" class="hidden p-6"></div>
+                                     </div>
+                                    <div class="combat-skill-detail-footer border-t border-white/5 p-4 flex items-center justify-end gap-4 bg-black/40">
+                                        <button id="btn-cast-skill" onclick="combatSystem.castPreviewSkill()" disabled class="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 border-t border-white/20 shadow-[0_0_30px_rgba(168,85,247,0.35)] transition-all font-black uppercase tracking-[0.25em] text-[0.75rem] disabled:opacity-30 disabled:grayscale disabled:pointer-events-none flex items-center gap-3">
+                                            <i data-lucide="zap" class="w-6 h-6"></i>
+                                            <span>Cast</span>
+                                        </button>
+                                    </div>
+                                 </div>
+                             </div>
                         </div>
                     </div>
+
+                    <div class="w-px h-6 bg-white/10"></div>
+
+                    <button onclick="combatSystem.selectActionType('defend')" id="btn-defend" class="group relative flex items-center gap-3 px-4 py-2 hover:bg-blue-500/10 rounded-xl transition-all border border-transparent hover:border-blue-500/30">
+                        <div class="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner group-hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                            <i data-lucide="shield-check" class="w-5 h-5 text-blue-400"></i>
+                        </div>
+                        <span class="text-[0.7rem] font-black uppercase tracking-[0.2em] text-stone-300 group-hover:text-white">Defend</span>
+                    </button>
 
                     <div class="w-px h-6 bg-white/10"></div>
 
@@ -244,10 +363,11 @@
                 <!-- Premium Confirm Bar -->
                 <div id="confirm-bar" class="pointer-events-auto absolute inset-0 flex items-center justify-center px-12 py-5 rounded-3xl bg-black border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,1)] ring-1 ring-white/5 transition-all duration-500 transform translate-y-[150%] opacity-0 z-20">
                     <button onclick="combatSystem.cancelAction()" class="absolute left-8 text-[0.6rem] font-black uppercase tracking-widest text-stone-500 hover:text-white transition-colors">Cancel</button>
-                    <button onclick="combatSystem.confirmAction()" class="flex items-center gap-4 px-12 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 border-t border-white/20 shadow-[0_0_40px_rgba(220,38,38,0.4)] group transition-all transform active:scale-95">
-                        <span class="text-white font-black uppercase tracking-[0.3em] text-[0.7rem]" id="confirm-btn-text">CONFIRM</span>
-                        <div class="w-px h-4 bg-white/20"></div>
-                        <i data-lucide="arrow-right" class="w-4 h-4 text-white group-hover:translate-x-1 transition-transform"></i>
+                    <button onclick="combatSystem.confirmAction()" class="flex items-center gap-4 px-12 py-4 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 border-t border-white/20 shadow-[0_0_40px_rgba(220,38,38,0.4)] group transition-all transform active:scale-95">
+                        <i data-lucide="check-circle" class="w-8 h-8 text-white group-hover:scale-110 transition-transform" id="confirm-btn-icon"></i>
+                        <span class="text-white font-black uppercase tracking-[0.3em] text-[0.85rem]" id="confirm-btn-text">CONFIRM</span>
+                        <div class="w-px h-6 bg-white/20"></div>
+                        <i data-lucide="arrow-right" class="w-6 h-6 text-white group-hover:translate-x-1 transition-transform"></i>
                     </button>
                 </div>
             </div>
@@ -336,7 +456,7 @@
 
                 <!-- Continue Button -->
                 <div class="mt-8">
-                     <button onclick="closeCombatModal()" class="group relative px-16 py-4 bg-white text-black font-black uppercase tracking-[0.25em] text-xs rounded-full hover:bg-amber-400 transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_50px_rgba(245,158,11,0.6)] transform hover:-translate-y-1 overflow-hidden">
+                     <button onclick="closeCombatModal()" class="pointer-events-auto group relative px-16 py-4 bg-white text-black font-black uppercase tracking-[0.25em] text-xs rounded-full hover:bg-amber-400 transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_50px_rgba(245,158,11,0.6)] transform hover:-translate-y-1 overflow-hidden">
                         <span class="relative z-10 flex items-center gap-2">Continue <i data-lucide="arrow-right" class="w-3 h-3"></i></span>
                         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
                      </button>
@@ -362,26 +482,91 @@
             </div>
         </div>
     </div>
+
+    <!-- REVIVE SELECTION MODAL -->
+    <div id="revive-selection-modal" class="fixed inset-0 z-[350] hidden opacity-0 transition-opacity duration-300 pointer-events-none">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="combatSystem.closeReviveSelectionModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-black/95 backdrop-blur-xl border-2 border-green-500/50 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                <!-- Header -->
+                <div class="p-6 border-b border-green-500/30">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="heart" class="w-8 h-8 text-green-400"></i>
+                            <div>
+                                <h2 class="text-2xl font-black text-white">Select Ally to Revive</h2>
+                                <p class="text-sm text-stone-400 mt-1" id="revive-modal-count">No fallen allies</p>
+                            </div>
+                        </div>
+                        <button onclick="combatSystem.closeReviveSelectionModal()" class="text-stone-400 hover:text-white transition-colors">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div id="revive-ally-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Ally cards will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="p-6 border-t border-green-500/30 bg-black/50">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs text-stone-400">Press ESC to cancel</p>
+                        <button onclick="combatSystem.closeReviveSelectionModal()" class="px-6 py-2 bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded-lg text-stone-300 transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
     <!-- External Combat CSS -->
     <link rel="stylesheet" href="assets/css/combat.css">
     <!-- External Combat Scripts -->
+    <script src="assets/js/effects-data.js"></script>
+    <script src="assets/js/elemental-data.js"></script>
+    <script src="assets/js/skills-data.js"></script>
     <script src="assets/js/combat-data.js"></script>
+    <script src="assets/js/audio.registry.js"></script>
+    <script src="assets/js/audio-manager.js"></script>
     <script src="assets/js/combat-system.js"></script>
 
 <!-- DEBUG UI (Placed correctly outside script) -->
 <div id="debug-layer" class="fixed bottom-4 right-4 z-[500] flex flex-col items-end gap-2 pointer-events-auto" style="font-family: 'Inter', sans-serif;">
-    <div id="debug-menu" class="hidden bg-black/90 border border-white/10 rounded-xl p-2 mb-2 shadow-2xl backdrop-blur-md flex flex-col gap-1 w-40 transition-all origin-bottom-right">
+<div id="debug-menu" class="hidden bg-black/90 border border-white/10 rounded-xl p-2 mb-2 shadow-2xl backdrop-blur-md flex flex-col gap-1 w-48 transition-all origin-bottom-right">
         <div class="text-[0.6rem] font-bold text-stone-500 uppercase tracking-widest px-2 py-1 border-b border-white/5 mb-1">Developer Tools</div>
         <button onclick="combatSystem.debugHealSelf()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-green-400 flex items-center gap-2"><i data-lucide="heart" class="w-3 h-3"></i> Heal Self</button>
         <button onclick="combatSystem.debugRecoverMana()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-blue-400 flex items-center gap-2"><i data-lucide="zap" class="w-3 h-3"></i> Recover Mana</button>
         <button onclick="combatSystem.debugPowerUp()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-400 flex items-center gap-2"><i data-lucide="swords" class="w-3 h-3"></i> Power Up</button>
-        <button onclick="combatSystem.debugKillAll()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2"><i data-lucide="skull" class="w-3 h-3"></i> Kill All</button>
-        <button onclick="combatSystem.debugDie()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-stone-400 flex items-center gap-2"><i data-lucide="frown" class="w-3 h-3"></i> Die</button>
+        
+        <div class="h-px bg-white/5 my-1"></div>
+        
+        <button onclick="combatSystem.debugKillAll()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2"><i data-lucide="skull" class="w-3 h-3"></i> Kill All Enemies</button>
+        <button onclick="combatSystem.debugDie()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-stone-400 flex items-center gap-2"><i data-lucide="frown" class="w-3 h-3"></i> Kill All Heroes</button>
+        
+        <div class="h-px bg-white/5 my-1"></div>
+        
+        <button onclick="combatSystem.debugVictory()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-amber-400 flex items-center gap-2"><i data-lucide="trophy" class="w-3 h-3"></i> Force Victory</button>
+        <button onclick="combatSystem.debugDefeat()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-400 flex items-center gap-2"><i data-lucide="x-circle" class="w-3 h-3"></i> Force Defeat</button>
+        
+        <div class="h-px bg-white/5 my-1"></div>
+        
+        <button onclick="combatSystem.toggleAutoGame()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2"><i data-lucide="cpu" class="w-3 h-3"></i> <span id="debug-autogame-text">AutoGame: OFF</span></button>
+        <button onclick="combatSystem.toggleQuickCombat()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-cyan-400 flex items-center gap-2"><i data-lucide="zap" class="w-3 h-3"></i> <span id="debug-quickcombat-text">Quick: OFF</span></button>
+        <button onclick="combatSystem.debugResetBattle()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-orange-400 flex items-center gap-2"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset Battle</button>
+        
         <button onclick="combatSystem.debugInspect()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-cyan-400 flex items-center gap-2 border-t border-white/5 mt-1 pt-2"><i data-lucide="search" class="w-3 h-3"></i> Inspect Stats</button>
     </div>
     <button onclick="document.getElementById('debug-menu').classList.toggle('hidden')" class="w-10 h-10 rounded-full bg-stone-900/80 border border-white/10 text-stone-500 hover:text-white hover:bg-stone-800 flex items-center justify-center transition-all shadow-lg hover:rotate-90">
         <i data-lucide="bug" class="w-5 h-5"></i>
     </button>
 </div>
+
+
+<!-- Skill Engine System -->
+<script src="assets/js/skill-engine.js"></script>

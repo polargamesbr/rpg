@@ -7,6 +7,7 @@ return [
     'name' => 'Blacksmith',
     'display_name' => 'Blacksmith',
     'role' => 'Bruiser',
+    'desc' => 'A warrior blacksmith who combines combat prowess with masterful crafting. They forge weapons in battle and use their hammer as both tool and weapon, creating and destroying with equal skill.',
     'base_level' => 1,
     'images' => [
         'male' => 'assets/img/blacksmith-male.png',
@@ -43,5 +44,6 @@ return [
         ],
     ],
 ];
+
 
 

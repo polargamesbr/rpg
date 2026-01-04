@@ -14,3 +14,4 @@ UPDATE classes SET image_prefix = 'sacer' WHERE name = 'Acolito';
 UPDATE classes SET image_prefix = 'blacksmith' WHERE name = 'Ferreiro';
 SQL;
 
+

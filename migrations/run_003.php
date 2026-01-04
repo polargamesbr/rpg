@@ -28,3 +28,4 @@ if ($result) {
     echo "Users table already updated (no username column found)\n";
 }
 
+

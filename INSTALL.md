@@ -65,3 +65,4 @@ Configure o server block para apontar para `public/` e use o try_files como most
 - Verifique se a pasta `public/assets/` existe e tem os arquivos
 - Confirme os caminhos nas views (devem ser relativos: `assets/img/...`)
 
+

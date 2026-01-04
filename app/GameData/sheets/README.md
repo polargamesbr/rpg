@@ -14,3 +14,4 @@ Characters and monsters share the same structure. The main difference is:
 All paths are relative to `public/` (e.g. `assets/img/...`).
 
 
+

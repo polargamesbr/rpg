@@ -6,6 +6,7 @@ return [
     'is_player' => false,
     'name' => 'Hobgoblin Brute',
     'role' => 'Tank',
+    'desc' => 'A massive hobgoblin warrior known for brute strength and heavy armor. They charge into battle without fear, crushing enemies with overwhelming force.',
     'base_level' => 12,
     'images' => [
         'default' => 'assets/img/swordman-female.png',
@@ -42,5 +43,6 @@ return [
         ],
     ],
 ];
+
 
 

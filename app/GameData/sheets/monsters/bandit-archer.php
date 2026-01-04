@@ -1,4 +1,4 @@
-<?php
+ <?php
 
 return [
     'id' => 'bandit_archer',
@@ -6,6 +6,7 @@ return [
     'is_player' => false,
     'name' => 'Bandit Archer',
     'role' => 'Ranged',
+    'desc' => 'A rogue archer who turned to banditry, using stolen bows and poisoned arrows to ambush travelers. They strike from hidden positions and rarely fight fair.',
     'base_level' => 10,
     'images' => [
         'default' => 'assets/img/archer-female.png',
@@ -43,5 +44,6 @@ return [
         ],
     ],
 ];
+
 
 

@@ -3,118 +3,444 @@ window.combatData = {
     entities: {
         // --- CLASSES ---
         hero_blacksmith: {
-            name: 'Blacksmith', type: 'class', img: 'assets/img/blacksmith-male.png',
-            attributes: { str: 30, agi: 20, vit: 25, int: 10, dex: 20, luk: 15 },
-            maxHp: 200, maxMana: 100, baseLevel: 10,
-            skills: ['bash', 'repair', 'fortify']
+            name: 'Blacksmith', type: 'class', element: 'fire', img: 'assets/img/blacksmith-male.png', video: 'assets/video/blacksmith-female.mp4',
+            desc: 'A warrior blacksmith who combines combat prowess with masterful crafting. They forge weapons in battle and use their hammer as both tool and weapon, creating and destroying with equal skill.',
+            // Balanced attributes (aligned with the "attribute-scale" used by SkillEngine formulas)
+            attributes: { str: 14, agi: 6, vit: 11, int: 8, dex: 7, luk: 4 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            // Blacksmith Skills (Lv 1–12, weakest → strongest)
+            skills: [
+                'anvil_tap', 'spark_blow', 'field_repair', 'tempered_strike',
+                'fortify_armor', 'seismic_slam', 'molten_edge', 'riveting_combo',
+                'shatter_armor', 'forge_overdrive', 'masterwork_precision', 'worldbreaker'
+            ]
         },
         hero_mage: {
-            name: 'Mage', type: 'class', img: 'assets/img/mage-male.png',
-            attributes: { str: 5, agi: 15, vit: 10, int: 35, dex: 25, luk: 10 },
-            maxHp: 120, maxMana: 300, baseLevel: 10,
-            skills: ['fireball', 'frost', 'meteor', 'shock']
+            name: 'Mage', type: 'class', element: 'fire', img: 'assets/img/mage-male.png',
+            desc: 'An arcane spellcaster who wields powerful magical forces. Through years of study and dedication, they command the elements and bend reality to their will.',
+            attributes: { str: 5, agi: 7, vit: 6, int: 15, dex: 10, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            // Mage Skills (Lv 1–12, weakest → strongest)
+            skills: [
+                'arcane_bolt', 'ember_spear', 'frost', 'mana_shield',
+                'fireball', 'chain_spark', 'arcane_focus', 'ice_prison',
+                'lightning_storm', 'shock', 'void_lance', 'meteor',
+                'mana_drain', 'time_skip'
+            ]
         },
-        hero_brawler: {
-            name: 'Swordman', type: 'class', img: 'assets/img/swordman-male.png',
-            attributes: { str: 35, agi: 15, vit: 30, int: 5, dex: 15, luk: 10 },
-            maxHp: 250, maxMana: 80, baseLevel: 10,
-            skills: ['heavy_slash', 'parry_stance']
+        hero_swordman: {
+            name: 'Swordman', type: 'class', element: 'neutral', img: 'assets/img/swordman-male.png',
+            desc: 'A disciplined warrior trained in one-handed combat and military tactics. Masters of sword and shield, they excel at both offense and defense, making them reliable front-line fighters.',
+            attributes: { str: 12, agi: 8, vit: 10, int: 5, dex: 8, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            skills: [
+                'quick_slash', 'guarded_strike', 'parry_stance', 'heavy_slash',
+                'shield_bash', 'taunting_shout', 'cleave', 'defensive_wall',
+                'crushing_blow', 'battle_focus', 'relentless_strike', 'champions_slash',
+                'life_steal', 'berserk_mode'
+            ]
         },
         hero_archer: {
-            name: 'Archer', type: 'class', img: 'assets/img/archer-female.png', video: 'assets/video/archer-female.mp4',
-            attributes: { str: 10, agi: 35, vit: 15, int: 10, dex: 40, luk: 15 },
-            maxHp: 150, maxMana: 120, baseLevel: 10,
-            skills: ['poison_tip', 'multishot']
+            name: 'Archer', type: 'class', element: 'wind', img: 'assets/img/archer-female.png', video: 'assets/video/archer-female.mp4',
+            desc: 'A precision archer with deep connection to nature and keen eyesight. They strike from a distance with deadly accuracy, using the environment to their advantage.',
+            attributes: { str: 8, agi: 15, vit: 8, int: 7, dex: 14, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            skills: [
+                'quick_shot', 'aimed_shot', 'evasive_step', 'power_shot',
+                'poison_arrow', 'rapid_fire', 'multishot', 'crippling_shot',
+                'shadow_volley', 'hunters_focus', 'piercing_arrow', 'rain_of_arrows',
+                'volcanic_arrowstorm', 'summon_wolf'
+            ]
         },
-        hero_rogue: {
-            name: 'Rogue', type: 'class', img: 'assets/img/rogue-male.png',
-            attributes: { str: 15, agi: 40, vit: 10, int: 10, dex: 30, luk: 35 },
-            maxHp: 140, maxMana: 100, baseLevel: 10,
-            skills: ['backstab', 'toxin']
+        // NOTE: Renamed to match your actual class set/assets (Thief/Acolyte)
+        hero_thief: {
+            name: 'Thief', type: 'class', element: 'shadow', img: 'assets/img/thief-male.png',
+            desc: 'An agile rogue who moves through shadows and strikes from the darkness. Masters of stealth and precision, they excel at quick, deadly attacks and evading danger.',
+            attributes: { str: 8, agi: 14, vit: 7, int: 6, dex: 15, luk: 8 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            // Thief Skills (Lv 1–12, weakest → strongest)
+            skills: [
+                'quick_stab', 'poisoned_blade', 'evasive_roll', 'backstab',
+                'bleeding_cut', 'smoke_bomb', 'shadow_strike', 'crippling_poison',
+                'execution', 'fan_of_knives', 'nightmare_combo', 'assassinate',
+                'life_steal', 'time_skip'
+            ]
         },
-        hero_cleric: {
-            name: 'Cleric', type: 'class', img: 'assets/img/cleric-female.png',
-            attributes: { str: 10, agi: 10, vit: 20, int: 30, dex: 15, luk: 20 },
-            maxHp: 160, maxMana: 250, baseLevel: 10,
-            skills: ['heal', 'smite', 'bless']
+        hero_acolyte: {
+            name: 'Acolyte', type: 'class', element: 'holy', img: 'assets/img/sacer-female.png', video: 'assets/video/acolyte-female.mp4',
+            desc: 'A sacred cleric devoted to divine powers of healing and protection. They channel holy energy to mend wounds, shield allies, and smite the unholy.',
+            // Battle Healer: high INT/mana + solid VIT sustain, modest damage, safe solo progression
+            attributes: { str: 6, agi: 6, vit: 9, int: 13, dex: 8, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            // Acolyte Skills (Lv 1–12, weakest → strongest)
+            skills: [
+                'heal', 'minor_smite', 'bless', 'holy_shield',
+                'smite', 'purifying_light', 'renewal', 'radiant_wave',
+                'divine_favor', 'sanctuary', 'judgement', 'celestial_wrath',
+                'reflect_shield', 'revive'
+            ]
         },
 
         // --- MONSTERS ---
         wolf: {
-            name: 'Dire Wolf', type: 'monster', img: 'assets/img/wolf.png', video: 'assets/video/wolf.mp4',
-            attributes: { str: 20, agi: 30, vit: 15, int: 5, dex: 25, luk: 10 },
-            maxHp: 180, maxMana: 50, baseLevel: 3,
-            skills: ['bite', 'howl']
+            name: 'Dire Wolf', type: 'monster', element: 'neutral', img: 'assets/img/wolf.png', video: 'assets/video/wolf.mp4',
+            desc: 'A fierce and intelligent wolf that hunts in packs. Known for their savage bites and coordinated attacks, they are dangerous predators of the wilderness.',
+            attributes: { str: 10, agi: 12, vit: 8, int: 2, dex: 10, luk: 3 },
+            maxHp: 1, maxMana: 1, baseLevel: 4,
+            exp: 15, gold: 12,
+            skills: ['savage_bite', 'pack_howl', 'lunge', 'feral_claws', 'blood_frenzy', 'lunar_rampage']
         },
         orc: {
-            name: 'Orc Warrior', type: 'monster', img: 'assets/img/orc.png', video: 'assets/video/orc.mp4',
-            attributes: { str: 40, agi: 10, vit: 35, int: 5, dex: 10, luk: 5 },
-            maxHp: 300, maxMana: 40, baseLevel: 5,
-            skills: ['smash', 'rage']
+            name: 'Orc Warrior', type: 'monster', element: 'earth', img: 'assets/img/orc.png', video: 'assets/video/orc.mp4',
+            desc: 'A brutal orc warrior who relies on raw strength and brute force. They charge into battle with overwhelming power, crushing enemies with their massive weapons.',
+            attributes: { str: 14, agi: 5, vit: 14, int: 2, dex: 6, luk: 2 },
+            maxHp: 1, maxMana: 1, baseLevel: 6,
+            exp: 25, gold: 20,
+            skills: ['smash', 'orc_charge', 'war_cry', 'brutal_swing', 'berserker_rage']
         },
-        slime: {
-            name: 'Green Slime', type: 'monster', img: 'assets/img/slime.png', video: 'assets/video/slime.mp4',
-            attributes: { str: 10, agi: 5, vit: 40, int: 10, dex: 5, luk: 20 },
-            maxHp: 220, maxMana: 20, baseLevel: 1,
-            skills: ['dissolve', 'bounce']
+        toxic_slime: {
+            name: 'Toxic Slime', type: 'monster', element: 'poison', img: 'assets/img/slime.png', video: 'assets/video/slime.mp4',
+            desc: 'A poisonous slime creature that oozes through dark places. Their toxic touch can dissolve flesh and spread disease to those unfortunate enough to encounter them.',
+            attributes: { str: 8, agi: 3, vit: 12, int: 6, dex: 3, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 2,
+            exp: 8, gold: 5,
+            skills: ['dissolve', 'bounce', 'slime_split', 'toxic_spit']
         },
         goblin: {
-            name: 'Goblin Scout', type: 'monster', img: 'assets/img/goblin.png',
-            attributes: { str: 10, agi: 25, vit: 10, int: 15, dex: 20, luk: 30 },
-            maxHp: 100, maxMana: 60, baseLevel: 2,
-            skills: ['stab', 'loot'],
+            name: 'Goblin Scout', type: 'monster', element: 'earth', img: 'assets/img/goblin.png',
+            desc: 'A small goblin explorer that roams the wilderness, using basic magic to survive. Known for their quick attacks and tendency to flee when outnumbered.',
+            attributes: { str: 9, agi: 11, vit: 7, int: 6, dex: 10, luk: 8 },
+            maxHp: 1, maxMana: 1, baseLevel: 3,
+            exp: 10, gold: 8,
+            skills: ['stab', 'loot', 'goblin_dash', 'dirty_trick', 'retreat'],
             lootTable: { goldMin: 10, goldMax: 25, xp: 45, items: [{ id: 'goblin_ear', chance: 0.8, rarity: 'common' }] }
         },
         hobgoblin: {
-            name: 'Hobgoblin Brute', type: 'monster', img: 'assets/img/swordman-female.png',
-            attributes: { str: 35, agi: 5, vit: 40, int: 5, dex: 15, luk: 5 },
-            maxHp: 350, maxMana: 50, baseLevel: 8,
-            skills: ['heavy_slam'],
+            name: 'Hobgoblin Brute', type: 'monster', element: 'earth', img: 'assets/img/swordman-female.png',
+            desc: 'A massive hobgoblin warrior known for brute strength and heavy armor. They charge into battle without fear, crushing enemies with overwhelming force.',
+            attributes: { str: 16, agi: 4, vit: 18, int: 2, dex: 8, luk: 2 },
+            maxHp: 1, maxMana: 1, baseLevel: 8,
+            exp: 40, gold: 30,
+            skills: ['heavy_slam', 'ground_slam', 'intimidating_roar', 'hobgoblin_crush', 'rampage'],
             lootTable: { goldMin: 30, goldMax: 60, xp: 80, items: [{ id: 'iron_shard', chance: 0.7, rarity: 'common' }] }
         },
         bandit: {
-            name: 'Bandit Archer', type: 'monster', img: 'assets/img/archer-female.png', video: 'assets/video/archer-female.mp4',
-            attributes: { str: 15, agi: 35, vit: 15, int: 5, dex: 40, luk: 10 },
-            maxHp: 160, maxMana: 80, baseLevel: 4,
-            skills: ['poison_tip'],
+            name: 'Bandit Archer', type: 'monster', element: 'neutral', img: 'assets/img/archer-female.png', video: 'assets/video/archer-female.mp4',
+            desc: 'A rogue archer who turned to banditry, using stolen bows and poisoned arrows to ambush travelers. They strike from hidden positions and rarely fight fair.',
+            attributes: { str: 11, agi: 13, vit: 9, int: 4, dex: 14, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 7,
+            exp: 30, gold: 25,
+            skills: ['poison_tip', 'multishot', 'bandit_aim', 'bandit_retreat', 'bandit_volley'],
             lootTable: { goldMin: 15, goldMax: 35, xp: 55, items: [{ id: 'broken_arrow', chance: 0.8, rarity: 'common' }] }
+        },
+
+        // ========================================
+        // STORMHAVEN MONSTERS (Swordsman starting city)
+        // ========================================
+        goblin_raider: {
+            name: 'Goblin Raider', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'A coastal goblin that survives by raiding ships and travelers. They use stolen equipment and are known for their quick and dirty attacks.',
+            attributes: { str: 9, agi: 10, vit: 7, int: 4, dex: 9, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 2,
+            exp: 8, gold: 6,
+            skills: ['goblin_raid', 'loot', 'stab'],
+            city: 'Stormhaven'
+        },
+        coastal_crab: {
+            name: 'Coastal Crab', type: 'monster', element: 'water', img: 'assets/img/placeholder.png',
+            desc: 'A giant crab that dwells along the coastlines. With their hard shells and powerful pincers, they guard their territory fiercely.',
+            attributes: { str: 8, agi: 4, vit: 12, int: 2, dex: 6, luk: 3 },
+            maxHp: 1, maxMana: 1, baseLevel: 3,
+            exp: 12, gold: 8,
+            skills: ['crab_pinch', 'shell_defense', 'bubble_burst'],
+            city: 'Stormhaven'
+        },
+        sea_rat: {
+            name: 'Sea Rat', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            desc: 'A large rat that infests port areas, carrying disease and poison. They are quick and vicious, attacking in swarms when threatened.',
+            attributes: { str: 6, agi: 11, vit: 8, int: 3, dex: 10, luk: 7 },
+            maxHp: 1, maxMana: 1, baseLevel: 4,
+            exp: 15, gold: 10,
+            skills: ['poison_bite', 'quick_escape', 'disease_scratch'],
+            city: 'Stormhaven'
+        },
+        bandit_marauder: {
+            name: 'Bandit Marauder', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'A coastal bandit who plunders ships and coastal settlements. They are ruthless raiders known for their brutal tactics and love of loot.',
+            attributes: { str: 10, agi: 9, vit: 9, int: 4, dex: 11, luk: 8 },
+            maxHp: 1, maxMana: 1, baseLevel: 5,
+            exp: 18, gold: 12,
+            skills: ['marauder_strike', 'loot', 'dirty_blow'],
+            city: 'Stormhaven'
+        },
+        rock_golem_small: {
+            name: 'Rock Golem (Small)', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'A small stone guardian created to protect coastal areas. Though slow, their stone bodies make them incredibly resilient defenders.',
+            attributes: { str: 12, agi: 2, vit: 16, int: 1, dex: 4, luk: 2 },
+            maxHp: 1, maxMana: 1, baseLevel: 6,
+            exp: 22, gold: 15,
+            skills: ['rock_slam', 'stone_skin', 'earthquake'],
+            city: 'Stormhaven'
+        },
+        skeleton_soldier: {
+            name: 'Skeleton Soldier', type: 'monster', element: 'undead', img: 'assets/img/placeholder.png',
+            desc: 'An undead soldier from the coastal wars, risen to serve dark forces. They retain their military discipline and fight with rusted weapons.',
+            attributes: { str: 11, agi: 6, vit: 10, int: 2, dex: 8, luk: 4 },
+            maxHp: 1, maxMana: 1, baseLevel: 7,
+            exp: 25, gold: 18,
+            skills: ['bone_strike', 'undead_resilience', 'shield_bash'],
+            city: 'Stormhaven'
+        },
+        orc_scout: {
+            name: 'Orc Scout', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'An orc explorer who patrols coastal regions. More agile than their warrior kin, they scout ahead and report back to their war bands.',
+            attributes: { str: 13, agi: 8, vit: 11, int: 2, dex: 9, luk: 3 },
+            maxHp: 1, maxMana: 1, baseLevel: 8,
+            exp: 30, gold: 22,
+            skills: ['scout_charge', 'war_cry', 'brutal_swing'],
+            city: 'Stormhaven'
+        },
+        harpy: {
+            name: 'Harpy', type: 'monster', element: 'wind', img: 'assets/img/placeholder.png',
+            desc: 'A flying creature that nests in coastal cliffs. Their piercing screeches can stun enemies, and their talons strike from above.',
+            attributes: { str: 8, agi: 14, vit: 7, int: 5, dex: 13, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 9,
+            exp: 35, gold: 25,
+            skills: ['harpy_screech', 'talon_strike', 'wind_gust'],
+            city: 'Stormhaven'
+        },
+        troll_warrior: {
+            name: 'Troll Warrior', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'A coastal troll warrior known for their incredible regeneration. They fight with massive clubs and rarely retreat from battle.',
+            attributes: { str: 15, agi: 4, vit: 14, int: 2, dex: 7, luk: 3 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            exp: 40, gold: 30,
+            skills: ['troll_regeneration', 'heavy_club', 'berserker_rage'],
+            city: 'Stormhaven'
+        },
+        pirate_ghost: {
+            name: 'Pirate Ghost', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            desc: 'The restless spirit of a fallen pirate, cursed to haunt the coast. They wield ethereal weapons and drain the life force of the living.',
+            attributes: { str: 9, agi: 10, vit: 8, int: 8, dex: 11, luk: 7 },
+            maxHp: 1, maxMana: 1, baseLevel: 11,
+            exp: 45, gold: 35,
+            skills: ['ghostly_strike', 'mana_drain', 'cursed_sword'],
+            city: 'Stormhaven'
+        },
+        captain_grimbeard: {
+            name: 'Captain Grimbeard', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            desc: 'A legendary pirate captain who became a ghostly boss. His cursed blade and dark aura make him a fearsome opponent, commanding other undead pirates.',
+            attributes: { str: 16, agi: 7, vit: 15, int: 6, dex: 10, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 12,
+            exp: 60, gold: 50,
+            skills: ['captain_taunt', 'ghostly_strike', 'cursed_sword', 'dark_aura', 'pirate_rage'],
+            isBoss: true,
+            city: 'Stormhaven'
+        },
+
+        // ========================================
+        // ELDERVALE MONSTERS (Archer starting city)
+        // ========================================
+        gelatinous_cube: {
+            name: 'Gelatinous Cube', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            desc: 'A gelatinous cube that absorbs and dissolves its prey. They slowly move through dungeons and forests, consuming anything in their path.',
+            attributes: { str: 7, agi: 3, vit: 11, int: 4, dex: 5, luk: 4 },
+            maxHp: 1, maxMana: 1, baseLevel: 2,
+            exp: 8, gold: 6,
+            skills: ['gelatinous_absorb', 'bounce', 'gelatinous_split'],
+            city: 'Eldervale'
+        },
+        feral_wolf: {
+            name: 'Feral Wolf', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'A wild wolf from the deep forests. More aggressive than their dire cousins, they hunt alone and attack with savage ferocity.',
+            attributes: { str: 9, agi: 11, vit: 7, int: 2, dex: 9, luk: 4 },
+            maxHp: 1, maxMana: 1, baseLevel: 3,
+            exp: 12, gold: 8,
+            skills: ['feral_bite', 'pack_howl', 'lunge'],
+            city: 'Eldervale'
+        },
+        giant_spider: {
+            name: 'Giant Spider', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            desc: 'A massive spider that weaves deadly webs in the forest. Their venomous bite and web traps make them dangerous predators.',
+            attributes: { str: 8, agi: 10, vit: 9, int: 4, dex: 11, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 4,
+            exp: 15, gold: 10,
+            skills: ['spider_bite', 'web_trap', 'poison_spit'],
+            city: 'Eldervale'
+        },
+        bat_swarm: {
+            name: 'Bat Swarm', type: 'monster', element: 'wind', img: 'assets/img/placeholder.png',
+            desc: 'A swarm of bats that attacks in numbers. Their screeches disorient enemies while they drain blood with their sharp fangs.',
+            attributes: { str: 6, agi: 13, vit: 6, int: 3, dex: 12, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 5,
+            exp: 18, gold: 12,
+            skills: ['bat_swarm_attack', 'bat_screech', 'drain_blood'],
+            city: 'Eldervale'
+        },
+        treant_sapling: {
+            name: 'Treant Sapling', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'A young animated tree that guards the forest. Though smaller than ancient treants, they are still formidable protectors of nature.',
+            attributes: { str: 10, agi: 3, vit: 13, int: 5, dex: 5, luk: 3 },
+            maxHp: 1, maxMana: 1, baseLevel: 6,
+            exp: 22, gold: 15,
+            skills: ['root_strike', 'bark_skin', 'nature_heal'],
+            city: 'Eldervale'
+        },
+        giant_rat: {
+            name: 'Giant Rat', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            desc: 'A massive rat that dwells in forest undergrowth. Their quick scurrying and poisonous claws make them dangerous vermin.',
+            attributes: { str: 7, agi: 12, vit: 8, int: 3, dex: 11, luk: 7 },
+            maxHp: 1, maxMana: 1, baseLevel: 8,
+            exp: 30, gold: 22,
+            skills: ['giant_rat_bite', 'poison_claw', 'quick_scurry'],
+            city: 'Eldervale'
+        },
+        hornet_queen: {
+            name: 'Hornet Queen', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            desc: 'A giant hornet queen that commands swarms of smaller hornets. Her venomous stinger and ability to command her hive make her a deadly foe.',
+            attributes: { str: 9, agi: 13, vit: 8, int: 5, dex: 14, luk: 8 },
+            maxHp: 1, maxMana: 1, baseLevel: 9,
+            exp: 35, gold: 25,
+            skills: ['stinger_strike', 'venom_cloud', 'hive_command'],
+            city: 'Eldervale'
+        },
+        wild_boar: {
+            name: 'Wild Boar', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'A fierce wild boar that charges through the forest. Their thick hide and powerful tusks make them dangerous when cornered.',
+            attributes: { str: 14, agi: 5, vit: 13, int: 2, dex: 8, luk: 4 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            exp: 40, gold: 30,
+            skills: ['boar_charge', 'tusk_strike', 'thick_hide'],
+            city: 'Eldervale'
+        },
+        dryad: {
+            name: 'Dryad', type: 'monster', element: 'wind', img: 'assets/img/placeholder.png',
+            desc: 'A nature spirit bound to the forest. They wield nature magic and protect their domain with healing breezes and thorny vines.',
+            attributes: { str: 7, agi: 10, vit: 9, int: 10, dex: 11, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 11,
+            exp: 45, gold: 35,
+            skills: ['nature_bolt', 'healing_breeze', 'thorn_vine'],
+            city: 'Eldervale'
+        },
+        ancient_treant: {
+            name: 'Ancient Treant', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'An ancient tree guardian that has protected the forest for centuries. Their massive size and nature magic make them formidable bosses of the wild.',
+            attributes: { str: 15, agi: 3, vit: 16, int: 8, dex: 7, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 12,
+            exp: 60, gold: 50,
+            skills: ['ancient_stomp', 'bark_armor', 'nature_wrath', 'root_grasp', 'ancient_rage'],
+            isBoss: true,
+            city: 'Eldervale'
+        },
+
+        // ========================================
+        // AETHERY sayS MONSTERS (Mage starting city)
+        // ========================================
+        arcane_fragment: {
+            name: 'Arcane Fragment', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'A fragment of pure arcane energy that drifts through magical towers. These unstable remnants of powerful spells attack with basic magic.',
+            attributes: { str: 3, agi: 5, vit: 6, int: 8, dex: 7, luk: 4 },
+            maxHp: 1, maxMana: 1, baseLevel: 2,
+            exp: 8, gold: 6,
+            skills: ['arcane_fragment_blast'],
+            city: 'Aetherys'
+        },
+        cursed_book: {
+            name: 'Cursed Book', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            desc: 'A tome corrupted by dark magic, its pages writhe with malevolent energy. It curses those who read it, weakening their minds.',
+            attributes: { str: 2, agi: 4, vit: 7, int: 10, dex: 6, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 3,
+            exp: 12, gold: 8,
+            skills: ['cursed_book_curse'],
+            city: 'Aetherys'
+        },
+        floating_orb: {
+            name: 'Floating Orb', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'A magical orb that hovers through arcane ruins. Its ethereal nature makes it hard to hit, and it strikes with precise magic.',
+            attributes: { str: 2, agi: 8, vit: 5, int: 9, dex: 10, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 4,
+            exp: 15, gold: 10,
+            skills: ['floating_orb_blast'],
+            city: 'Aetherys'
+        },
+        possessed_armor: {
+            name: 'Possessed Armor', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'An empty suit of armor animated by dark magic. It retains its defensive capabilities while striking with physical force.',
+            attributes: { str: 10, agi: 3, vit: 13, int: 4, dex: 5, luk: 3 },
+            maxHp: 1, maxMana: 1, baseLevel: 5,
+            exp: 18, gold: 12,
+            skills: ['possessed_armor_strike'],
+            city: 'Aetherys'
+        },
+        shadow_wisp: {
+            name: 'Shadow Wisp', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            desc: 'A wisp of pure shadow that drifts through magical spaces. Immune to physical attacks, it drains the life force of the living.',
+            attributes: { str: 1, agi: 11, vit: 6, int: 11, dex: 9, luk: 7 },
+            maxHp: 1, maxMana: 1, baseLevel: 6,
+            exp: 22, gold: 15,
+            skills: ['shadow_wisp_drain'],
+            city: 'Aetherys'
+        },
+        golem_arcane: {
+            name: 'Golem (Arcane)', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'A golem constructed from arcane materials and infused with magic. It wields powerful arcane attacks and resists magical damage.',
+            attributes: { str: 11, agi: 2, vit: 14, int: 12, dex: 4, luk: 3 },
+            maxHp: 1, maxMana: 1, baseLevel: 7,
+            exp: 25, gold: 18,
+            skills: ['golem_arcane_blast'],
+            city: 'Aetherys'
+        },
+        skeleton_mage: {
+            name: 'Skeleton Mage', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            desc: 'An undead mage that retains its magical knowledge in death. It casts dark spells and is vulnerable to holy magic.',
+            attributes: { str: 4, agi: 6, vit: 8, int: 13, dex: 8, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 8,
+            exp: 30, gold: 22,
+            skills: ['skeleton_mage_bolt'],
+            city: 'Aetherys'
+        },
+        gargoyle: {
+            name: 'Gargoyle', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            desc: 'A stone guardian that perches on magical towers. It can fly and strikes with both physical and magical attacks.',
+            attributes: { str: 12, agi: 7, vit: 12, int: 7, dex: 9, luk: 4 },
+            maxHp: 1, maxMana: 1, baseLevel: 9,
+            exp: 35, gold: 25,
+            skills: ['gargoyle_stone_strike'],
+            city: 'Aetherys'
+        },
+        wraith: {
+            name: 'Wraith', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            desc: 'A powerful ghost that haunts arcane ruins. It drains mana from its victims, leaving them powerless.',
+            attributes: { str: 5, agi: 9, vit: 9, int: 12, dex: 10, luk: 6 },
+            maxHp: 1, maxMana: 1, baseLevel: 10,
+            exp: 40, gold: 30,
+            skills: ['wraith_soul_drain'],
+            city: 'Aetherys'
+        },
+        arcane_construct: {
+            name: 'Arcane Construct', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'A powerful magical construct created by archmages. It channels pure arcane energy into devastating beams of magic.',
+            attributes: { str: 8, agi: 4, vit: 13, int: 15, dex: 7, luk: 5 },
+            maxHp: 1, maxMana: 1, baseLevel: 11,
+            exp: 45, gold: 35,
+            skills: ['arcane_construct_beam'],
+            city: 'Aetherys'
+        },
+        archmage_specter: {
+            name: 'Archmage Specter', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            desc: 'The ghostly remains of a powerful archmage, still wielding immense arcane power. It commands multiple elements and can summon arcane orbs to aid in battle.',
+            attributes: { str: 6, agi: 8, vit: 12, int: 18, dex: 11, luk: 7 },
+            maxHp: 1, maxMana: 1, baseLevel: 12,
+            exp: 60, gold: 50,
+            skills: ['archmage_specter_orb', 'archmage_specter_storm', 'archmage_specter_focus'],
+            isBoss: true,
+            city: 'Aetherys'
         }
     },
 
-    // Skill Definitions
-    skills: {
-        // Physical
-        bash: { name: 'Heavy Bash', mana: 20, dmgMult: 1.2, icon: 'shield', img: 'assets/icons/skills/1.png', desc: '40% Stun chance.', mobile: true, type: 'single', effect: { id: 'stun', chance: 0.4, duration: 1 } },
-        heavy_slash: { name: 'Heavy Slash', mana: 20, dmgMult: 1.3, icon: 'sword', img: 'assets/icons/skills/1.png', type: 'single' },
-        backstab: { name: 'Backstab', mana: 30, dmgMult: 1.8, icon: 'dagger', img: 'assets/icons/skills/3.png', desc: 'High crit chance.', type: 'single' },
-        smash: { name: 'Smash', mana: 25, dmgMult: 1.4, icon: 'hammer', type: 'single' },
-        stab: { name: 'Stab', mana: 10, dmgMult: 1.1, icon: 'sword', type: 'single' },
-        bite: { name: 'Feral Bite', mana: 15, dmgMult: 1.2, icon: 'frown', type: 'single', effect: { id: 'bleed', chance: 0.4, duration: 2 } },
-
-        // Magic
-        fireball: { name: 'Fireball', mana: 30, dmgMult: 1.8, icon: 'flame', img: 'assets/icons/skills/2.png', desc: '50% Burn chance.', type: 'single', effect: { id: 'burn', chance: 0.5, duration: 3 } },
-        frost: { name: 'Frost Bolt', mana: 40, dmgMult: 1.6, icon: 'snowflake', img: 'assets/icons/skills/2.png', desc: '20% Freeze chance.', type: 'single', effect: { id: 'freeze', chance: 0.2, duration: 1 } },
-        shock: { name: 'Thunder Clap', mana: 30, dmgMult: 1.4, icon: 'zap', img: 'assets/icons/skills/3.png', desc: '50% Paralyze chance.', type: 'single', effect: { id: 'paralyze', chance: 0.5, duration: 2 } },
-        meteor: { name: 'Meteor Storm', mana: 60, dmgMult: 2.0, icon: 'flame', img: 'assets/icons/skills/1.png', desc: 'Massive area fire damage.', type: 'aoe', effect: { id: 'burn', chance: 0.3, duration: 3 } },
-        toxin: { name: 'Envenom', mana: 25, dmgMult: 1.1, icon: 'skull', img: 'assets/icons/skills/3.png', desc: '80% Poison chance.', type: 'single', effect: { id: 'poison', chance: 0.8, duration: 4 } },
-        poison_tip: { name: 'Poison Tip', mana: 25, dmgMult: 1.2, icon: 'skull', effect: { id: 'poison', chance: 0.6, duration: 3 } },
-        dissolve: { name: 'Acid Dissolve', mana: 20, dmgMult: 1.3, icon: 'droplet', effect: { id: 'burn', chance: 0.5, duration: 2 } },
-
-        // Support/Buffs
-        heal: { name: 'Heal', mana: 30, dmgMult: 0, icon: 'heart', img: 'assets/icons/skills/2.png', desc: 'Restores HP.', type: 'self' },
-        rally: { name: 'Recover', mana: 50, dmgMult: 0, icon: 'flag', img: 'assets/icons/skills/2.png', desc: 'Heal self.', type: 'self' },
-        fortify: { name: 'Fortify', mana: 40, dmgMult: 0, icon: 'shield', desc: 'Boost Defense.', type: 'self' },
-        howl: { name: 'Pack Howl', mana: 20, dmgMult: 0, icon: 'speaker', desc: 'Buffs attack.', type: 'self' },
-        bless: { name: 'Blessing', mana: 40, dmgMult: 0, icon: 'sun', desc: 'Buffs stats.', type: 'self' },
-        rage: { name: 'Battle Rage', mana: 0, dmgMult: 0, icon: 'frown', desc: 'Increases damage taken and dealt.', type: 'self' },
-        loot: { name: 'Pickpocket', mana: 5, dmgMult: 0.2, icon: 'coins', desc: 'Steals gold.', type: 'single' },
-        repair: { name: 'Field Repair', mana: 20, dmgMult: 0, icon: 'hammer', desc: 'Heals armor.', type: 'self' },
-        parry_stance: { name: 'Parry Stance', mana: 15, dmgMult: 0, icon: 'shield', desc: 'Chance to blocks.', type: 'self' },
-        multishot: { name: 'Multishot', mana: 40, dmgMult: 0.8, icon: 'target', desc: 'Hits all enemies.', type: 'aoe' },
-        bounce: { name: 'Bounce', mana: 10, dmgMult: 1.0, icon: 'circle', desc: 'Squishy attack.', type: 'single' },
-        heavy_slam: { name: 'Heavy Slam', mana: 15, dmgMult: 1.3, icon: 'hammer', effect: { id: 'stun', chance: 0.25, duration: 1 } },
-        smite: { name: 'Holy Smite', mana: 35, dmgMult: 1.5, icon: 'sun', desc: 'Holy damage.', type: 'single' }
-    },
+    // Skill Definitions (single source of truth)
+    // Loaded from ui/assets/js/skills-data.js
+    skills: (window.skillsData || {}),
 
     items: {
         goblin_ear: { name: 'Goblin Ear', type: 'Materials', desc: 'A disgusting trophy.', icon: 'origami', rarity: 'common' },

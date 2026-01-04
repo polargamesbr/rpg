@@ -51,3 +51,4 @@ try {
 
 echo "\n✓ All migrations completed!\n";
 
+

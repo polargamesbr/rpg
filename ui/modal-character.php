@@ -171,15 +171,15 @@
                     <div class="grid grid-cols-5 md:grid-cols-6 xl:grid-cols-8 gap-4 overflow-y-auto custom-scrollbar pr-2 pb-20 content-start">
                          <!-- Filled Slots Sample -->
                         <div class="inv-slot rare flex flex-col items-center justify-center group bg-[#151b25]">
-                             <img src="https://via.placeholder.com/64/1e293b/bef264?text=BOW" class="opacity-70 group-hover:opacity-100 transition-opacity w-3/4 h-3/4 object-contain">
+                             <i data-lucide="bow" class="w-8 h-8 text-green-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
                             <div class="qty">1</div>
                         </div>
                          <div class="inv-slot epic flex flex-col items-center justify-center group bg-[#1e1b2e]">
-                             <img src="https://via.placeholder.com/64/312e81/e9d5ff?text=SWORD" class="opacity-70 group-hover:opacity-100 transition-opacity w-3/4 h-3/4 object-contain">
+                             <i data-lucide="sword" class="w-8 h-8 text-purple-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
                             <div class="qty">1</div>
                         </div>
                          <div class="inv-slot uncommon flex flex-col items-center justify-center group bg-[#0f2e22]">
-                             <img src="https://via.placeholder.com/64/064e3b/6ee7b7?text=POT" class="opacity-70 group-hover:opacity-100 transition-opacity w-3/4 h-3/4 object-contain">
+                             <i data-lucide="flask" class="w-8 h-8 text-emerald-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
                             <div class="qty">5</div>
                         </div>
 

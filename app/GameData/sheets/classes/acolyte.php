@@ -7,6 +7,7 @@ return [
     'name' => 'Acolyte',
     'display_name' => 'Acolyte',
     'role' => 'Support',
+    'desc' => 'A sacred cleric devoted to divine powers of healing and protection. They channel holy energy to mend wounds, shield allies, and smite the unholy.',
     'base_level' => 1,
     'images' => [
         'male' => 'assets/img/sacer-male.png',
@@ -42,5 +43,6 @@ return [
         ],
     ],
 ];
+
 
 

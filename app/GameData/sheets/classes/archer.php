@@ -7,6 +7,7 @@ return [
     'name' => 'Archer',
     'display_name' => 'Archer',
     'role' => 'Ranged',
+    'desc' => 'A precision archer with deep connection to nature and keen eyesight. They strike from a distance with deadly accuracy, using the environment to their advantage.',
     'base_level' => 1,
     'images' => [
         'male' => 'assets/img/archer-male.png',
@@ -42,5 +43,6 @@ return [
         ],
     ],
 ];
+
 
 
