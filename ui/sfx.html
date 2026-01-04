@@ -1,0 +1,2697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SFX Test - Combat Effects</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;700;900&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 3rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(251, 191, 36, 0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #a8a29e;
+            margin-bottom: 3rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        /* Card Showcase Area */
+        .card-showcase {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 60px;
+            position: relative;
+            overflow: visible;
+            min-height: 600px;
+        }
+
+        /* Enemy Tarot Card (from your system) */
+        .enemy-card-wrapper {
+            position: relative;
+            z-index: 10;
+        }
+
+        .enemy-tarot {
+            width: 220px;
+            height: 360px;
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .enemy-tarot:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8);
+        }
+
+        .card-portrait {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(180deg, #3a3a3a, #1a1a1a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .card-portrait img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .portrait-placeholder {
+            font-size: 4rem;
+            color: rgba(239, 68, 68, 0.3);
+        }
+
+        .card-info {
+            padding: 20px;
+        }
+
+        .card-name {
+            font-family: 'Cinzel', serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #ef4444;
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+            color: #78716c;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 900;
+            margin-top: 4px;
+        }
+
+        .hp-value {
+            color: #ef4444;
+        }
+
+        .atk-value {
+            color: #fbbf24;
+        }
+
+        /* HP Bar */
+        .hp-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .hp-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #dc2626, #ef4444);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 100%;
+        }
+
+        /* Effect Overlay Canvas */
+        #effectCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Controls Panel */
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+        }
+
+        .section-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .effect-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .effect-btn {
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .effect-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .effect-btn.damage {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .effect-btn.damage:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .effect-btn.heal {
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .effect-btn.heal:hover {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .effect-btn.magic {
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        .effect-btn.magic:hover {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: rgba(168, 85, 247, 0.5);
+        }
+
+        .effect-btn.special {
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .effect-btn.special:hover {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.5);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .info-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #60a5fa;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .info-text {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        .info-list {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .info-list li {
+            padding: 6px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .info-list li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #60a5fa;
+        }
+
+        /* Animations for CSS-based effects */
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            10% {
+                transform: translate(-5px, 2px) rotate(-2deg);
+            }
+
+            20% {
+                transform: translate(5px, -2px) rotate(2deg);
+            }
+
+            30% {
+                transform: translate(-5px, 2px) rotate(-2deg);
+            }
+
+            40% {
+                transform: translate(5px, -2px) rotate(2deg);
+            }
+
+            50% {
+                transform: translate(-5px, 2px) rotate(-2deg);
+            }
+
+            60% {
+                transform: translate(5px, -2px) rotate(2deg);
+            }
+
+            70% {
+                transform: translate(-5px, 2px) rotate(-2deg);
+            }
+
+            80% {
+                transform: translate(5px, -2px) rotate(2deg);
+            }
+
+            90% {
+                transform: translate(-5px, 2px) rotate(-2deg);
+            }
+        }
+
+        @keyframes flash {
+
+            0%,
+            100% {
+                filter: brightness(1);
+            }
+
+            50% {
+                filter: brightness(2.5) saturate(1.5);
+            }
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(239, 68, 68, 0.8),
+                    0 0 80px rgba(239, 68, 68, 0.4);
+            }
+        }
+
+        .shake-animation {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .flash-animation {
+            animation: flash 0.3s ease-in-out;
+        }
+
+        .glow-animation {
+            animation: glow 0.6s ease-in-out;
+        }
+
+        /* Floating damage numbers */
+        .damage-number {
+            position: absolute;
+            font-family: 'Cinzel', serif;
+            font-size: 3rem;
+            font-weight: 900;
+            color: #ef4444;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 1),
+                0 0 20px rgba(239, 68, 68, 0.6),
+                2px 2px 0px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 2000;
+            animation: float-up 1s ease-out forwards;
+        }
+
+        .damage-number.crit {
+            font-size: 4.5rem;
+            color: #fbbf24;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.6),
+                0 0 40px rgba(251, 191, 36, 0.9),
+                4px 4px 0px rgba(0, 0, 0, 0.8);
+        }
+
+        .damage-number.heal {
+            color: #22c55e;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 1),
+                0 0 20px rgba(34, 197, 94, 0.6),
+                2px 2px 0px rgba(0, 0, 0, 0.8);
+        }
+
+        @keyframes float-up {
+            0% {
+                transform: translateY(0) scale(0.5);
+                opacity: 0;
+            }
+
+            20% {
+                transform: translateY(-40px) scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-120px) scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>SFX Laboratory</h1>
+        <p class="subtitle">Combat Visual Effects Testing</p>
+
+        <div class="grid">
+            <!-- Card Showcase -->
+            <div class="card-showcase">
+                <canvas id="effectCanvas"></canvas>
+                <div class="enemy-card-wrapper">
+                    <div class="enemy-tarot" id="targetCard">
+                        <div class="card-portrait">
+                            <i data-lucide="skull" class="portrait-placeholder"></i>
+                        </div>
+                        <div class="card-info">
+                            <div class="card-name">Goblin Warrior</div>
+                            <div class="hp-bar-container">
+                                <div class="hp-bar" id="hpBar"></div>
+                            </div>
+                            <div class="card-stats">
+                                <div class="stat">
+                                    <div class="stat-label">HP</div>
+                                    <div class="stat-value hp-value" id="hpValue">100</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">ATK</div>
+                                    <div class="stat-value atk-value">25</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls-panel">
+                <div class="section-title">
+                    <i data-lucide="sparkles"></i>
+                    Efeitos Disponíveis
+                </div>
+
+                <div class="effect-grid">
+                    <!-- Canvas Particle Effects -->
+                    <button class="effect-btn damage" onclick="playEffect('hit')">
+                        <i data-lucide="target"></i>
+                        Hit Impact
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('explosion')">
+                        <i data-lucide="bomb"></i>
+                        Explosion
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('slash')">
+                        <i data-lucide="sword"></i>
+                        Slash
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('crit')">
+                        <i data-lucide="zap"></i>
+                        Critical Hit
+                    </button>
+
+                    <!-- Magic Effects -->
+                    <button class="effect-btn magic" onclick="playEffect('fireball')">
+                        <i data-lucide="flame"></i>
+                        Fireball
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('lightning')">
+                        <i data-lucide="zap"></i>
+                        Lightning
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('ice')">
+                        <i data-lucide="snowflake"></i>
+                        Ice Shard
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('poison')">
+                        <i data-lucide="droplet"></i>
+                        Poison
+                    </button>
+
+                    <!-- Heal Effects -->
+                    <button class="effect-btn heal" onclick="playEffect('heal')">
+                        <i data-lucide="heart"></i>
+                        Heal
+                    </button>
+                    <button class="effect-btn heal" onclick="playEffect('shield')">
+                        <i data-lucide="shield"></i>
+                        Shield
+                    </button>
+
+                    <!-- Special Effects -->
+                    <button class="effect-btn special" onclick="playEffect('buff')">
+                        <i data-lucide="arrow-up"></i>
+                        Buff
+                    </button>
+                    <button class="effect-btn special" onclick="playEffect('stun')">
+                        <i data-lucide="alert-circle"></i>
+                        Stun
+                    </button>
+
+                    <!-- NEW: RPG System-Specific Effects -->
+                    <button class="effect-btn damage" onclick="playEffect('rain_of_arrows')">
+                        <i data-lucide="cloud-rain"></i>
+                        Rain of Arrows
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('earthquake')">
+                        <i data-lucide="mountain"></i>
+                        Earthquake
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('acid')">
+                        <i data-lucide="droplet"></i>
+                        Acid Dissolve
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('shadow')">
+                        <i data-lucide="moon"></i>
+                        Shadow Strike
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('bleed')">
+                        <i data-lucide="droplets"></i>
+                        Bleed
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('freeze')">
+                        <i data-lucide="snowflake"></i>
+                        Freeze
+                    </button>
+                    <button class="effect-btn special" onclick="playEffect('wind')">
+                        <i data-lucide="wind"></i>
+                        Wind Gust
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('arrow')">
+                        <i data-lucide="arrow-right"></i>
+                        Arrow Shot
+                    </button>
+                </div>
+
+                <!-- NEW: Elemental Magic Effects -->
+                <div class="section-title" style="margin-top: 30px;">
+                    <i data-lucide="sparkles"></i>
+                    Elemental Magic
+                </div>
+                <div class="effect-grid">
+                    <button class="effect-btn magic" onclick="playEffect('meteor_storm')">
+                        <i data-lucide="flame"></i>
+                        Meteor Storm
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('holy_smite')">
+                        <i data-lucide="sun"></i>
+                        Holy Smite
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('holy_radiance')">
+                        <i data-lucide="sparkles"></i>
+                        Holy Radiance
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('thunder_clap')">
+                        <i data-lucide="zap"></i>
+                        Thunder Clap
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('chain_lightning')">
+                        <i data-lucide="zap"></i>
+                        Chain Lightning
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('ice_prison')">
+                        <i data-lucide="snowflake"></i>
+                        Ice Prison
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('frost_nova')">
+                        <i data-lucide="snowflake"></i>
+                        Frost Nova
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('void_lance')">
+                        <i data-lucide="moon"></i>
+                        Void Lance
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('arcane_missiles')">
+                        <i data-lucide="sparkles"></i>
+                        Arcane Missiles
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('venom_cloud')">
+                        <i data-lucide="skull"></i>
+                        Venom Cloud
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('water_splash')">
+                        <i data-lucide="droplet"></i>
+                        Water Splash
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('earth_spikes')">
+                        <i data-lucide="mountain"></i>
+                        Earth Spikes
+                    </button>
+                </div>
+
+                <!-- NEW: Physical/Weapon Effects -->
+                <div class="section-title" style="margin-top: 30px;">
+                    <i data-lucide="swords"></i>
+                    Physical & Weapon
+                </div>
+                <div class="effect-grid">
+                    <button class="effect-btn damage" onclick="playEffect('charge_impact')">
+                        <i data-lucide="move"></i>
+                        Charge Impact
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('cleave')">
+                        <i data-lucide="sword"></i>
+                        Cleave
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('multi_hit')">
+                        <i data-lucide="zap"></i>
+                        Multi-Hit
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('piercing_shot')">
+                        <i data-lucide="arrow-right"></i>
+                        Piercing Shot
+                    </button>
+                    <button class="effect-btn special" onclick="playEffect('shield_block')">
+                        <i data-lucide="shield"></i>
+                        Shield Block
+                    </button>
+                    <button class="effect-btn special" onclick="playEffect('parry_counter')">
+                        <i data-lucide="swords"></i>
+                        Parry Counter
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('backstab')">
+                        <i data-lucide="skull"></i>
+                        Backstab
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('riposte')">
+                        <i data-lucide="sword"></i>
+                        Riposte
+                    </button>
+                </div>
+
+                <!-- NEW: Status/DoT Effects -->
+                <div class="section-title" style="margin-top: 30px;">
+                    <i data-lucide="activity"></i>
+                    Status & DoT
+                </div>
+                <div class="effect-grid">
+                    <button class="effect-btn magic" onclick="playEffect('burn_dot')">
+                        <i data-lucide="flame"></i>
+                        Burn DoT
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('poison_dot')">
+                        <i data-lucide="droplet"></i>
+                        Poison DoT
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('bleed_dot')">
+                        <i data-lucide="droplets"></i>
+                        Bleed DoT
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('paralyze')">
+                        <i data-lucide="zap"></i>
+                        Paralyze
+                    </button>
+                    <button class="effect-btn special" onclick="playEffect('slow')">
+                        <i data-lucide="footprints"></i>
+                        Slow
+                    </button>
+                    <button class="effect-btn special" onclick="playEffect('haste')">
+                        <i data-lucide="wind"></i>
+                        Haste
+                    </button>
+                    <button class="effect-btn damage" onclick="playEffect('enrage')">
+                        <i data-lucide="flame"></i>
+                        Enrage
+                    </button>
+                    <button class="effect-btn special" onclick="playEffect('taunt')">
+                        <i data-lucide="target"></i>
+                        Taunt
+                    </button>
+                    <button class="effect-btn magic" onclick="playEffect('disease')">
+                        <i data-lucide="droplet"></i>
+                        Disease</button>
+                    <button class="effect-btn magic" onclick="playEffect('curse')">
+                        <i data-lucide="moon"></i>
+                        Curse
+                    </button>
+                </div>
+
+                <!-- Info Box -->
+                <div class="info-box">
+                    <div class="info-title">
+                        <i data-lucide="info"></i>
+                        Sobre os Efeitos
+                    </div>
+                    <div class="info-text">
+                        Esta página demonstra diferentes técnicas para criar efeitos visuais em HTML:
+                    </div>
+                    <ul class="info-list">
+                        <li><strong>Canvas Particles:</strong> Sistemas de partículas desenhados em tempo real</li>
+                        <li><strong>CSS Animations:</strong> Animações performáticas usando apenas CSS</li>
+                        <li><strong>DOM Overlays:</strong> Elementos HTML posicionados sobre os cards</li>
+                        <li><strong>Hybrid:</strong> Combinação de todas as técnicas</li>
+                    </ul>
+                </div>
+
+                <div class="info-box"
+                    style="margin-top: 15px; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
+                    <div class="info-title" style="color: #fca5a5;">
+                        <i data-lucide="cpu"></i>
+                        Performance
+                    </div>
+                    <div class="info-text">
+                        Todos os efeitos rodam direto no navegador sem necessidade de assets externos. Canvas é ideal
+                        para efeitos dinâmicos, enquanto CSS é melhor para animações simples e repetitivas.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Canvas setup
+        const canvas = document.getElementById('effectCanvas');
+        const ctx = canvas.getContext('2d');
+        const card = document.getElementById('targetCard');
+        const hpBar = document.getElementById('hpBar');
+        const hpValue = document.getElementById('hpValue');
+
+        let currentHP = 100;
+        let particles = [];
+
+        // Resize canvas to match container
+        function resizeCanvas() {
+            const showcase = document.querySelector('.card-showcase');
+            canvas.width = showcase.offsetWidth;
+            canvas.height = showcase.offsetHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Particle class
+        class Particle {
+            constructor(x, y, config) {
+                this.x = x;
+                this.y = y;
+                this.vx = config.vx || 0;
+                this.vy = config.vy || 0;
+                this.size = config.size || 5;
+                this.color = config.color || '#ef4444';
+                this.life = config.life || 1;
+                this.maxLife = config.life || 1;
+                this.gravity = config.gravity || 0;
+                this.alpha = 1;
+                this.decay = config.decay || 0.02;
+                this.shape = config.shape || 'circle'; // circle, square, triangle, icon
+                this.glow = config.glow || false;
+                this.icon = config.icon || null; // Lucide icon name (e.g., 'snowflake')
+                this.rotation = config.rotation || 0;
+                this.rotationSpeed = config.rotationSpeed || 0;
+            }
+
+            update() {
+                this.vx *= 0.98;
+                this.vy += this.gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.alpha = this.life / this.maxLife;
+                this.rotation += this.rotationSpeed;
+                return this.life > 0;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.alpha;
+
+                if (this.glow) {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = this.color;
+                }
+
+                if (this.shape === 'icon' && this.icon) {
+                    // Draw Lucide icon
+                    this.drawIcon();
+                } else if (this.shape === 'circle') {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.shape === 'square') {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotation);
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+                    ctx.restore();
+                } else if (this.shape === 'triangle') {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotation);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -this.size);
+                    ctx.lineTo(this.size, this.size);
+                    ctx.lineTo(-this.size, this.size);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+            }
+
+            drawIcon() {
+                // Create SVG path data for Lucide icons
+                const iconPaths = {
+                    'snowflake': 'M2 12h20M12 2v20m-8-8 8-8 8 8m-16 0 8 8 8-8',
+                    'flame': 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z',
+                    'zap': 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
+                    'droplet': 'M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z',
+                    'heart': 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z',
+                    'sword': 'M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2',
+                    'skull': 'M9 12h.01M15 12h.01M8 17c.5.5 1.5 1 4 1s3.5-.5 4-1',
+                    'shield': 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+                    'sparkles': 'M12 3v4m0 10v4m-7-7h4m10 0h4M6.34 6.34l2.83 2.83m5.66 5.66 2.83 2.83M17.66 6.34l-2.83 2.83M9.17 14.83l-2.83 2.83'
+                };
+
+                const pathData = iconPaths[this.icon];
+                if (!pathData) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Scale to match particle size
+                const scale = this.size / 12; // Lucide icons are 24x24, we use half as base
+                ctx.scale(scale, scale);
+
+                // Center the icon
+                ctx.translate(-12, -12);
+
+                // Set color and stroke
+                ctx.strokeStyle = this.color;
+                ctx.fillStyle = this.color;
+                ctx.lineWidth = 2 / scale; // Adjust line width based on scale
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // Parse and draw SVG path
+                const path = new Path2D(pathData);
+                ctx.stroke(path);
+
+                ctx.restore();
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles = particles.filter(p => {
+                const alive = p.update();
+                if (alive) p.draw();
+                return alive;
+            });
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Get card portrait center position (upper part where the character image is)
+        function getCardCenter() {
+            const rect = card.getBoundingClientRect();
+            const showcaseRect = canvas.getBoundingClientRect();
+            const portraitHeight = 200; // Height of .card-portrait
+            return {
+                x: rect.left + rect.width / 2 - showcaseRect.left,
+                y: rect.top + (portraitHeight / 2) - showcaseRect.top // Center of portrait area
+            };
+        }
+
+        // Effect functions
+        function createHitEffect(x, y) {
+            // Impact particles
+            for (let i = 0; i < 30; i++) {
+                const angle = (Math.PI * 2 * i) / 30;
+                const speed = 3 + Math.random() * 3;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 3 + Math.random() * 4,
+                    color: i % 2 === 0 ? '#ef4444' : '#fca5a5',
+                    life: 1,
+                    gravity: 0.1,
+                    decay: 0.02,
+                    glow: true
+                }));
+            }
+        }
+
+        function createExplosion(x, y) {
+            // Large explosion with varied colors and speeds
+            const colorPalettes = [
+                ['#ef4444', '#f97316', '#fbbf24', '#fff'], // Fire
+                ['#dc2626', '#ea580c', '#f59e0b', '#fef3c7'], // Deep fire
+                ['#991b1b', '#c2410c', '#d97706', '#fde68a']  // Dark fire
+            ];
+            const palette = colorPalettes[Math.floor(Math.random() * colorPalettes.length)];
+
+            for (let i = 0; i < 60; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 7; // More varied speed
+                const size = 3 + Math.random() * 10; // More varied size
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: size,
+                    color: palette[Math.floor(Math.random() * palette.length)],
+                    life: 0.8 + Math.random() * 0.7,
+                    gravity: 0.1 + Math.random() * 0.1,
+                    decay: 0.012 + Math.random() * 0.008,
+                    shape: ['circle', 'square'][Math.floor(Math.random() * 2)],
+                    glow: true
+                }));
+            }
+        }
+
+        function createSlashEffect(x, y) {
+            // Slash trail - random direction (left or right)
+            const direction = Math.random() > 0.5 ? 1 : -1; // 1 = left to right, -1 = right to left
+            const angle = direction * (-Math.PI / 4); // Adjust angle based on direction
+            for (let i = 0; i < 40; i++) {
+                const offset = i * 8 - 160;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * offset,
+                    y + Math.sin(angle) * offset,
+                    {
+                        vx: Math.cos(angle + Math.PI / 2) * (Math.random() - 0.5) * 2,
+                        vy: Math.sin(angle + Math.PI / 2) * (Math.random() - 0.5) * 2,
+                        size: 4 + Math.random() * 6,
+                        color: '#fff',
+                        life: 0.8,
+                        decay: 0.03,
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        function createFireballEffect(x, y) {
+            // Fire particles with Lucide flame icons
+            const spreadMultiplier = 0.5 + Math.random() * 1;
+            const riseSpeed = 1 + Math.random() * 2;
+
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 * spreadMultiplier;
+                const useIcon = Math.random() > 0.6; // 40% chance to use flame icon
+
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - riseSpeed,
+                    size: useIcon ? 16 + Math.random() * 8 : 3 + Math.random() * 5,
+                    color: ['#ef4444', '#f97316', '#fbbf24'][Math.floor(Math.random() * 3)],
+                    life: 1 + Math.random() * 0.5,
+                    gravity: -0.05,
+                    decay: 0.015 + Math.random() * 0.01,
+                    shape: useIcon ? 'icon' : 'circle',
+                    icon: useIcon ? 'flame' : null,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.05,
+                    glow: true
+                }));
+            }
+        }
+
+        function createLightningEffect(x, y) {
+            // Lightning bolts (using particles) - random starting positions
+            const branches = 5;
+            for (let b = 0; b < branches; b++) {
+                // Vary the starting X position for each branch
+                const startXOffset = (Math.random() - 0.5) * 60; // Random offset up to ±30px
+                let currentX = x + startXOffset;
+                let currentY = y - 100;
+                for (let i = 0; i < 20; i++) {
+                    particles.push(new Particle(currentX, currentY, {
+                        vx: 0,
+                        vy: 0,
+                        size: 4 + Math.random() * 3,
+                        color: '#60a5fa',
+                        life: 0.5,
+                        decay: 0.05,
+                        glow: true
+                    }));
+                    currentX += (Math.random() - 0.5) * 15;
+                    currentY += 10;
+                }
+            }
+        }
+
+        function createIceEffect(x, y) {
+            // Ice shards with Lucide snowflake icons
+            const pattern = Math.random() > 0.5 ? 'explosion' : 'directional';
+            const baseAngle = Math.random() * Math.PI * 2;
+
+            for (let i = 0; i < 30; i++) {
+                let angle;
+                if (pattern === 'explosion') {
+                    angle = Math.random() * Math.PI * 2;
+                } else {
+                    angle = baseAngle + (Math.random() - 0.5) * Math.PI / 2;
+                }
+
+                const speed = 2 + Math.random() * 5;
+                const useIcon = Math.random() > 0.4; // 60% chance to use snowflake icon
+
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: useIcon ? 12 + Math.random() * 8 : 4 + Math.random() * 6,
+                    color: ['#60a5fa', '#93c5fd', '#dbeafe'][Math.floor(Math.random() * 3)],
+                    life: 1.5,
+                    gravity: 0.2,
+                    decay: 0.015,
+                    shape: useIcon ? 'icon' : 'triangle',
+                    icon: useIcon ? 'snowflake' : null,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.1,
+                    glow: true
+                }));
+            }
+        }
+
+        function createPoisonEffect(x, y) {
+            // Poison bubbles with Lucide droplet and skull icons
+            for (let i = 0; i < 25; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2;
+                const useIcon = Math.random() > 0.6; // 40% chance for icons
+                const iconType = Math.random() > 0.7 ? 'skull' : 'droplet';
+
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1,
+                    size: useIcon ? 12 + Math.random() * 6 : 3 + Math.random() * 4,
+                    color: iconType === 'skull' ? '#6b7280' : ['#22c55e', '#4ade80', '#86efac'][Math.floor(Math.random() * 3)],
+                    life: 2,
+                    gravity: -0.1,
+                    decay: 0.01,
+                    shape: useIcon ? 'icon' : 'circle',
+                    icon: useIcon ? iconType : null,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.06,
+                    glow: true
+                }));
+            }
+        }
+
+        function createHealEffect(x, y) {
+            // Healing sparkles with Lucide hearts and sparkle icons
+            for (let i = 0; i < 40; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3;
+                const useIcon = Math.random() > 0.5; // 50% chance for icons
+                const iconType = Math.random() > 0.5 ? 'heart' : 'sparkles';
+
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2,
+                    size: useIcon ? 14 + Math.random() * 6 : 2 + Math.random() * 4,
+                    color: ['#22c55e', '#4ade80', '#fbbf24'][Math.floor(Math.random() * 3)],
+                    life: 1.5,
+                    gravity: -0.15,
+                    decay: 0.015,
+                    shape: useIcon ? 'icon' : ['circle', 'square'][Math.floor(Math.random() * 2)],
+                    icon: useIcon ? iconType : null,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.08,
+                    glow: true
+                }));
+            }
+        }
+
+        function createShieldEffect(x, y) {
+            // Shield ring
+            for (let i = 0; i < 50; i++) {
+                const angle = (Math.PI * 2 * i) / 50;
+                const radius = 80;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * radius,
+                    y + Math.sin(angle) * radius,
+                    {
+                        vx: 0,
+                        vy: 0,
+                        size: 3,
+                        color: '#60a5fa',
+                        life: 1,
+                        decay: 0.02,
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        function createBuffEffect(x, y) {
+            // Upward spiraling particles
+            for (let i = 0; i < 30; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 40 + Math.random() * 20;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * radius,
+                    y + Math.sin(angle) * radius,
+                    {
+                        vx: Math.cos(angle) * 0.5,
+                        vy: -3 - Math.random() * 2,
+                        size: 3 + Math.random() * 3,
+                        color: '#fbbf24',
+                        life: 2,
+                        gravity: -0.05,
+                        decay: 0.01,
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        function createStunEffect(x, y) {
+            // Stars circling
+            const stars = 8;
+            for (let i = 0; i < stars; i++) {
+                const angle = (Math.PI * 2 * i) / stars;
+                const radius = 60;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * radius,
+                    y - 80 + Math.sin(angle) * radius,
+                    {
+                        vx: Math.cos(angle + Math.PI / 2) * 2,
+                        vy: Math.sin(angle + Math.PI / 2) * 2,
+                        size: 6,
+                        color: '#fbbf24',
+                        life: 2,
+                        decay: 0.01,
+                        shape: 'square',
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        // ===== NEW RPG SYSTEM EFFECTS =====
+
+        function createRainOfArrowsEffect(x, y) {
+            // Arrows falling from above
+            for (let i = 0; i < 45; i++) {
+                const startX = x + (Math.random() - 0.5) * 140;
+                const startY = y - 150 - Math.random() * 50;
+                const delay = Math.random() * 0.3;
+
+                setTimeout(() => {
+                    particles.push(new Particle(startX, startY, {
+                        vx: (Math.random() - 0.5) * 1,
+                        vy: 8 + Math.random() * 3,
+                        size: 8,
+                        color: ['#78716c', '#a8a29e', '#57534e'][Math.floor(Math.random() * 3)],
+                        life: 1.2,
+                        gravity: 0.3,
+                        decay: 0.025,
+                        shape: 'triangle',
+                        glow: false
+                    }));
+                }, delay * 1000);
+            }
+        }
+
+        function createEarthquakeEffect(x, y) {
+            // Rocks rising from ground
+            for (let i = 0; i < 35; i++) {
+                const offsetX = (Math.random() - 0.5) * 120;
+                particles.push(new Particle(x + offsetX, y + 60, {
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: -5 - Math.random() * 4,
+                    size: 6 + Math.random() * 8,
+                    color: ['#78716c', '#57534e', '#44403c', '#a8a29e'][Math.floor(Math.random() * 4)],
+                    life: 1.5,
+                    gravity: 0.4,
+                    decay: 0.015,
+                    shape: 'square',
+                    glow: false
+                }));
+            }
+        }
+
+        function createAcidEffect(x, y) {
+            // Acid dissolving downwards
+            for (let i = 0; i < 40; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed + 2,
+                    size: 3 + Math.random() * 5,
+                    color: ['#22c55e', '#16a34a', '#15803d', '#84cc16'][Math.floor(Math.random() * 4)],
+                    life: 1.8,
+                    gravity: 0.15,
+                    decay: 0.012,
+                    glow: true
+                }));
+            }
+            // Add some smoke/vapor rising
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x + (Math.random() - 0.5) * 30, y, {
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: -1 - Math.random(),
+                    size: 8 + Math.random() * 6,
+                    color: '#166534',
+                    life: 2,
+                    gravity: -0.05,
+                    decay: 0.01,
+                    glow: false
+                }));
+            }
+        }
+
+        function createShadowEffect(x, y) {
+            // Dark tendrils/wisps
+            const tendrils = 6;
+            for (let t = 0; t < tendrils; t++) {
+                const baseAngle = (Math.PI * 2 * t) / tendrils;
+                for (let i = 0; i < 15; i++) {
+                    const distance = i * 6;
+                    const wavyOffset = Math.sin(i * 0.5) * 10;
+                    particles.push(new Particle(
+                        x + Math.cos(baseAngle) * distance + wavyOffset,
+                        y + Math.sin(baseAngle) * distance,
+                        {
+                            vx: Math.cos(baseAngle) * 0.5,
+                            vy: Math.sin(baseAngle) * 0.5,
+                            size: 5 + Math.random() * 4,
+                            color: ['#1e1b4b', '#312e81', '#4c1d95', '#1f2937'][Math.floor(Math.random() * 4)],
+                            life: 1.5,
+                            decay: 0.02,
+                            glow: true
+                        }
+                    ));
+                }
+            }
+        }
+
+        function createBleedEffect(x, y) {
+            // Blood splatter
+            const splatterCount = 40;
+            for (let i = 0; i < splatterCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 5;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1,
+                    size: 2 + Math.random() * 5,
+                    color: ['#7f1d1d', '#991b1b', '#dc2626', '#b91c1c'][Math.floor(Math.random() * 4)],
+                    life: 1.2,
+                    gravity: 0.3,
+                    decay: 0.02,
+                    glow: false
+                }));
+            }
+            // Dripping effect
+            for (let i = 0; i < 10; i++) {
+                particles.push(new Particle(x + (Math.random() - 0.5) * 20, y, {
+                    vx: 0,
+                    vy: 3 + Math.random() * 2,
+                    size: 3 + Math.random() * 3,
+                    color: '#7f1d1d',
+                    life: 2,
+                    gravity: 0.1,
+                    decay: 0.015,
+                    glow: false
+                }));
+            }
+        }
+
+        function createFreezeEffect(x, y) {
+            // Ice crystals forming
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 70;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * radius * 0.3,
+                    y + Math.sin(angle) * radius * 0.3,
+                    {
+                        vx: Math.cos(angle) * 2,
+                        vy: Math.sin(angle) * 2,
+                        size: 2 + Math.random() * 5,
+                        color: ['#dbeafe', '#bfdbfe', '#93c5fd', '#eff6ff'][Math.floor(Math.random() * 4)],
+                        life: 2,
+                        gravity: 0,
+                        decay: 0.015,
+                        shape: ['triangle', 'square'][Math.floor(Math.random() * 2)],
+                        glow: true
+                    }
+                ));
+            }
+            // Crystallization center
+            for (let i = 0; i < 20; i++) {
+                const angle = (Math.PI * 2 * i) / 20;
+                const radius = 50;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * radius,
+                    y + Math.sin(angle) * radius,
+                    {
+                        vx: 0,
+                        vy: 0,
+                        size: 5,
+                        color: '#60a5fa',
+                        life: 1.5,
+                        decay: 0.02,
+                        shape: 'triangle',
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        function createWindEffect(x, y) {
+            // Wind gust particles
+            for (let i = 0; i < 50; i++) {
+                const startOffset = -80 + Math.random() * 30;
+                particles.push(new Particle(x + startOffset, y + (Math.random() - 0.5) * 80, {
+                    vx: 10 + Math.random() * 5,
+                    vy: (Math.random() - 0.5) * 2,
+                    size: 2 + Math.random() * 4,
+                    color: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#f0f9ff'][Math.floor(Math.random() * 4)],
+                    life: 1,
+                    gravity: 0,
+                    decay: 0.03,
+                    shape: 'circle',
+                    glow: false
+                }));
+            }
+            // Swirl lines
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x - 60, y + (Math.random() - 0.5) * 60, {
+                    vx: 12,
+                    vy: (Math.random() - 0.5) * 3,
+                    size: 6,
+                    color: '#cbd5e1',
+                    life: 0.8,
+                    gravity: 0,
+                    decay: 0.04,
+                    shape: 'square',
+                    glow: false
+                }));
+            }
+        }
+
+        function createArrowEffect(x, y) {
+            // Single arrow projectile with trail
+            const angle = -Math.PI / 6; // flying diagonally
+            const arrowLength = 15;
+
+            // Arrow head
+            for (let i = 0; i < arrowLength; i++) {
+                const offset = i * 4;
+                setTimeout(() => {
+                    particles.push(new Particle(
+                        x - 100 + offset * Math.cos(angle),
+                        y + 50 + offset * Math.sin(angle),
+                        {
+                            vx: 0,
+                            vy: 0,
+                            size: i === arrowLength - 1 ? 8 : 4,
+                            color: i === arrowLength - 1 ? '#78716c' : '#a8a29e',
+                            life: 0.6,
+                            decay: 0.05,
+                            shape: i === arrowLength - 1 ? 'triangle' : 'square',
+                            glow: false
+                        }
+                    ));
+                }, i * 20);
+            }
+
+            // Trail particles
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    particles.push(new Particle(
+                        x - 100 + i * 6 * Math.cos(angle),
+                        y + 50 + i * 6 * Math.sin(angle),
+                        {
+                            vx: 0,
+                            vy: 0,
+                            size: 2,
+                            color: '#d6d3d1',
+                            life: 0.4,
+                            decay: 0.06,
+                            glow: false
+                        }
+                    ));
+                }, i * 25);
+            }
+        }
+
+        // ===== ELEMENTAL EFFECTS (NEW) =====
+
+        function createMeteorStormEffect(x, y) {
+            // Meteors falling with fire trails
+            for (let i = 0; i < 8; i++) {
+                const startX = x + (Math.random() - 0.5) * 100;
+                const delay = Math.random() * 0.5;
+
+                setTimeout(() => {
+                    // Meteor
+                    const meteorY = y - 150;
+                    particles.push(new Particle(startX, meteorY, {
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: 12,
+                        size: 14,
+                        color: '#78716c',
+                        life: 1,
+                        gravity: 0.5,
+                        decay: 0.03,
+                        shape: 'square',
+                        rotation: Math.random() * Math.PI,
+                        rotationSpeed: 0.2,
+                        glow: false
+                    }));
+
+                    // Fire trail
+                    for (let j = 0; j < 10; j++) {
+                        setTimeout(() => {
+                            particles.push(new Particle(startX, meteorY + j * 8, {
+                                vx: (Math.random() - 0.5),
+                                vy: Math.random() * 2,
+                                size: 8 + Math.random() * 6,
+                                color: ['#ef4444', '#f97316', '#fbbf24'][Math.floor(Math.random() * 3)],
+                                life: 0.8,
+                                gravity: -0.05,
+                                decay: 0.04,
+                                shape: 'icon',
+                                icon: 'flame',
+                                rotation: Math.random() * Math.PI * 2,
+                                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                                glow: true
+                            }));
+                        }, j * 30);
+                    }
+                }, delay * 1000);
+            }
+        }
+
+        function createHolySmiteEffect(x, y) {
+            // Divine beam from above
+            for (let i = 0; i < 30; i++) {
+                const offsetX = (Math.random() - 0.5) * 15;
+                particles.push(new Particle(x + offsetX, y - 120 - i * 4, {
+                    vx: 0,
+                    vy: 15,
+                    size: 6 + Math.random() * 4,
+                    color: ['#fbbf24', '#fde047', '#fef3c7'][Math.floor(Math.random() * 3)],
+                    life: 0.6,
+                    gravity: 0,
+                    decay: 0.05,
+                    shape: ['icon', 'circle'][Math.floor(Math.random() * 2)],
+                    icon: 'sparkles',
+                    glow: true
+                }));
+            }
+            // Impact sparkles
+            setTimeout(() => {
+                for (let i = 0; i < 40; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 4;
+                    particles.push(new Particle(x, y, {
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: 4 + Math.random() * 6,
+                        color: '#fbbf24',
+                        life: 1.2,
+                        gravity: 0.1,
+                        decay: 0.02,
+                        shape: 'icon',
+                        icon: 'sparkles',
+                        rotation: Math.random() * Math.PI * 2,
+                        rotationSpeed: (Math.random() - 0.5) * 0.15,
+                        glow: true
+                    }));
+                }
+            }, 200);
+        }
+
+        function createHolyRadianceEffect(x, y) {
+            // Expanding golden circle
+            for (let i = 0; i < 60; i++) {
+                const angle = (Math.PI * 2 * i) / 60;
+                const delay = i * 10;
+
+                setTimeout(() => {
+                    particles.push(new Particle(x, y, {
+                        vx: Math.cos(angle) * 4,
+                        vy: Math.sin(angle) * 4,
+                        size: 8,
+                        color: ['#fbbf24', '#fde047'][Math.floor(Math.random() * 2)],
+                        life: 1.5,
+                        gravity: 0,
+                        decay: 0.015,
+                        shape: 'icon',
+                        icon: 'sparkles',
+                        rotation: angle,
+                        rotationSpeed: 0.05,
+                        glow: true
+                    }));
+                }, delay);
+            }
+        }
+
+        function createThunderClapEffect(x, y) {
+            // Electric shockwave
+            // Center burst
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 3 + Math.random() * 5;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 6 + Math.random() * 6,
+                    color: ['#60a5fa', '#93c5fd', '#fff'][Math.floor(Math.random() * 3)],
+                    life: 0.8,
+                    gravity: 0,
+                    decay: 0.03,
+                    shape: ['icon', 'circle'][Math.floor(Math.random() * 2)],
+                    icon: 'zap',
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.2,
+                    glow: true
+                }));
+            }
+            // Ring wave
+            for (let i = 0; i < 30; i++) {
+                const angle = (Math.PI * 2 * i) / 30;
+                particles.push(new Particle(x + Math.cos(angle) * 40, y + Math.sin(angle) * 40, {
+                    vx: Math.cos(angle) * 6,
+                    vy: Math.sin(angle) * 6,
+                    size: 5,
+                    color: '#60a5fa',
+                    life: 1,
+                    gravity: 0,
+                    decay: 0.025,
+                    shape: 'circle',
+                    glow: true
+                }));
+            }
+        }
+
+        function createChainLightningEffect(x, y) {
+            // Lightning jumping between points
+            const points = [];
+            let currentX = x;
+            let currentY = y - 100;
+
+            // Create path points
+            for (let i = 0; i < 6; i++) {
+                points.push({ x: currentX, y: currentY });
+                currentX += (Math.random() - 0.5) * 60;
+                currentY += 30;
+            }
+
+            // Draw lightning along path
+            for (let p = 0; p < points.length - 1; p++) {
+                const start = points[p];
+                const end = points[p + 1];
+                const dist = Math.hypot(end.x - start.x, end.y - start.y);
+                const steps = Math.floor(dist / 5);
+
+                for (let i = 0; i < steps; i++) {
+                    const t = i / steps;
+                    const lx = start.x + (end.x - start.x) * t + (Math.random() - 0.5) * 10;
+                    const ly = start.y + (end.y - start.y) * t + (Math.random() - 0.5) * 10;
+
+                    particles.push(new Particle(lx, ly, {
+                        vx: 0,
+                        vy: 0,
+                        size: 4 + Math.random() * 3,
+                        color: ['#60a5fa', '#93c5fd', '#fff'][Math.floor(Math.random() * 3)],
+                        life: 0.4,
+                        decay: 0.06,
+                        shape: 'circle',
+                        glow: true
+                    }));
+                }
+            }
+        }
+
+        function createIcePrisonEffect(x, y) {
+            // Ice cage formation
+            const bars = 8;
+            for (let b = 0; b < bars; b++) {
+                const angle = (Math.PI * 2 * b) / bars;
+                const barX = x + Math.cos(angle) * 50;
+                const barY = y + Math.sin(angle) * 50;
+
+                // Each bar
+                for (let i = 0; i < 10; i++) {
+                    setTimeout(() => {
+                        particles.push(new Particle(barX, barY - 50 + i * 10, {
+                            vx: 0,
+                            vy: 0,
+                            size: 10,
+                            color: ['#60a5fa', '#93c5fd'][Math.floor(Math.random() * 2)],
+                            life: 2,
+                            gravity: 0,
+                            decay: 0.01,
+                            shape: 'icon',
+                            icon: 'snowflake',
+                            rotation: angle,
+                            rotationSpeed: 0.02,
+                            glow: true
+                        }));
+                    }, b * 50 + i * 20);
+                }
+            }
+        }
+
+        function createFrostNovaEffect(x, y) {
+            // Ice explosion outward
+            for (let i = 0; i < 80; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 6;
+                const useIcon = Math.random() > 0.5;
+
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: useIcon ? 14 + Math.random() * 8 : 4 + Math.random() * 6,
+                    color: ['#60a5fa', '#93c5fd', '#dbeafe', '#fff'][Math.floor(Math.random() * 4)],
+                    life: 1.5,
+                    gravity: 0.1,
+                    decay: 0.015,
+                    shape: useIcon ? 'icon' : 'triangle',
+                    icon: useIcon ? 'snowflake' : null,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.15,
+                    glow: true
+                }));
+            }
+        }
+
+        function createVoidLanceEffect(x, y) {
+            // Dark purple energy beam
+            for (let i = 0; i < 40; i++) {
+                const offsetY = -120 + i * 6;
+                particles.push(new Particle(x + (Math.random() - 0.5) * 15, y + offsetY, {
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: 18,
+                    size: 10 + Math.random() * 8,
+                    color: ['#6b21a8', '#7c3aed', '#8b5cf6', '#a78bfa'][Math.floor(Math.random() * 4)],
+                    life: 0.6,
+                    gravity: 0,
+                    decay: 0.04,
+                    shape: 'icon',
+                    icon: 'moon',
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.1,
+                    glow: true
+                }));
+            }
+            // Dark wisps
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    size: 8,
+                    color: '#1e1b4b',
+                    life: 1,
+                    gravity: 0,
+                    decay: 0.02,
+                    shape: 'circle',
+                    glow: true
+                }));
+            }
+        }
+
+        function createArcaneMissilesEffect(x, y) {
+            // Multiple magic projectiles
+            const missiles = 5;
+            for (let m = 0; m < missiles; m++) {
+                const angle = (Math.PI * 2 * m) / missiles - Math.PI / 2;
+                const delay = m * 100;
+
+                setTimeout(() => {
+                    // Missile trail
+                    for (let i = 0; i < 15; i++) {
+                        setTimeout(() => {
+                            const progress = i * 8;
+                            const mx = x + Math.cos(angle) * progress;
+                            const my = y - 80 + Math.sin(angle) * progress;
+
+                            particles.push(new Particle(mx, my, {
+                                vx: 0,
+                                vy: 0,
+                                size: 8,
+                                color: ['#a78bal', '#c4b5fd', '#ddd6fe'][Math.floor(Math.random() * 3)],
+                                life: 0.5,
+                                decay: 0.05,
+                                shape: 'icon',
+                                icon: 'sparkles',
+                                rotation: Math.random() * Math.PI * 2,
+                                rotationSpeed: 0.2,
+                                glow: true
+                            }));
+                        }, i * 15);
+                    }
+                }, delay);
+            }
+        }
+
+        function createVenomCloudEffect(x, y) {
+            // Toxic gas spreading
+            for (let i = 0; i < 60; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.5 + Math.random() * 2;
+                const useIcon = Math.random() > 0.6;
+                const iconType = Math.random() > 0.5 ? 'skull' : 'droplet';
+
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 0.5,
+                    size: useIcon ? 14 + Math.random() * 10 : 8 + Math.random() * 12,
+                    color: ['#22c55e', '#16a34a', '#15803d', '#84cc16'][Math.floor(Math.random() * 4)],
+                    life: 2.5,
+                    gravity: -0.05,
+                    decay: 0.008,
+                    shape: useIcon ? 'icon' : 'circle',
+                    icon: useIcon ? iconType : null,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.03,
+                    glow: true
+                }));
+            }
+        }
+
+        function createWaterSplashEffect(x, y) {
+            // Water burst
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 5;
+                const useIcon = Math.random() > 0.5;
+
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2,
+                    size: useIcon ? 10 + Math.random() * 6 : 3 + Math.random() * 5,
+                    color: ['#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe'][Math.floor(Math.random() * 4)],
+                    life: 1.2,
+                    gravity: 0.3,
+                    decay: 0.02,
+                    shape: useIcon ? 'icon' : 'circle',
+                    icon: useIcon ? 'droplet' : null,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.1,
+                    glow: false
+                }));
+            }
+        }
+
+        function createEarthSpikesEffect(x, y) {
+            // Spikes rising from ground
+            const spikes = 8;
+            for (let s = 0; s < spikes; s++) {
+                const offsetX = (s - spikes / 2) * 15;
+                const delay = s * 50;
+
+                setTimeout(() => {
+                    // Each spike
+                    particles.push(new Particle(x + offsetX, y + 60, {
+                        vx: 0,
+                        vy: -8,
+                        size: 20,
+                        color: ['#78716c', '#57534e', '#44403c'][Math.floor(Math.random() * 3)],
+                        life: 1,
+                        gravity: 0.4,
+                        decay: 0.02,
+                        shape: 'triangle',
+                        rotation: 0,
+                        rotationSpeed: 0,
+                        glow: false
+                    }));
+
+                    // Dust particles
+                    for (let d = 0; d < 5; d++) {
+                        particles.push(new Particle(x + offsetX + (Math.random() - 0.5) * 10, y + 60, {
+                            vx: (Math.random() - 0.5) * 2,
+                            vy: -2 - Math.random() * 2,
+                            size: 4,
+                            color: '#a8a29e',
+                            life: 0.8,
+                            gravity: 0.15,
+                            decay: 0.03,
+                            shape: 'circle',
+                            glow: false
+                        }));
+                    }
+                }, delay);
+            }
+        }
+
+        // ===== PHYSICAL/WEAPON EFFECTS (NEW) =====
+
+        function createChargeImpactEffect(x, y) {
+            // Dash line + impact
+            // Speed lines from left
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(x - 120 + i * 6, y + (Math.random() - 0.5) * 20, {
+                    vx: 12,
+                    vy: 0,
+                    size: 4,
+                    color: '#cbd5e1',
+                    life: 0.3,
+                    decay: 0.08,
+                    shape: 'square',
+                    glow: false
+                }));
+            }
+            // Impact burst
+            setTimeout(() => {
+                for (let i = 0; i < 30; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 3 + Math.random() * 4;
+                    particles.push(new Particle(x, y, {
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: 4 + Math.random() * 4,
+                        color: ['#78716c', '#a8a29e'][Math.floor(Math.random() * 2)],
+                        life: 0.8,
+                        gravity: 0.2,
+                        decay: 0.03,
+                        shape: 'circle',
+                        glow: false
+                    }));
+                }
+            }, 150);
+        }
+
+        function createCleaveEffect(x, y) {
+            // Wide horizontal arc with sword icons
+            const arcStart = -Math.PI / 3;
+            const arcEnd = Math.PI / 3;
+            const steps = 30;
+
+            for (let i = 0; i < steps; i++) {
+                const angle = arcStart + (arcEnd - arcStart) * (i / steps);
+                const radius = 60;
+                const delay = i * 15;
+
+                setTimeout(() => {
+                    particles.push(new Particle(
+                        x + Math.cos(angle) * radius,
+                        y + Math.sin(angle) * radius,
+                        {
+                            vx: Math.cos(angle) * 2,
+                            vy: Math.sin(angle) * 2,
+                            size: 16,
+                            color: '#94a3b8',
+                            life: 0.6,
+                            decay: 0.04,
+                            shape: 'icon',
+                            icon: 'sword',
+                            rotation: angle,
+                            rotationSpeed: 0,
+                            glow: true
+                        }
+                    ));
+                }, delay);
+            }
+        }
+
+        function createMultiHitEffect(x, y) {
+            // Rapid succession impacts
+            const hits = 5;
+            for (let h = 0; h < hits; h++) {
+                setTimeout(() => {
+                    const offsetX = (Math.random() - 0.5) * 30;
+                    const offsetY = (Math.random() - 0.5) * 30;
+
+                    for (let i = 0; i < 15; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 2 + Math.random() * 3;
+                        particles.push(new Particle(x + offsetX, y + offsetY, {
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            size: 3 + Math.random() * 3,
+                            color: ['#ef4444', '#fca5a5', '#fff'][Math.floor(Math.random() * 3)],
+                            life: 0.5,
+                            gravity: 0.1,
+                            decay: 0.05,
+                            shape: 'circle',
+                            glow: true
+                        }));
+                    }
+                }, h * 120);
+            }
+        }
+
+        function createPiercingShotEffect(x, y) {
+            // Arrow extending through target
+            for (let i = 0; i < 25; i++) {
+                setTimeout(() => {
+                    const progress = i * 8;
+                    particles.push(new Particle(x - 100 + progress, y, {
+                        vx: 0,
+                        vy: 0,
+                        size: i === 24 ? 10 : 5,
+                        color: i === 24 ? '#78716c' : '#a8a29e',
+                        life: 0.8,
+                        decay: 0.03,
+                        shape: i === 24 ? 'triangle' : 'square',
+                        rotation: -Math.PI / 6,
+                        rotationSpeed: 0,
+                        glow: false
+                    }));
+                }, i * 20);
+            }
+        }
+
+        function createShieldBlockEffect(x, y) {
+            // Shield flash + deflect sparks
+            // Shield icon
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    particles.push(new Particle(x, y, {
+                        vx: 0,
+                        vy: 0,
+                        size: 40 + i * 10,
+                        color: '#60a5fa',
+                        life: 0.3,
+                        decay: 0.15,
+                        shape: 'icon',
+                        icon: 'shield',
+                        rotation: 0,
+                        rotationSpeed: 0,
+                        glow: true
+                    }));
+                }, i * 50);
+            }
+            // Deflect sparks
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * (3 + Math.random() * 3),
+                    vy: Math.sin(angle) * (3 + Math.random() * 3),
+                    size: 3,
+                    color: '#fbbf24',
+                    life: 0.6,
+                    gravity: 0.15,
+                    decay: 0.04,
+                    shape: 'circle',
+                    glow: true
+                }));
+            }
+        }
+
+        function createParryCounterEffect(x, y) {
+            // Weapon clash + counter flash
+            // Clash sparks
+            for (let i = 0; i < 25; i++) {
+                const angle = -Math.PI / 4 + (Math.random() - 0.5) * Math.PI / 3;
+                const speed = 4 + Math.random() * 4;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 4,
+                    color: ['#fbbf24', '#fff'][Math.floor(Math.random() * 2)],
+                    life: 0.7,
+                    gravity: 0.2,
+                    decay: 0.035,
+                    shape: 'circle',
+                    glow: true
+                }));
+            }
+            // Counter slash trail
+            setTimeout(() => {
+                const angle = Math.PI / 4;
+                for (let i = 0; i < 20; i++) {
+                    const offset = i * 6;
+                    particles.push(new Particle(
+                        x + Math.cos(angle) * offset,
+                        y + Math.sin(angle) * offset,
+                        {
+                            vx: 0,
+                            vy: 0,
+                            size: 5,
+                            color: '#fff',
+                            life: 0.5,
+                            decay: 0.05,
+                            shape: 'square',
+                            glow: true
+                        }
+                    ));
+                }
+            }, 200);
+        }
+
+        function createBackstabEffect(x, y) {
+            // Critical backstab with dark particles
+            // Dark wisps
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    size: 8,
+                    color: '#1e293b',
+                    life: 1,
+                    gravity: 0,
+                    decay: 0.02,
+                    shape: 'circle',
+                    glow: false
+                }));
+            }
+            // Critical burst
+            for (let i = 0; i < 40; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 3 + Math.random() * 5;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 5 + Math.random() * 5,
+                    color: ['#7f1d1d', '#dc2626'][Math.floor(Math.random() * 2)],
+                    life: 1,
+                    gravity: 0.1,
+                    decay: 0.02,
+                    shape: 'icon',
+                    icon: 'skull',
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.1,
+                    glow: true
+                }));
+            }
+        }
+
+        function createRiposteEffect(x, y) {
+            // Swift counter strike
+            // Quick flash
+            for (let i = 0; i < 15; i++) {
+                const angle = -Math.PI / 6 + i * 0.1;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * 30,
+                    y + Math.sin(angle) * 30,
+                    {
+                        vx: Math.cos(angle) * 8,
+                        vy: Math.sin(angle) * 8,
+                        size: 6,
+                        color: '#60a5fa',
+                        life: 0.4,
+                        decay: 0.06,
+                        shape: 'square',
+                        rotation: angle,
+                        rotationSpeed: 0,
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        // ===== STATUS/DOT EFFECTS (NEW) =====
+
+        function createBurnDotEffect(x, y) {
+            // Small continuous flames
+            for (let i = 0; i < 8; i++) {
+                particles.push(new Particle(x + (Math.random() - 0.5) * 30, y + 20, {
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: -2 - Math.random(),
+                    size: 6 + Math.random() * 4,
+                    color: ['#ef4444', '#f97316'][Math.floor(Math.random() * 2)],
+                    life: 1,
+                    gravity: -0.05,
+                    decay: 0.02,
+                    shape: 'icon',
+                    icon: 'flame',
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.05,
+                    glow: true
+                }));
+            }
+        }
+
+        function createPoisonDotEffect(x, y) {
+            // Periodic bubbles rising
+            for (let i = 0; i < 6; i++) {
+                particles.push(new Particle(x + (Math.random() - 0.5) * 25, y + 10, {
+                    vx: 0,
+                    vy: -1 - Math.random(),
+                    size: 8 + Math.random() * 4,
+                    color: ['#22c55e', '#16a34a'][Math.floor(Math.random() * 2)],
+                    life: 1.5,
+                    gravity: -0.08,
+                    decay: 0.015,
+                    shape: 'icon',
+                    icon: Math.random() > 0.5 ? 'droplet' : 'skull',
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.04,
+                    glow: true
+                }));
+            }
+        }
+
+        function createBleedDotEffect(x, y) {
+            // Blood dripping
+            for (let i = 0; i < 5; i++) {
+                particles.push(new Particle(x + (Math.random() - 0.5) * 20, y - 10, {
+                    vx: 0,
+                    vy: 2 + Math.random(),
+                    size: 4 + Math.random() * 3,
+                    color: '#7f1d1d',
+                    life: 1.5,
+                    gravity: 0.1,
+                    decay: 0.015,
+                    shape: 'circle',
+                    glow: false
+                }));
+            }
+        }
+
+        function createParalyzeEffect(x, y) {
+            // Small electric sparks
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 2;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 6,
+                    color: ['#60a5fa', '#93c5fd', '#fff'][Math.floor(Math.random() * 3)],
+                    life: 0.6,
+                    gravity: 0,
+                    decay: 0.04,
+                    shape: 'icon',
+                    icon: 'zap',
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.15,
+                    glow: true
+                }));
+            }
+        }
+
+        function createSlowEffect(x, y) {
+            // Blue chains/weights
+            for (let i = 0; i < 12; i++) {
+                const angle = (Math.PI * 2 * i) / 12;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * 40,
+                    y + Math.sin(angle) * 40,
+                    {
+                        vx: Math.cos(angle) * -1,
+                        vy: Math.sin(angle) * -1,
+                        size: 8,
+                        color: '#3b82f6',
+                        life: 1.5,
+                        gravity: 0,
+                        decay: 0.015,
+                        shape: 'square',
+                        rotation: angle,
+                        rotationSpeed: 0.02,
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        function createHasteEffect(x, y) {
+            // Speed lines
+            for (let i = 0; i < 20; i++) {
+                const startX = x + (Math.random() - 0.5) * 60;
+                particles.push(new Particle(startX, y + (Math.random() - 0.5) * 60, {
+                    vx: 15,
+                    vy: (Math.random() - 0.5) * 2,
+                    size: 4,
+                    color: ['#fbbf24', '#fde047'][Math.floor(Math.random() * 2)],
+                    life: 0.5,
+                    gravity: 0,
+                    decay: 0.05,
+                    shape: 'square',
+                    glow: true
+                }));
+            }
+        }
+
+        function createEnrageEffect(x, y) {
+            // Red pulsing aura
+            for (let i = 0; i < 30; i++) {
+                const angle = (Math.PI * 2 * i) / 30;
+                const radius = 50 + Math.random() * 20;
+                particles.push(new Particle(
+                    x + Math.cos(angle) * radius,
+                    y + Math.sin(angle) * radius,
+                    {
+                        vx: Math.cos(angle) * 0.5,
+                        vy: Math.sin(angle) * 0.5,
+                        size: 8,
+                        color: ['#dc2626', '#ef4444'][Math.floor(Math.random() * 2)],
+                        life: 1,
+                        gravity: 0,
+                        decay: 0.02,
+                        shape: 'circle',
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        function createTauntEffect(x, y) {
+            // Target marks/attention indicators
+            const marks = 4;
+            for (let m = 0; m < marks; m++) {
+                const angle = (Math.PI * 2 * m) / marks;
+                const radius = 60;
+
+                particles.push(new Particle(
+                    x + Math.cos(angle) * radius,
+                    y + Math.sin(angle) * radius - 40,
+                    {
+                        vx: 0,
+                        vy: 3,
+                        size: 20,
+                        color: '#fbbf24',
+                        life: 1.5,
+                        gravity: 0,
+                        decay: 0.015,
+                        shape: 'triangle',
+                        rotation: angle + Math.PI / 2,
+                        rotationSpeed: 0,
+                        glow: true
+                    }
+                ));
+            }
+        }
+
+        function createDiseaseEffect(x, y) {
+            // Green sickness particles
+            for (let i = 0; i < 15; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                particles.push(new Particle(x, y, {
+                    vx: Math.cos(angle),
+                    vy: Math.sin(angle),
+                    size: 6 + Math.random() * 4,
+                    color: ['#15803d', '#166534', '#14532d'][Math.floor(Math.random() * 3)],
+                    life: 2,
+                    gravity: -0.02,
+                    decay: 0.01,
+                    shape: 'circle',
+                    glow: true
+                }));
+            }
+        }
+
+        function createCurseEffect(x, y) {
+            // Dark symbols/runes orbiting
+            for (let i = 0; i < 8; i++) {
+                const angle = (Math.PI * 2 * i) / 8;
+                const radius = 50;
+
+                // Use IIFE to capture angle correctly
+                ((currentAngle) => {
+                    setTimeout(() => {
+                        particles.push(new Particle(
+                            x + Math.cos(currentAngle) * radius,
+                            y + Math.sin(currentAngle) * radius,
+                            {
+                                vx: Math.cos(currentAngle + Math.PI / 2) * 2,
+                                vy: Math.sin(currentAngle + Math.PI / 2) * 2,
+                                size: 12,
+                                color: '#6b21a8',
+                                life: 2,
+                                gravity: 0,
+                                decay: 0.01,
+                                shape: 'icon',
+                                icon: 'moon',
+                                rotation: currentAngle,
+                                rotationSpeed: 0.05,
+                                glow: true
+                            }
+                        ));
+                    }, i * 100);
+                })(angle);
+            }
+        }
+
+        // Show floating damage number
+        function showDamageNumber(value, type = 'normal') {
+            const center = getCardCenter();
+            const dmgNum = document.createElement('div');
+            dmgNum.className = `damage-number ${type}`;
+            dmgNum.textContent = type === 'heal' ? `+${value}` : `-${value}`;
+            dmgNum.style.left = center.x + 'px';
+            dmgNum.style.top = center.y + 'px';
+            document.querySelector('.card-showcase').appendChild(dmgNum);
+
+            setTimeout(() => dmgNum.remove(), 1000);
+        }
+
+        // Update HP
+        function damageCard(amount) {
+            currentHP = Math.max(0, currentHP - amount);
+            hpValue.textContent = currentHP;
+            hpBar.style.width = currentHP + '%';
+        }
+
+        function healCard(amount) {
+            currentHP = Math.min(100, currentHP + amount);
+            hpValue.textContent = currentHP;
+            hpBar.style.width = currentHP + '%';
+        }
+
+        // Main effect player
+        function playEffect(effectType) {
+            const center = getCardCenter();
+
+            // Add CSS animations
+            card.classList.remove('shake-animation', 'flash-animation', 'glow-animation');
+
+            switch (effectType) {
+                case 'hit':
+                    createHitEffect(center.x, center.y);
+                    card.classList.add('shake-animation', 'flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 20 + 10));
+                    damageCard(15);
+                    break;
+
+                case 'explosion':
+                    createExplosion(center.x, center.y);
+                    card.classList.add('shake-animation', 'glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 30 + 20));
+                    damageCard(25);
+                    break;
+
+                case 'slash':
+                    createSlashEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 25 + 15));
+                    damageCard(20);
+                    break;
+
+                case 'crit':
+                    createExplosion(center.x, center.y);
+                    createHitEffect(center.x, center.y);
+                    card.classList.add('shake-animation', 'flash-animation', 'glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 50 + 50), 'crit');
+                    damageCard(40);
+                    break;
+
+                case 'fireball':
+                    createFireballEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 35 + 25));
+                    damageCard(30);
+                    break;
+
+                case 'lightning':
+                    createLightningEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 30 + 20));
+                    damageCard(25);
+                    break;
+
+                case 'ice':
+                    createIceEffect(center.x, center.y);
+                    showDamageNumber(Math.floor(Math.random() * 20 + 15));
+                    damageCard(18);
+                    break;
+
+                case 'poison':
+                    createPoisonEffect(center.x, center.y);
+                    showDamageNumber(Math.floor(Math.random() * 15 + 10));
+                    damageCard(12);
+                    break;
+
+                case 'heal':
+                    createHealEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 25 + 15), 'heal');
+                    healCard(20);
+                    break;
+
+                case 'shield':
+                    createShieldEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'buff':
+                    createBuffEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'stun':
+                    createStunEffect(center.x, center.y);
+                    card.classList.add('shake-animation');
+                    break;
+
+                // NEW RPG SYSTEM EFFECTS
+                case 'rain_of_arrows':
+                    createRainOfArrowsEffect(center.x, center.y);
+                    card.classList.add('shake-animation');
+                    showDamageNumber(Math.floor(Math.random() * 40 + 30));
+                    damageCard(35);
+                    break;
+
+                case 'earthquake':
+                    createEarthquakeEffect(center.x, center.y);
+                    card.classList.add('shake-animation', 'glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 30 + 20));
+                    damageCard(25);
+                    break;
+
+                case 'acid':
+                    createAcidEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 25 + 15));
+                    damageCard(20);
+                    break;
+
+                case 'shadow':
+                    createShadowEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 35 + 25));
+                    damageCard(30);
+                    break;
+
+                case 'bleed':
+                    createBleedEffect(center.x, center.y);
+                    showDamageNumber(Math.floor(Math.random() * 20 + 10));
+                    damageCard(15);
+                    break;
+
+                case 'freeze':
+                    createFreezeEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'wind':
+                    createWindEffect(center.x, center.y);
+                    card.classList.add('shake-animation');
+                    showDamageNumber(Math.floor(Math.random() * 20 + 15));
+                    damageCard(18);
+                    break;
+
+                case 'arrow':
+                    createArrowEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 25 + 20));
+                    damageCard(22);
+                    break;
+
+                // NEW ELEMENTAL EFFECTS
+                case 'meteor_storm':
+                    createMeteorStormEffect(center.x, center.y);
+                    card.classList.add('shake-animation', 'glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 60 + 40));
+                    damageCard(50);
+                    break;
+
+                case 'holy_smite':
+                    createHolySmiteEffect(center.x, center.y);
+                    card.classList.add('flash-animation', 'glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 40 + 30));
+                    damageCard(35);
+                    break;
+
+                case 'holy_radiance':
+                    createHolyRadianceEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 35 + 25));
+                    damageCard(30);
+                    break;
+
+                case 'thunder_clap':
+                    createThunderClapEffect(center.x, center.y);
+                    card.classList.add('shake-animation', 'flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 45 + 35));
+                    damageCard(40);
+                    break;
+
+                case 'chain_lightning':
+                    createChainLightningEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 30 + 25));
+                    damageCard(28);
+                    break;
+
+                case 'ice_prison':
+                    createIcePrisonEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 35 + 30));
+                    damageCard(33);
+                    break;
+
+                case 'frost_nova':
+                    createFrostNovaEffect(center.x, center.y);
+                    card.classList.add('shake-animation', 'glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 50 + 40));
+                    damageCard(45);
+                    break;
+
+                case 'void_lance':
+                    createVoidLanceEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 55 + 45));
+                    damageCard(50);
+                    break;
+
+                case 'arcane_missiles':
+                    createArcaneMissilesEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 30 + 20));
+                    damageCard(25);
+                    break;
+
+                case 'venom_cloud':
+                    createVenomCloudEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 25 + 20));
+                    damageCard(23);
+                    break;
+
+                case 'water_splash':
+                    createWaterSplashEffect(center.x, center.y);
+                    showDamageNumber(Math.floor(Math.random() * 30 + 20));
+                    damageCard(25);
+                    break;
+
+                case 'earth_spikes':
+                    createEarthSpikesEffect(center.x, center.y);
+                    card.classList.add('shake-animation');
+                    showDamageNumber(Math.floor(Math.random() * 40 + 30));
+                    damageCard(35);
+                    break;
+
+                // PHYSICAL/WEAPON EFFECTS
+                case 'charge_impact':
+                    createChargeImpactEffect(center.x, center.y);
+                    card.classList.add('shake-animation');
+                    showDamageNumber(Math.floor(Math.random() * 35 + 25));
+                    damageCard(30);
+                    break;
+
+                case 'cleave':
+                    createCleaveEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 40 + 30));
+                    damageCard(35);
+                    break;
+
+                case 'multi_hit':
+                    createMultiHitEffect(center.x, center.y);
+                    card.classList.add('shake-animation');
+                    showDamageNumber(Math.floor(Math.random() * 20 + 15));
+                    damageCard(18);
+                    break;
+
+                case 'piercing_shot':
+                    createPiercingShotEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 40 + 35));
+                    damageCard(38);
+                    break;
+
+                case 'shield_block':
+                    createShieldBlockEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'parry_counter':
+                    createParryCounterEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 30 + 20));
+                    damageCard(25);
+                    break;
+
+                case 'backstab':
+                    createBackstabEffect(center.x, center.y);
+                    card.classList.add('flash-animation', 'glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 60 + 50), 'crit');
+                    damageCard(55);
+                    break;
+
+                case 'riposte':
+                    createRiposteEffect(center.x, center.y);
+                    card.classList.add('flash-animation');
+                    showDamageNumber(Math.floor(Math.random() * 35 + 25));
+                    damageCard(30);
+                    break;
+
+                // STATUS/DOT EFFECTS
+                case 'burn_dot':
+                    createBurnDotEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 10 + 5));
+                    damageCard(8);
+                    break;
+
+                case 'poison_dot':
+                    createPoisonDotEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 10 + 5));
+                    damageCard(8);
+                    break;
+
+                case 'bleed_dot':
+                    createBleedDotEffect(center.x, center.y);
+                    showDamageNumber(Math.floor(Math.random() * 10 + 5));
+                    damageCard(8);
+                    break;
+
+                case 'paralyze':
+                    createParalyzeEffect(center.x, center.y);
+                    card.classList.add('shake-animation', 'glow-animation');
+                    break;
+
+                case 'slow':
+                    createSlowEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'haste':
+                    createHasteEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'enrage':
+                    createEnrageEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'taunt':
+                    createTauntEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+
+                case 'disease':
+                    createDiseaseEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    showDamageNumber(Math.floor(Math.random() * 15 + 10));
+                    damageCard(13);
+                    break;
+
+                case 'curse':
+                    createCurseEffect(center.x, center.y);
+                    card.classList.add('glow-animation');
+                    break;
+            }
+        }
+    </script>
+</body>
+
+</html>

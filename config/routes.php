@@ -28,4 +28,7 @@ return [
     'POST /game/chat/send' => 'ChatController@send',
     'GET /game/chat/messages' => 'ChatController@messages',
     'GET /game/chat/poll' => 'ChatController@poll',
+    
+    // Modal Routes (Lazy Loading)
+    'GET /game/modal/{modalName}' => 'GameController@loadModal',
 ];

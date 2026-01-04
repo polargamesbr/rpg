@@ -55,5 +55,43 @@ class GameController
             'roomName' => 'tavern'
         ]);
     }
+
+    /**
+     * Load modal content (lazy loading)
+     * GET /game/modal/{modalName}
+     */
+    public function loadModal(string $modalName): void
+    {
+        if (!AuthService::isLoggedIn()) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Not authenticated']);
+            return;
+        }
+
+        // Security: only allow specific modal names
+        $allowedModals = ['worldmap', 'character', 'combat'];
+        if (!in_array($modalName, $allowedModals)) {
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Modal not found']);
+            return;
+        }
+
+        $modalPath = __DIR__ . '/../../views/partials/modals/' . $modalName . '.php';
+        
+        if (!file_exists($modalPath)) {
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Modal file not found']);
+            return;
+        }
+
+        // Set content type to HTML
+        header('Content-Type: text/html; charset=UTF-8');
+        
+        // Include the modal file (it will output HTML directly)
+        include $modalPath;
+    }
 }
 

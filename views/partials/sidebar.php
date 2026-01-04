@@ -130,7 +130,7 @@ $activePage = $activePage ?? '';
                 </a>
             </li>
             <li>
-                <a href="#" class="hud-nav-item" onclick="event.preventDefault(); if(typeof openCharacterModal === 'function') { openCharacterModal(); if(typeof switchModalTab === 'function') switchModalTab('inventory'); }">
+                <a href="#" class="hud-nav-item" onclick="event.preventDefault(); if(typeof openCharacterModal === 'function') openCharacterModal('inventory');">
                     <i data-lucide="backpack" class="hud-nav-icon"></i>
                     <span>Inventory</span>
                 </a>
@@ -139,6 +139,16 @@ $activePage = $activePage ?? '';
                 <a href="#" class="hud-nav-item">
                     <i data-lucide="scroll" class="hud-nav-icon"></i>
                     <span>Quests</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-section-header">Test</div>
+        <ul class="space-y-1 mb-2">
+            <li>
+                <a href="#" class="hud-nav-item" onclick="event.preventDefault(); if(typeof openCombatModal === 'function') openCombatModal();">
+                    <i data-lucide="swords" class="hud-nav-icon"></i>
+                    <span>Battle Test</span>
                 </a>
             </li>
         </ul>
@@ -162,15 +172,12 @@ $activePage = $activePage ?? '';
 </aside>
 
 <?php
-// Include modals if they exist
-$modalCharacterPath = __DIR__ . '/modals/character.php';
-$modalWorldmapPath = __DIR__ . '/modals/worldmap.php';
+// Include loading component (reusable)
+$loadingPath = __DIR__ . '/modals/loading.php';
+if (file_exists($loadingPath)) {
+    include $loadingPath;
+}
 
-if (file_exists($modalCharacterPath)) {
-    include $modalCharacterPath;
-}
-if (file_exists($modalWorldmapPath)) {
-    include $modalWorldmapPath;
-}
+// Note: Character and Worldmap modals are now loaded lazily via AJAX
 ?>
 
