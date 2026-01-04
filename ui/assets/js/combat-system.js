@@ -1832,6 +1832,13 @@ const combatSystem = {
         const hero = this.getActiveHero();
         if (!hero) return;
 
+        // Close item menu if open
+        const im = document.getElementById('items-menu');
+        if (im && !im.classList.contains('hidden')) {
+            im.classList.add('hidden', 'opacity-0');
+            this.bindItemMenuHotkeys(false);
+        }
+
         const m = document.getElementById('skills-menu');
         if (m) {
             const wasOpen = !m.classList.contains('hidden');
@@ -1854,6 +1861,344 @@ const combatSystem = {
             } else {
                 this.bindSkillMenuHotkeys(false);
             }
+        }
+    },
+
+    toggleItemMenu() {
+        this.removeAttention();
+        const hero = this.getActiveHero();
+        if (!hero) return;
+
+        // Close skill menu if open
+        const sm = document.getElementById('skills-menu');
+        if (sm && !sm.classList.contains('hidden')) {
+            sm.classList.add('hidden', 'opacity-0');
+            this.bindSkillMenuHotkeys(false);
+        }
+
+        const m = document.getElementById('items-menu');
+        if (m) {
+            const isOpening = m.classList.contains('hidden');
+            m.classList.toggle('hidden'); m.classList.toggle('opacity-0');
+
+            if (isOpening) {
+                this.renderItemList();
+                this.bindItemMenuHotkeys(true);
+            } else {
+                this.bindItemMenuHotkeys(false);
+            }
+        }
+    },
+
+    renderItemList() {
+        const hero = this.getActiveHero();
+        const container = document.getElementById('item-list-container');
+        const countDisp = document.getElementById('item-menu-count');
+        if (!hero || !container) return;
+
+        const inventory = this.data.partyInventory || {};
+        const itemKeys = Object.keys(inventory).filter(k => inventory[k] > 0);
+
+        countDisp.innerText = `${itemKeys.length} Items`;
+
+        if (itemKeys.length === 0) {
+            container.innerHTML = `<div class="p-8 text-center text-stone-600 italic text-sm">Bag is empty</div>`;
+            document.getElementById('item-detail-empty').classList.remove('hidden');
+            document.getElementById('item-detail-content').classList.add('hidden');
+            document.getElementById('btn-use-item').disabled = true;
+            return;
+        }
+
+        // Cards render directly - parent .combat-skill-list-inner handles 4-column grid
+        container.innerHTML = itemKeys.map(key => {
+            const data = this.data.items[key];
+            if (!data) return '';
+            const isActive = this.state.itemPreviewId === key;
+
+            // Use PNG if available, otherwise lucide icon
+            const iconHtml = data.png
+                ? `<img src="${data.png}" class="item-card-png" alt="${data.name}">`
+                : `<i data-lucide="${data.icon || 'package'}" class="w-6 h-6 text-emerald-400"></i>`;
+
+            return `
+                <div class="item-card ${isActive ? 'item-card-active' : ''}" 
+                     data-ikey="${key}" 
+                     onclick="combatSystem.previewItem('${key}')">
+                    <!-- Icon Box (PNG or Lucide) -->
+                    <div class="item-card-icon-box">
+                        ${iconHtml}
+                        <div class="item-card-qty-badge">×${inventory[key]}</div>
+                    </div>
+                    <div class="item-card-name">${data.name}</div>
+                    <div class="item-card-type">${data.type}</div>
+                </div>
+            `;
+        }).join('');
+
+        // Auto-preview first item if none selected
+        if (!this.state.itemPreviewId || !inventory[this.state.itemPreviewId]) {
+            this.previewItem(itemKeys[0]);
+        } else {
+            this.previewItem(this.state.itemPreviewId);
+        }
+
+        this.refreshIcons();
+    },
+
+    previewItem(ikey) {
+        const hero = this.getActiveHero();
+        if (!hero) return;
+        const inventory = this.data.partyInventory || {};
+        const item = this.data.items[ikey];
+        if (!item || !inventory[ikey]) return;
+
+        this.state.itemPreviewId = ikey;
+
+        // highlight in list - remove active from all, add to selected
+        document.querySelectorAll('#item-list-container .item-card').forEach(el => el.classList.remove('item-card-active'));
+        document.querySelector(`#item-list-container .item-card[data-ikey="${ikey}"]`)?.classList.add('item-card-active');
+
+        // enable/disable use button
+        const btn = document.getElementById('btn-use-item');
+        if (btn) btn.disabled = false;
+
+        this.renderItemDetails(item, inventory[ikey]);
+    },
+
+    renderItemDetails(item, qty) {
+        const empty = document.getElementById('item-detail-empty');
+        const content = document.getElementById('item-detail-content');
+        if (!content) return;
+        if (empty) empty.classList.add('hidden');
+        content.classList.remove('hidden');
+
+        const iconHtml = `<div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-inner"><i data-lucide="${item.icon || 'package'}" class="w-8 h-8 text-emerald-400"></i></div>`;
+
+        const effects = [];
+        if (item.healHp) effects.push({ icon: 'heart', title: 'HP Recovery', desc: `Restores ${item.healHp} HP points to the target.` });
+        if (item.restoreMana) effects.push({ icon: 'zap', title: 'Mana Recovery', desc: `Restores ${item.restoreMana} Mana points to the target.` });
+        if (item.cureStatus) effects.push({ icon: 'shield-check', title: 'Cure Status', desc: `Removes ${item.cureStatus.join(', ')} from the target.` });
+        if (item.cureAllStatuses) effects.push({ icon: 'sparkles', title: 'Full Recovery', desc: `Removes all negative status effects from the target.` });
+        if (item.applyStatus) effects.push({ icon: 'skull', title: 'Apply Status', desc: `Has a ${Math.floor(item.applyStatus.chance * 100)}% chance to apply ${item.applyStatus.id} for ${item.applyStatus.duration} turns.` });
+
+        content.innerHTML = `
+            <div class="flex items-start gap-4">
+                ${iconHtml}
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="min-w-0">
+                            <div class="text-2xl font-black text-white leading-tight truncate">${item.name}</div>
+                            <div class="text-sm text-stone-400 mt-1 leading-snug">${item.desc || 'No description available.'}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-emerald-400 font-black text-lg font-mono">x${qty}</div>
+                            <div class="text-[0.6rem] text-stone-500 font-bold uppercase tracking-widest">In Stock</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-y-2">
+                        ${effects.map(x => `
+                            <div class="flex items-start gap-3 bg-white/5 border border-white/5 rounded-xl p-3">
+                                <i data-lucide="${x.icon}" class="w-4 h-4 text-emerald-400 mt-0.5"></i>
+                                <div class="flex-1">
+                                    <div class="text-[0.7rem] font-black text-white">${x.title}</div>
+                                    <div class="text-[0.7rem] text-stone-400 leading-snug">${x.desc}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.refreshIcons();
+    },
+
+    bindItemMenuHotkeys(enable) {
+        const handler = (e) => {
+            const m = document.getElementById('items-menu');
+            if (!m || m.classList.contains('hidden')) return;
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                this.toggleItemMenu();
+                return;
+            }
+
+            const hero = this.getActiveHero();
+            if (!hero) return;
+            const inventory = this.data.partyInventory || {};
+            const itemKeys = Object.keys(inventory).filter(k => inventory[k] > 0);
+            const idx = itemKeys.indexOf(this.state.itemPreviewId);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = itemKeys[Math.min(itemKeys.length - 1, idx + 1)];
+                if (next) this.previewItem(next);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = itemKeys[Math.max(0, idx - 1)];
+                if (prev) this.previewItem(prev);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                this.castPreviewItem();
+            }
+        };
+
+        if (enable) {
+            this._itemMenuKeyHandler = handler;
+            document.addEventListener('keydown', this._itemMenuKeyHandler);
+        } else if (this._itemMenuKeyHandler) {
+            document.removeEventListener('keydown', this._itemMenuKeyHandler);
+            this._itemMenuKeyHandler = null;
+        }
+    },
+
+    castPreviewItem() {
+        const hero = this.getActiveHero();
+        if (!hero) return;
+        if (!this.state.itemPreviewId) return;
+        const item = this.data.items[this.state.itemPreviewId];
+        if (!item || !this.data.partyInventory[this.state.itemPreviewId]) return;
+
+        // items default to ally target if healing/restoring, or enemy if applying status
+        this.state.selectedActionType = 'item';
+        this.state.selectedItem = { ...item, id: this.state.itemPreviewId };
+        this.state.targetMode = item.target === 'enemy' ? 'enemy' : 'ally';
+
+        // Single target for now
+        this.state.phase = 'selecting_target';
+
+        // Auto-select first target
+        const targets = this.state.targetMode === 'ally'
+            ? this.data.heroes.filter(h => h.hp > 0)
+            : this.data.enemies.filter(e => e.hp > 0);
+
+        if (targets.length > 0) {
+            if (this.state.targetMode === 'ally') this.selectAllyTarget(targets[0].id);
+            else this.selectEnemyTarget(targets[0].id);
+        }
+
+        this.updateTargetUI();
+        this.updateTurnIndicator(hero);
+
+        // Close menu
+        const m = document.getElementById('items-menu');
+        if (m && !m.classList.contains('hidden')) {
+            m.classList.add('hidden', 'opacity-0');
+            this.bindItemMenuHotkeys(false);
+        }
+    },
+
+    async useItem(item, target, caster = null) {
+        // Resolve caster if not provided
+        if (!caster) {
+            const activeId = this.state.activeEntityId;
+            caster = this.data.heroes.find(h => h.id === activeId);
+            if (!caster) {
+                caster = this.data.enemies.find(e => e.id === activeId);
+            }
+        }
+
+        if (!caster || !target) return;
+
+        const itemId = item.id || this.state.itemPreviewId;
+
+        // Consume item logic
+        if (caster.isPlayer) {
+            // Player uses Global Party Inventory
+            if (this.data.partyInventory && this.data.partyInventory[itemId] > 0) {
+                this.data.partyInventory[itemId]--;
+            }
+        } else {
+            // Enemy uses their own inventory
+            if (caster.inventory && caster.inventory[itemId] > 0) {
+                caster.inventory[itemId]--;
+            }
+        }
+
+        this.log(`${caster.name} used ${item.name} on ${target.name}.`);
+        this.showToastNotification(`<i data-lucide="${item.icon || 'flask-conical'}" class="w-4 h-4 inline-block mr-1"></i> Using ${item.name}!`, true);
+
+        // Play item sound/effect
+        if (this.audioManager) {
+            this.audioManager.play('skill_start', { skill: { icon: item.icon || 'flask-conical' }, hero: caster });
+        }
+
+        // Apply effects
+        if (item.healHp) {
+            this.healEntity(target, item.healHp);
+        }
+        if (item.restoreMana) {
+            this.restoreMana(target, item.restoreMana);
+        }
+        if (item.cureStatus) {
+            item.cureStatus.forEach(statusId => {
+                this.removeStatusEffect(target, statusId);
+            });
+        }
+        if (item.cureAllStatuses) {
+            this.removeAllNegativeStatuses(target);
+        }
+        if (item.applyStatus) {
+            if (Math.random() < item.applyStatus.chance) {
+                SkillEngine.applyDebuff(target, { id: item.applyStatus.id, duration: item.applyStatus.duration }, caster, 'item_effect');
+            }
+        }
+
+        // Finalize turn
+        this.processStatusEffects(caster, 'turn_end');
+        this.determineIntents();
+
+        if (this.skipUI()) {
+            this.stepTurn();
+        } else {
+            setTimeout(() => this.stepTurn(), 1000);
+        }
+    },
+
+    restoreMana(entity, amount) {
+        if (!entity || entity.hp <= 0) return;
+        const oldMana = entity.mana;
+        entity.mana = Math.min(entity.maxMana, entity.mana + amount);
+        const actualGain = entity.mana - oldMana;
+
+        if (entity.isPlayer) {
+            this.updateHeroUI(entity.id);
+        } else {
+            this.updateEnemyBars(entity);
+        }
+
+        // Visual Floater
+        const cardSelector = entity.isPlayer
+            ? `.hero-card-instance[data-id="${entity.id}"]`
+            : `.enemy-card-instance[data-id="${entity.id}"]`;
+        const card = document.querySelector(cardSelector);
+        if (card && actualGain > 0) {
+            const root = card.querySelector('.floater-root') || card;
+            this.spawnFloater(`+${actualGain} MP`, false, null, true, root, 'mana');
+        }
+    },
+
+    removeStatusEffect(entity, statusId) {
+        if (!entity || !entity.activeDebuffs) return;
+        const index = entity.activeDebuffs.findIndex(d => d.id === statusId);
+        if (index !== -1) {
+            entity.activeDebuffs.splice(index, 1);
+            SkillEngine.recalculateStats(entity);
+            if (entity.isPlayer) this.updateHeroUI(entity.id);
+            else this.updateEnemyBars(entity);
+            this.log(`${entity.name} is no longer ${statusId}.`);
+        }
+    },
+
+    removeAllNegativeStatuses(entity) {
+        if (!entity || !entity.activeDebuffs) return;
+        if (entity.activeDebuffs.length > 0) {
+            entity.activeDebuffs = [];
+            SkillEngine.recalculateStats(entity);
+            if (entity.isPlayer) this.updateHeroUI(entity.id);
+            else this.updateEnemyBars(entity);
+            this.log(`${entity.name} recovered from all negative statuses.`);
         }
     },
 
@@ -2418,15 +2763,9 @@ const combatSystem = {
                 }
             });
 
-            const actionName = this.state.selectedActionType === 'skill' ? (this.state.selectedSkill ? this.state.selectedSkill.name : 'Skill') : 'Attack';
-            let iconHtml = '';
-            if (this.state.selectedActionType === 'skill' && this.state.selectedSkill && this.state.selectedSkill.img) {
-                iconHtml = `<img src="${this.state.selectedSkill.img}" class="w-6 h-6 rounded border border-white/20 object-cover mr-2 inline-block shadow-sm">`;
-            } else if (this.state.selectedActionType === 'skill' && this.state.selectedSkill && this.state.selectedSkill.icon) {
-                iconHtml = `<i data-lucide="${this.state.selectedSkill.icon}" class="w-4 h-4 mr-2 inline-block"></i>`;
-            } else if (this.state.selectedActionType === 'attack') {
-                iconHtml = `<i data-lucide="sword" class="w-4 h-4 mr-2 inline-block"></i>`;
-            }
+            const actionName = this.state.selectedActionType === 'skill'
+                ? (this.state.selectedSkill ? this.state.selectedSkill.name : 'Skill')
+                : (this.state.selectedActionType === 'item' ? (this.state.selectedItem ? this.state.selectedItem.name : 'Item') : 'Attack');
 
             if (confirmText) confirmText.innerHTML = `CONFIRM ${actionName}`;
 
@@ -2464,6 +2803,16 @@ const combatSystem = {
                         parent.replaceChild(newIcon, confirmIconContainer);
                     }
                     confirmIconContainer.setAttribute('data-lucide', 'sword');
+                    this.refreshIcons();
+                } else if (this.state.selectedActionType === 'item' && this.state.selectedItem) {
+                    if (confirmIconContainer.tagName !== 'I') {
+                        const parent = confirmIconContainer.parentElement;
+                        const newIcon = document.createElement('i');
+                        newIcon.id = 'confirm-btn-icon';
+                        newIcon.className = 'w-8 h-8 text-white group-hover:scale-110 transition-transform';
+                        parent.replaceChild(newIcon, confirmIconContainer);
+                    }
+                    confirmIconContainer.setAttribute('data-lucide', this.state.selectedItem.icon || 'flask-conical');
                     this.refreshIcons();
                 } else {
                     if (confirmIconContainer.tagName !== 'I') {
@@ -2560,19 +2909,22 @@ const combatSystem = {
         this.updateHpPreview();
     },
 
-    estimateSkillOutcome(attacker, target, skill) {
+    estimateSkillOutcome(attacker, target, action) {
         // Estimate HP delta without RNG (use average multiplier = 1.0)
-        if (!attacker || !target || !skill) return { deltaHpEstimate: 0 };
+        if (!attacker || !target || !action) return { deltaHpEstimate: 0 };
 
-        // Healing
-        if (skill.heal !== undefined || skill.healPct !== undefined) {
-            const healAmt = skill.heal !== undefined
-                ? Number(skill.heal)
-                : Math.floor(target.maxHp * Number(skill.healPct || 0));
+        // Healing (Skill or Item)
+        if (action.healHp !== undefined || action.heal !== undefined || action.healPct !== undefined) {
+            const healAmt = action.healHp !== undefined
+                ? Number(action.healHp)
+                : (action.heal !== undefined
+                    ? Number(action.heal)
+                    : Math.floor(target.maxHp * Number(action.healPct || 0)));
             return { deltaHpEstimate: healAmt };
         }
 
-        // Damage (only if skill has dmgMult or is attack)
+        const skill = action; // Support legacy naming in logic below
+        // Damage (only if action/skill has dmgMult or is attack)
         if (skill.dmgMult !== undefined || this.state.selectedActionType === 'attack') {
             const dmgType = (skill.damageType === 'magic') ? 'magic' : 'physical';
             const baseStat = (dmgType === 'magic')
@@ -2631,9 +2983,12 @@ const combatSystem = {
         const hero = this.getActiveHero();
         if (!hero) return;
 
-        // Get skill or attack
-        const skill = this.state.selectedSkill || (this.state.selectedActionType === 'attack' ? { dmgMult: 1.0 } : null);
-        if (!skill && this.state.selectedActionType !== 'attack') return;
+        // Get action object (skill, attack, or item)
+        const actionObj = this.state.selectedSkill ||
+            (this.state.selectedActionType === 'attack' ? { dmgMult: 1.0 } :
+                (this.state.selectedActionType === 'item' ? this.state.selectedItem : null));
+
+        if (!actionObj) return;
 
         // Calculate preview for each target
         this.state.actionTargets.forEach(targetId => {
@@ -2643,7 +2998,7 @@ const combatSystem = {
 
             if (!target) return;
 
-            const outcome = this.estimateSkillOutcome(hero, target, skill);
+            const outcome = this.estimateSkillOutcome(hero, target, actionObj);
             if (outcome.deltaHpEstimate === 0) return;
 
             this.renderHpPreview(target, outcome.deltaHpEstimate);
@@ -2841,6 +3196,13 @@ const combatSystem = {
         else if (this.state.selectedActionType === 'defend') {
             console.log('[DEFEND DEBUG] Calling useDefend');
             this.useDefend(this.getActiveHero());
+        }
+        else if (this.state.selectedActionType === 'item' && this.state.selectedItem) {
+            console.log('[DEFEND DEBUG] Calling useItem');
+            const target = this.state.targetMode === 'ally'
+                ? this.data.heroes.find(h => h.id === this.state.actionTargets[0])
+                : this.data.enemies.find(e => e.id === this.state.actionTargets[0]);
+            await this.useItem(this.state.selectedItem, target);
         }
         else if (this.state.selectedSkill) {
             console.log('[DEFEND DEBUG] Calling usePlayerSkill');
@@ -3541,7 +3903,7 @@ const combatSystem = {
             ? document.querySelector(`.hero-card-instance[data-id="${entity.id}"]`)
             : document.querySelector(`.enemy-card-instance[data-id="${entity.id}"]`);
         const root = card ? (card.querySelector('.floater-root') || card) : null;
-        if (root) this.spawnFloater(`+${amt} MP`, false, null, true, root);
+        if (root) this.spawnFloater(`+${amt} MP`, false, null, true, root, 'mana');
     },
 
     // --- Advanced AI System ---
@@ -3647,6 +4009,31 @@ const combatSystem = {
                 }
             }
         }
+        else if (action.type === 'item') {
+            const item = action.item;
+            const hpPct = enemy.hp / enemy.maxHp;
+            const mpPct = enemy.mana / (enemy.maxMana || 1);
+
+            if (item.healHp) {
+                if (hpPct < 0.3) score = 200; // Emergency heal
+                else if (hpPct < 0.6) score = 80; // Preventive heal
+            }
+            if (item.restoreMana) {
+                if (mpPct < 0.2) score = 150; // Critical mana
+                else if (mpPct < 0.5) score = 60;
+            }
+            if (item.cureStatus || item.cureAllStatuses) {
+                const hasDebuff = enemy.activeDebuffs && enemy.activeDebuffs.length > 0;
+                if (hasDebuff) score = 180; // High priority to clear debuffs
+            }
+            if (item.applyStatus && item.target === 'enemy') {
+                const target = this.ai_findBestTarget(enemy, 'single');
+                if (target) {
+                    targetId = target.id;
+                    score = 40;
+                }
+            }
+        }
 
         // Randomness
         score += (Math.random() * 20) - 10;
@@ -3666,6 +4053,16 @@ const combatSystem = {
             let candidates = [{ type: 'attack', skill: null, name: 'Attack' }];
             if (e.skills && e.skills.length > 0) {
                 e.skills.forEach(s => candidates.push({ type: 'skill', skill: s, name: s.name }));
+            }
+
+            // Item candidates
+            if (e.inventory) {
+                Object.keys(e.inventory).forEach(ikey => {
+                    if (e.inventory[ikey] > 0) {
+                        const item = this.data.items[ikey];
+                        if (item) candidates.push({ type: 'item', item: { ...item, id: ikey }, name: item.name });
+                    }
+                });
             }
 
             // Score candidates
@@ -3688,6 +4085,7 @@ const combatSystem = {
                 e.nextIntent = {
                     type: best.type,
                     skill: best.skill,
+                    item: best.item,
                     targetId: best.targetId
                 };
 
@@ -3723,6 +4121,11 @@ const combatSystem = {
 
         if (intent.type === 'skill') {
             await this.performEnemySkill(e, intent.skill);
+        } else if (intent.type === 'item') {
+            const item = intent.item;
+            const target = this.data.heroes.find(h => h.id === intent.targetId) || e;
+            this.state.itemPreviewId = item.id;
+            await this.useItem(item, target);
         } else {
             this.state.parry.attacksRemaining = e.attacks || 1;
             if (this.skipUI()) {
@@ -5980,7 +6383,7 @@ const combatSystem = {
         if (type === 'miss') baseClass = "text-3xl text-stone-400 drop-shadow-lg";
         if (type === 'heal') baseClass = "text-4xl text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]";
         if (type === 'defend') baseClass = "text-5xl text-blue-400 drop-shadow-[0_0_20px_rgba(59,130,246,0.7)] font-black";
-        if (type === 'mana-gain') baseClass = "text-3xl text-cyan-300 drop-shadow-[0_0_15px_rgba(103,232,249,0.5)]";
+        if (type === 'mana-gain' || type === 'mana') baseClass = "text-3xl text-cyan-300 drop-shadow-[0_0_15px_rgba(103,232,249,0.5)]";
 
         floater.className += ` ${baseClass}`;
         floater.innerHTML = value;
@@ -6804,6 +7207,32 @@ const combatSystem = {
             });
         }
 
+        // Item options
+        const inventory = hero.inventory || {};
+        Object.keys(inventory).forEach(ikey => {
+            if (inventory[ikey] > 0) {
+                const item = this.data.items[ikey];
+                if (item) {
+                    let score = 0;
+                    const hpPct = hero.hp / hero.maxHp;
+                    const mpPct = hero.mana / (hero.maxMana || 1);
+
+                    if (item.healHp && hpPct < 0.4) score = 100;
+                    if (item.restoreMana && mpPct < 0.2) score = 90;
+                    if (item.cureAllStatuses && hero.activeDebuffs && hero.activeDebuffs.length > 0) score = 110;
+
+                    if (score > 0) {
+                        decisions.push({
+                            type: 'item',
+                            item: { ...item, id: ikey },
+                            score,
+                            target: (item.target === 'enemy' ? aliveEnemies[0]?.id : hero.id)
+                        });
+                    }
+                }
+            }
+        });
+
         // Add randomization to avoid deterministic loops
         decisions.forEach(d => d.score += Math.random() * 10 - 5); // ±5 random variance
 
@@ -6860,6 +7289,18 @@ const combatSystem = {
                 this.state.actionTargets = [aliveEnemies[0].id];
                 this.state.targetMode = 'enemy';
             }
+
+            if (this.skipUI()) {
+                this.confirmAction();
+            } else {
+                setTimeout(() => this.confirmAction(), 800);
+            }
+        } else if (bestDecision.type === 'item') {
+            this.state.selectedActionType = 'item';
+            this.state.selectedItem = bestDecision.item;
+            this.state.itemPreviewId = bestDecision.item.id;
+            this.state.actionTargets = [bestDecision.target];
+            this.state.phase = 'confirming';
 
             if (this.skipUI()) {
                 this.confirmAction();

@@ -13,7 +13,8 @@ window.combatData = {
                 'anvil_tap', 'spark_blow', 'field_repair', 'tempered_strike',
                 'fortify_armor', 'seismic_slam', 'molten_edge', 'riveting_combo',
                 'shatter_armor', 'forge_overdrive', 'masterwork_precision', 'worldbreaker'
-            ]
+            ],
+            inventory: { potion_hp: 2, potion_mana: 1, potion_panacea: 1 }
         },
         hero_mage: {
             name: 'Mage', type: 'class', element: 'fire', img: 'assets/img/mage-male.png',
@@ -26,7 +27,8 @@ window.combatData = {
                 'fireball', 'chain_spark', 'arcane_focus', 'ice_prison',
                 'lightning_storm', 'shock', 'void_lance', 'meteor',
                 'mana_drain', 'time_skip'
-            ]
+            ],
+            inventory: { potion_hp: 1, potion_mana: 3, potion_antidote: 1 }
         },
         hero_swordman: {
             name: 'Swordman', type: 'class', element: 'neutral', img: 'assets/img/swordman-male.png',
@@ -38,7 +40,8 @@ window.combatData = {
                 'shield_bash', 'taunting_shout', 'cleave', 'defensive_wall',
                 'crushing_blow', 'battle_focus', 'relentless_strike', 'champions_slash',
                 'life_steal', 'berserk_mode'
-            ]
+            ],
+            inventory: { potion_hp: 3, potion_mana: 1, potion_antidote: 1 }
         },
         hero_archer: {
             name: 'Archer', type: 'class', element: 'wind', img: 'assets/img/archer-female.png', video: 'assets/video/archer-female.mp4',
@@ -50,7 +53,8 @@ window.combatData = {
                 'poison_arrow', 'rapid_fire', 'multishot', 'crippling_shot',
                 'shadow_volley', 'hunters_focus', 'piercing_arrow', 'rain_of_arrows',
                 'volcanic_arrowstorm', 'summon_wolf'
-            ]
+            ],
+            inventory: { potion_hp: 2, potion_mana: 1, poison_vial: 2 }
         },
         // NOTE: Renamed to match your actual class set/assets (Thief/Acolyte)
         hero_thief: {
@@ -64,7 +68,8 @@ window.combatData = {
                 'bleeding_cut', 'smoke_bomb', 'shadow_strike', 'crippling_poison',
                 'execution', 'fan_of_knives', 'nightmare_combo', 'assassinate',
                 'life_steal', 'time_skip'
-            ]
+            ],
+            inventory: { potion_hp: 1, poison_vial: 3, potion_antidote: 1 }
         },
         hero_acolyte: {
             name: 'Acolyte', type: 'class', element: 'holy', img: 'assets/img/sacer-female.png', video: 'assets/video/acolyte-female.mp4',
@@ -78,7 +83,8 @@ window.combatData = {
                 'smite', 'purifying_light', 'renewal', 'radiant_wave',
                 'divine_favor', 'sanctuary', 'judgement', 'celestial_wrath',
                 'reflect_shield', 'revive'
-            ]
+            ],
+            inventory: { potion_hp: 1, potion_mana: 3, potion_panacea: 1 }
         },
 
         // --- MONSTERS ---
@@ -88,7 +94,8 @@ window.combatData = {
             attributes: { str: 10, agi: 12, vit: 8, int: 2, dex: 10, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 4,
             exp: 15, gold: 12,
-            skills: ['savage_bite', 'pack_howl', 'lunge', 'feral_claws', 'blood_frenzy', 'lunar_rampage']
+            skills: ['savage_bite', 'pack_howl', 'lunge', 'feral_claws', 'blood_frenzy', 'lunar_rampage'],
+            inventory: { potion_hp: 1 }
         },
         orc: {
             name: 'Orc Warrior', type: 'monster', element: 'earth', img: 'assets/img/orc.png', video: 'assets/video/orc.mp4',
@@ -96,7 +103,8 @@ window.combatData = {
             attributes: { str: 14, agi: 5, vit: 14, int: 2, dex: 6, luk: 2 },
             maxHp: 1, maxMana: 1, baseLevel: 6,
             exp: 25, gold: 20,
-            skills: ['smash', 'orc_charge', 'war_cry', 'brutal_swing', 'berserker_rage']
+            skills: ['smash', 'orc_charge', 'war_cry', 'brutal_swing', 'berserker_rage'],
+            inventory: { potion_hp: 1 }
         },
         toxic_slime: {
             name: 'Toxic Slime', type: 'monster', element: 'poison', img: 'assets/img/slime.png', video: 'assets/video/slime.mp4',
@@ -443,6 +451,14 @@ window.combatData = {
     skills: (window.skillsData || {}),
 
     items: {
+        // --- CONSUMABLES ---
+        potion_hp: { name: 'HP Potion', type: 'Consumable', desc: 'Restores 50 HP.', icon: 'heart', png: 'https://via.placeholder.com/64/10b981/ffffff?text=HP', healHp: 50, rarity: 'common' },
+        potion_mana: { name: 'Mana Potion', type: 'Consumable', desc: 'Restores 30 Mana.', icon: 'zap', png: 'https://via.placeholder.com/64/3b82f6/ffffff?text=MP', restoreMana: 30, rarity: 'common' },
+        potion_antidote: { name: 'Antidote', type: 'Consumable', desc: 'Cures Poison status.', icon: 'skull', png: 'https://via.placeholder.com/64/22c55e/ffffff?text=ANT', cureStatus: ['poison'], rarity: 'common' },
+        potion_panacea: { name: 'Panacea', type: 'Consumable', desc: 'Cures all negative statuses.', icon: 'sparkles', png: 'https://via.placeholder.com/64/a855f7/ffffff?text=PAN', cureAllStatuses: true, rarity: 'rare' },
+        poison_vial: { name: 'Poison Vial', type: 'Consumable', desc: 'Applies Poison to an enemy.', icon: 'skull', png: 'https://via.placeholder.com/64/8b5cf6/ffffff?text=PSN', applyStatus: { id: 'poison', chance: 1.0, duration: 3 }, rarity: 'uncommon', target: 'enemy' },
+
+        // --- MATERIALS & LOOT ---
         goblin_ear: { name: 'Goblin Ear', type: 'Materials', desc: 'A disgusting trophy.', icon: 'origami', rarity: 'common' },
         mystic_scroll: { name: 'Mystic Scroll', type: 'Consumable', desc: 'Faint energy glows.', icon: 'scroll', rarity: 'uncommon' },
         goblin_staff: { name: 'Goblin Staff', type: 'Weapon', desc: 'Smells of charcoal.', icon: 'wand-2', rarity: 'rare' },
@@ -452,5 +468,14 @@ window.combatData = {
         broken_arrow: { name: 'Broken Arrow', type: 'Materials', desc: 'Good for wood.', icon: 'target', rarity: 'common' },
         leather_quiver: { name: 'Sturdy Quiver', type: 'Equipment', desc: 'Increases speed.', icon: 'briefcase', rarity: 'uncommon' },
         hunters_bow: { name: 'Hunters Longbow', type: 'Weapon', desc: 'Piercing power.', icon: 'target', rarity: 'rare' }
+    },
+
+    // Global Party Inventory (Shared by all heroes)
+    partyInventory: {
+        potion_hp: 5,
+        potion_mana: 3,
+        potion_antidote: 2,
+        potion_panacea: 1,
+        poison_vial: 2
     }
 };

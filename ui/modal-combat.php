@@ -331,6 +331,48 @@
                              </div>
                         </div>
                     </div>
+                    <!-- Premium Item Menu (V2: List + Details Panel) -->
+                    <div id="items-menu" class="combat-skill-menu absolute bottom-[140%] left-1/2 -translate-x-1/2 w-[920px] max-w-[92vw] bg-black/95 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_30px_70px_rgba(0,0,0,1)] hidden opacity-0 transition-all duration-300 z-[120]">
+                         <div class="bg-white/5 px-6 py-3 flex justify-between items-center border-b border-white/5">
+                             <div class="flex flex-col">
+                                 <span class="text-[0.6rem] font-black uppercase tracking-[0.35em] text-stone-500">Party Supplies</span>
+                                 <span class="text-sm font-black text-white tracking-wide">Item Bag</span>
+                             </div>
+                             <div class="flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                                 <i data-lucide="briefcase" class="w-3 h-3 text-emerald-400"></i>
+                                 <span class="text-[0.65rem] font-black text-emerald-400" id="item-menu-count">0 Items</span>
+                             </div>
+                         </div>
+
+                         <div class="combat-skill-body grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-0">
+                             <!-- Left: Item List -->
+                             <div class="combat-skill-list border-r border-white/5">
+                                 <div class="px-5 py-3 flex items-center justify-between gap-3 border-b border-white/5">
+                                     <div class="text-[0.6rem] font-black uppercase tracking-[0.3em] text-stone-500">Select a consumable</div>
+                                     <div class="text-[0.55rem] font-bold text-stone-600 uppercase tracking-widest">Click to preview • Enter to use</div>
+                                 </div>
+                                 <div id="item-list-container" class="combat-skill-list-inner custom-scrollbar"></div>
+                             </div>
+
+                             <!-- Right: Item Details -->
+                             <div class="combat-skill-detail">
+                                 <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between">
+                                     <div class="text-[0.6rem] font-black uppercase tracking-[0.3em] text-stone-500">Item Properties</div>
+                                     <div class="text-[0.55rem] font-bold text-stone-600 uppercase tracking-widest">Esc to close</div>
+                                 </div>
+                                 <div id="item-detail-panel" class="combat-skill-detail-inner">
+                                     <div id="item-detail-empty" class="text-stone-500 text-sm italic p-6">Select an item to see properties.</div>
+                                     <div id="item-detail-content" class="hidden p-6"></div>
+                                 </div>
+                                <div class="combat-skill-detail-footer border-t border-white/5 p-4 flex items-center justify-end gap-4 bg-black/40">
+                                    <button id="btn-use-item" onclick="combatSystem.castPreviewItem()" disabled class="px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 border-t border-white/20 shadow-[0_0_30px_rgba(16,185,129,0.35)] transition-all font-black uppercase tracking-[0.25em] text-[0.75rem] disabled:opacity-30 disabled:grayscale disabled:pointer-events-none flex items-center gap-3">
+                                        <i data-lucide="check" class="w-6 h-6"></i>
+                                        <span>Use Item</span>
+                                    </button>
+                                </div>
+                             </div>
+                         </div>
+                    </div>
 
                     <div class="w-px h-6 bg-white/10"></div>
 
@@ -343,11 +385,11 @@
 
                     <div class="w-px h-6 bg-white/10"></div>
 
-                    <button disabled class="group relative flex items-center gap-3 px-4 py-2 opacity-20 grayscale cursor-not-allowed">
-                        <div class="w-10 h-10 rounded-lg bg-stone-900/40 border border-white/5 flex items-center justify-center">
-                            <i data-lucide="flask-conical" class="w-5 h-5 text-stone-600"></i>
+                    <button onclick="combatSystem.toggleItemMenu()" id="btn-item" class="group relative flex items-center gap-3 px-4 py-2 hover:bg-emerald-500/10 rounded-xl transition-all border border-transparent hover:border-emerald-500/30">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-inner group-hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                            <i data-lucide="flask-conical" class="w-5 h-5 text-emerald-400"></i>
                         </div>
-                        <span class="text-[0.7rem] font-black uppercase tracking-[0.2em] text-stone-500">Item</span>
+                        <span class="text-[0.7rem] font-black uppercase tracking-[0.2em] text-stone-300 group-hover:text-white">Item</span>
                     </button>
 
                     <div class="w-px h-6 bg-white/10"></div>
@@ -527,6 +569,8 @@
 
     <!-- External Combat CSS -->
     <link rel="stylesheet" href="assets/css/combat.css">
+    <link rel="stylesheet" href="assets/css/item-cards.css">
+    <link rel="stylesheet" href="assets/css/action-bar-visibility.css">
     <!-- External Combat Scripts -->
     <script src="assets/js/effects-data.js"></script>
     <script src="assets/js/elemental-data.js"></script>
@@ -535,6 +579,7 @@
     <script src="assets/js/audio.registry.js"></script>
     <script src="assets/js/audio-manager.js"></script>
     <script src="assets/js/combat-system.js"></script>
+    <script src="assets/js/action-bar-manager.js"></script>
 
 <!-- DEBUG UI (Placed correctly outside script) -->
 <div id="debug-layer" class="fixed bottom-4 right-4 z-[500] flex flex-col items-end gap-2 pointer-events-auto" style="font-family: 'Inter', sans-serif;">
