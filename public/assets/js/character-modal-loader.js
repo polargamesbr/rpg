@@ -24,9 +24,17 @@
                     loadingSubtitle: 'Preparing your profile',
                     onLoaded: function(modalElement) {
                         characterModalLoaded = true;
+                        // Hide loading screen before opening modal
+                        if (typeof hideModalLoading === 'function') {
+                            hideModalLoading();
+                        }
                         // Small delay to ensure modal is in DOM
                         setTimeout(() => {
                             openCharacterModalInternal(tabName);
+                            // Initialize character stats
+                            if (typeof window.initCharacterModalStats === 'function') {
+                                window.initCharacterModalStats();
+                            }
                         }, 100);
                     },
                     onError: function(error) {
@@ -37,6 +45,10 @@
             } else {
                 // Modal already loaded, just open it
                 openCharacterModalInternal(tabName);
+                // Initialize character stats
+                if (typeof window.initCharacterModalStats === 'function') {
+                    window.initCharacterModalStats();
+                }
             }
         } catch (error) {
             console.error('Error opening character modal:', error);

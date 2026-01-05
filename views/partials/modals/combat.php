@@ -156,9 +156,9 @@
                     <div class="absolute inset-0 rounded-3xl" style="box-shadow: inset 0 -2px 8px rgba(255,255,255,0.1), inset 0 2px 8px rgba(0,0,0,0.3);"></div>
                 </div>
                 
-                <!-- Turn Number (Center Top) -->
-                <div class="absolute top-2 left-1/2 -translate-x-1/2 z-20">
-                    <div class="text-center">
+                <!-- Turn Number (Center Top - positioned well above avatars) -->
+                <div class="absolute -top-12 left-1/2 -translate-x-1/2 z-30">
+                    <div class="text-center bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/10">
                         <div class="text-[10px] font-black text-white/60 uppercase tracking-[0.3em] mb-0.5">TURN</div>
                         <div id="turn-number-display" class="text-2xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">01</div>
                     </div>
@@ -597,36 +597,86 @@
     <script src="<?= asset('js/combat-data.js') ?>"></script>
     <script src="<?= asset('js/audio.registry.js') ?>"></script>
     <script src="<?= asset('js/audio-manager.js') ?>"></script>
+    <!-- Combat Visual Effects System -->
+    <script src="<?= asset('js/combat-effects.js') ?>"></script>
+    <script src="<?= asset('js/combat-effects-library.js') ?>"></script>
+    <script src="<?= asset('js/combat-effects-extended.js') ?>"></script>
     <script src="<?= asset('js/combat-system.js') ?>"></script>
     <script src="<?= asset('js/action-bar-manager.js') ?>"></script>
 
-<!-- DEBUG UI (Placed correctly outside script) -->
+<!-- DEBUG UI (Enhanced with Entity Selection) -->
 <div id="debug-layer" class="fixed bottom-4 right-4 z-[500] flex flex-col items-end gap-2 pointer-events-auto" style="font-family: 'Inter', sans-serif;">
-<div id="debug-menu" class="hidden bg-black/90 border border-white/10 rounded-xl p-2 mb-2 shadow-2xl backdrop-blur-md flex flex-col gap-1 w-48 transition-all origin-bottom-right">
+<div id="debug-menu" class="hidden bg-black/95 border border-white/10 rounded-xl p-4 mb-2 shadow-2xl backdrop-blur-md flex flex-col gap-3 w-80 transition-all origin-bottom-right max-h-[85vh] overflow-y-auto">
         <div class="text-[0.6rem] font-bold text-stone-500 uppercase tracking-widest px-2 py-1 border-b border-white/5 mb-1">Developer Tools</div>
-        <button onclick="combatSystem.debugHealSelf()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-green-400 flex items-center gap-2"><i data-lucide="heart" class="w-3 h-3"></i> Heal Self</button>
-        <button onclick="combatSystem.debugRecoverMana()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-blue-400 flex items-center gap-2"><i data-lucide="zap" class="w-3 h-3"></i> Recover Mana</button>
-        <button onclick="combatSystem.debugPowerUp()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-400 flex items-center gap-2"><i data-lucide="swords" class="w-3 h-3"></i> Power Up</button>
         
-        <div class="h-px bg-white/5 my-1"></div>
-        
-        <button onclick="combatSystem.debugKillAll()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2"><i data-lucide="skull" class="w-3 h-3"></i> Kill All Enemies</button>
-        <button onclick="combatSystem.debugDie()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-stone-400 flex items-center gap-2"><i data-lucide="frown" class="w-3 h-3"></i> Kill All Heroes</button>
-        
-        <div class="h-px bg-white/5 my-1"></div>
-        
-        <button onclick="combatSystem.debugVictory()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-amber-400 flex items-center gap-2"><i data-lucide="trophy" class="w-3 h-3"></i> Force Victory</button>
-        <button onclick="combatSystem.debugDefeat()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-400 flex items-center gap-2"><i data-lucide="x-circle" class="w-3 h-3"></i> Force Defeat</button>
-        
-        <div class="h-px bg-white/5 my-1"></div>
-        
-        <button onclick="combatSystem.toggleAutoGame()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2"><i data-lucide="cpu" class="w-3 h-3"></i> <span id="debug-autogame-text">AutoGame: OFF</span></button>
-        <button onclick="combatSystem.toggleQuickCombat()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-cyan-400 flex items-center gap-2"><i data-lucide="zap" class="w-3 h-3"></i> <span id="debug-quickcombat-text">Quick: OFF</span></button>
-        <button onclick="combatSystem.debugResetBattle()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-orange-400 flex items-center gap-2"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset Battle</button>
-        
-        <button onclick="combatSystem.debugInspect()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-cyan-400 flex items-center gap-2 border-t border-white/5 mt-1 pt-2"><i data-lucide="search" class="w-3 h-3"></i> Inspect Stats</button>
+        <!-- Entity Selection -->
+        <div class="flex flex-col gap-2">
+            <label class="text-[0.65rem] font-bold text-stone-400 uppercase tracking-wider">Select Entity</label>
+            <select id="debug-target-select" class="bg-black/60 border border-white/10 rounded px-3 py-2 text-xs text-stone-300 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30">
+                <option value="">-- Select Entity --</option>
+            </select>
+        </div>
+
+        <!-- HP/MP Controls -->
+        <div class="flex flex-col gap-2 border-t border-white/5 pt-2">
+            <label class="text-[0.65rem] font-bold text-stone-400 uppercase tracking-wider">HP/MP Controls</label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="combatSystem.debugHealFull()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-green-400 flex items-center gap-2 border border-white/5"><i data-lucide="heart" class="w-3 h-3"></i> Full Heal</button>
+                <button onclick="combatSystem.debugRestoreMana()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-blue-400 flex items-center gap-2 border border-white/5"><i data-lucide="zap" class="w-3 h-3"></i> Full MP</button>
+                <button onclick="combatSystem.debugDamageEntity()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-400 flex items-center gap-2 border border-white/5"><i data-lucide="heart-crack" class="w-3 h-3"></i> -50% HP</button>
+                <button onclick="combatSystem.debugDrainMana()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-orange-400 flex items-center gap-2 border border-white/5"><i data-lucide="battery-low" class="w-3 h-3"></i> -50% MP</button>
+            </div>
+        </div>
+
+        <!-- Kill/Revive -->
+        <div class="flex flex-col gap-2 border-t border-white/5 pt-2">
+            <label class="text-[0.65rem] font-bold text-stone-400 uppercase tracking-wider">Life/Death</label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="combatSystem.debugKill()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-600 flex items-center gap-2 border border-white/5"><i data-lucide="skull" class="w-3 h-3"></i> Kill</button>
+                <button onclick="combatSystem.debugRevive()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-green-400 flex items-center gap-2 border border-white/5"><i data-lucide="heart-pulse" class="w-3 h-3"></i> Revive</button>
+            </div>
+        </div>
+
+        <!-- Force AI Skill (Enemies Only) -->
+        <div class="flex flex-col gap-2 border-t border-white/5 pt-2">
+            <label class="text-[0.65rem] font-bold text-stone-400 uppercase tracking-wider">Force AI Action</label>
+            <select id="debug-force-skill-select" class="bg-black/60 border border-white/10 rounded px-3 py-2 text-xs text-stone-300 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30">
+                <option value="">-- Select Skill --</option>
+            </select>
+            <button onclick="combatSystem.debugForceAISkill()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2 border border-white/5"><i data-lucide="wand-2" class="w-3 h-3"></i> Force Next Turn</button>
+        </div>
+
+        <!-- Batch Actions -->
+        <div class="flex flex-col gap-2 border-t border-white/5 pt-2">
+            <label class="text-[0.65rem] font-bold text-stone-400 uppercase tracking-wider">Batch Actions</label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="combatSystem.debugHealSelf()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-green-400 flex items-center gap-2 border border-white/5"><i data-lucide="users" class="w-3 h-3"></i> Heal All</button>
+                <button onclick="combatSystem.debugKillAll()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2 border border-white/5"><i data-lucide="skull" class="w-3 h-3"></i> Kill Enemies</button>
+                <button onclick="combatSystem.debugDie()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-600 flex items-center gap-2 border border-white/5"><i data-lucide="frown" class="w-3 h-3"></i> Kill Heroes</button>
+                <button onclick="combatSystem.debugPowerUp()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-yellow-400 flex items-center gap-2 border border-white/5"><i data-lucide="swords" class="w-3 h-3"></i> Power Up</button>
+            </div>
+        </div>
+
+        <!-- Battle Controls -->
+        <div class="flex flex-col gap-2 border-t border-white/5 pt-2">
+            <label class="text-[0.65rem] font-bold text-stone-400 uppercase tracking-wider">Battle Control</label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="combatSystem.debugVictory()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-amber-400 flex items-center gap-2 border border-white/5"><i data-lucide="trophy" class="w-3 h-3"></i> Victory</button>
+                <button onclick="combatSystem.debugDefeat()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-red-400 flex items-center gap-2 border border-white/5"><i data-lucide="x-circle" class="w-3 h-3"></i> Defeat</button>
+            </div>
+            <button onclick="combatSystem.debugSkipTurn()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-cyan-400 flex items-center gap-2 border border-white/5"><i data-lucide="skip-forward" class="w-3 h-3"></i> Skip Turn</button>
+        </div>
+
+        <!-- Settings -->
+        <div class="flex flex-col gap-2 border-t border-white/5 pt-2">
+            <label class="text-[0.65rem] font-bold text-stone-400 uppercase tracking-wider">Settings</label>
+            <button onclick="combatSystem.toggleAutoGame()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-purple-400 flex items-center gap-2 border border-white/5"><i data-lucide="cpu" class="w-3 h-3"></i> <span id="debug-autogame-text">AutoGame: OFF</span></button>
+            <button onclick="combatSystem.toggleQuickCombat()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-cyan-400 flex items-center gap-2 border border-white/5"><i data-lucide="zap" class="w-3 h-3"></i> <span id="debug-quickcombat-text">Quick: OFF</span></button>
+            <button onclick="combatSystem.debugResetBattle()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-orange-400 flex items-center gap-2 border border-white/5"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset Battle</button>
+            <button onclick="combatSystem.debugInspect()" class="px-3 py-1.5 rounded hover:bg-white/10 text-left text-xs font-mono text-stone-300 hover:text-cyan-400 flex items-center gap-2 border border-white/5"><i data-lucide="search" class="w-3 h-3"></i> Inspect Stats</button>
+        </div>
     </div>
-    <button onclick="document.getElementById('debug-menu').classList.toggle('hidden')" class="w-10 h-10 rounded-full bg-stone-900/80 border border-white/10 text-stone-500 hover:text-white hover:bg-stone-800 flex items-center justify-center transition-all shadow-lg hover:rotate-90">
+    <button onclick="combatSystem.toggleDebugMenu()" class="w-10 h-10 rounded-full bg-stone-900/80 border border-white/10 text-stone-500 hover:text-white hover:bg-stone-800 flex items-center justify-center transition-all shadow-lg hover:rotate-90">
         <i data-lucide="bug" class="w-5 h-5"></i>
     </button>
 </div>

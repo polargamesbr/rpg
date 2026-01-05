@@ -16,7 +16,7 @@
             <!-- Hero Image & Slots Container -->
             <div class="relative flex-1 overflow-hidden group">
                 <!-- Hero Image: No Filters -->
-                <img src="<?= asset('img/archer-male.png') ?>" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700" alt="Hero">
+                <img src="<?= asset('img/swordman-male.png') ?>" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700" alt="Swordman">
                 
                 <!-- Radiant Background Effect -->
                 <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent"></div>
@@ -27,8 +27,8 @@
                     
                     <!-- Header -->
                     <div class="text-center mt-2 pointer-events-auto relative z-20 mb-4">
-                        <h2 class="text-3xl font-serif text-white tracking-widest drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]" style="font-family: 'Cinzel', serif;">Willian</h2>
-                        <div class="text-amber-500 text-[10px] font-bold tracking-[0.4em] uppercase mt-1">Swordsman • Lvl 7</div>
+                        <h2 class="text-3xl font-serif text-white tracking-widest drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]" style="font-family: 'Cinzel', serif;">Swordman</h2>
+                        <div class="text-amber-500 text-[10px] font-bold tracking-[0.4em] uppercase mt-1">Swordman • Lvl 10</div>
                     </div>
 
                     <!-- Equipment Sockets Grid (Cross Pattern) -->
@@ -84,10 +84,10 @@
                                 <i data-lucide="heart" class="w-4 h-4 fill-current"></i>
                                 <span class="text-xs font-bold tracking-widest">HP</span>
                             </div>
-                            <span class="text-xs font-mono text-stone-400">850<span class="text-stone-600">/1000</span></span>
+                            <span class="text-xs font-mono text-stone-400"><span id="char-hp-current">1200</span><span class="text-stone-600">/<span id="char-hp-max">1200</span></span></span>
                         </div>
                         <div class="h-2 w-full bg-red-900/10 rounded-full border border-red-500/10 overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-red-900 to-red-500 w-[85%] shadow-[0_0_10px_rgba(239,68,68,0.4)]"></div>
+                            <div class="h-full bg-gradient-to-r from-red-900 to-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]" id="char-hp-bar" style="width: 100%"></div>
                         </div>
                     </div>
 
@@ -98,10 +98,10 @@
                                 <i data-lucide="droplet" class="w-4 h-4 fill-current"></i>
                                 <span class="text-xs font-bold tracking-widest">MANA</span>
                             </div>
-                            <span class="text-xs font-mono text-stone-400">320<span class="text-stone-600">/500</span></span>
+                            <span class="text-xs font-mono text-stone-400"><span id="char-mana-current">350</span><span class="text-stone-600">/<span id="char-mana-max">350</span></span></span>
                         </div>
                         <div class="h-2 w-full bg-blue-900/10 rounded-full border border-blue-500/10 overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-blue-900 to-blue-500 w-[64%] shadow-[0_0_10px_rgba(59,130,246,0.4)]"></div>
+                            <div class="h-full bg-gradient-to-r from-blue-900 to-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.4)]" id="char-mana-bar" style="width: 100%"></div>
                         </div>
                     </div>
 
@@ -112,10 +112,10 @@
                                 <i data-lucide="star" class="w-4 h-4 fill-current"></i>
                                 <span class="text-xs font-bold tracking-widest">XP</span>
                             </div>
-                            <span class="text-xs font-mono text-stone-400">2450<span class="text-stone-600">/3000</span></span>
+                            <span class="text-xs font-mono text-stone-400"><span id="char-xp-current">0</span><span class="text-stone-600">/<span id="char-xp-max">5000</span></span></span>
                         </div>
                         <div class="h-2 w-full bg-emerald-900/10 rounded-full border border-emerald-500/10 overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-emerald-900 to-emerald-500 w-[82%] shadow-[0_0_10px_rgba(16,185,129,0.4)]"></div>
+                            <div class="h-full bg-gradient-to-r from-emerald-900 to-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" id="char-xp-bar" style="width: 0%"></div>
                         </div>
                     </div>
 
@@ -123,12 +123,32 @@
 
                 <!-- Attributes Grid -->
                 <div class="grid grid-cols-3 gap-3">
-                    <div class="stat-pill"><span class="label text-amber-500">STR</span><span class="val">12</span></div>
-                    <div class="stat-pill"><span class="label text-green-500">AGI</span><span class="val">15</span></div>
-                    <div class="stat-pill"><span class="label text-red-500">VIT</span><span class="val">10</span></div>
-                    <div class="stat-pill"><span class="label text-blue-500">INT</span><span class="val">8</span></div>
-                    <div class="stat-pill"><span class="label text-purple-500">DEX</span><span class="val">14</span></div>
-                    <div class="stat-pill"><span class="label text-yellow-500">LUK</span><span class="val">5</span></div>
+                    <div class="stat-pill"><span class="label text-amber-500">STR</span><span class="val" id="char-attr-str">12</span></div>
+                    <div class="stat-pill"><span class="label text-green-500">AGI</span><span class="val" id="char-attr-agi">8</span></div>
+                    <div class="stat-pill"><span class="label text-red-500">VIT</span><span class="val" id="char-attr-vit">10</span></div>
+                    <div class="stat-pill"><span class="label text-blue-500">INT</span><span class="val" id="char-attr-int">5</span></div>
+                    <div class="stat-pill"><span class="label text-purple-500">DEX</span><span class="val" id="char-attr-dex">8</span></div>
+                    <div class="stat-pill"><span class="label text-yellow-500">LUK</span><span class="val" id="char-attr-luk">5</span></div>
+                </div>
+
+                <!-- Derived Stats (Optional Display) -->
+                <div class="mt-4 pt-4 border-t border-white/5 grid grid-cols-2 gap-2 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-stone-500">ATK:</span>
+                        <span class="text-white font-bold" id="char-stat-atk">160</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-stone-500">DEF:</span>
+                        <span class="text-white font-bold" id="char-stat-def">116</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-stone-500">ASPD:</span>
+                        <span class="text-white font-bold" id="char-stat-aspd">120</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-stone-500">Element:</span>
+                        <span class="text-stone-400 font-bold">Neutral</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -168,19 +188,21 @@
                     </div>
 
                     <!-- Grid -->
-                    <div class="grid grid-cols-5 md:grid-cols-6 xl:grid-cols-8 gap-4 overflow-y-auto custom-scrollbar pr-2 pb-20 content-start">
-                         <!-- Filled Slots Sample -->
-                        <div class="inv-slot rare flex flex-col items-center justify-center group bg-[#151b25]">
-                             <i data-lucide="bow" class="w-8 h-8 text-green-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
+                    <div class="grid grid-cols-5 md:grid-cols-6 xl:grid-cols-8 gap-4 overflow-y-auto custom-scrollbar pr-2 pb-20 content-start" id="char-inventory-grid">
+                         <!-- HP Potions (3x) -->
+                        <div class="inv-slot uncommon flex flex-col items-center justify-center group bg-[#0f2e22]" title="HP Potion">
+                             <i data-lucide="flask-conical" class="w-8 h-8 text-red-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
+                            <div class="qty">3</div>
+                        </div>
+                         <!-- Mana Potion (1x) -->
+                        <div class="inv-slot uncommon flex flex-col items-center justify-center group bg-[#0f1b2e]" title="Mana Potion">
+                             <i data-lucide="flask-conical" class="w-8 h-8 text-blue-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
                             <div class="qty">1</div>
                         </div>
-                         <div class="inv-slot epic flex flex-col items-center justify-center group bg-[#1e1b2e]">
-                             <i data-lucide="sword" class="w-8 h-8 text-purple-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
+                         <!-- Antidote Potion (1x) -->
+                        <div class="inv-slot uncommon flex flex-col items-center justify-center group bg-[#1e2e1b]" title="Antidote Potion">
+                             <i data-lucide="flask-conical" class="w-8 h-8 text-emerald-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
                             <div class="qty">1</div>
-                        </div>
-                         <div class="inv-slot uncommon flex flex-col items-center justify-center group bg-[#0f2e22]">
-                             <i data-lucide="flask" class="w-8 h-8 text-emerald-400 opacity-70 group-hover:opacity-100 transition-opacity"></i>
-                            <div class="qty">5</div>
                         </div>
 
                         <?php for($i=0; $i<29; $i++): ?>
@@ -190,16 +212,10 @@
                 </div>
 
                  <!-- SKILLS TAB -->
-                <div id="tab-skills" class="tab-content hidden h-full">
+                <div id="tab-skills" class="tab-content hidden h-full flex flex-col">
                     <h3 class="text-xl font-serif text-white mb-4">Active Skills</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div class="flex items-center p-4 bg-white/5 rounded border border-white/10 hover:border-amber-500/50 transition-colors cursor-pointer group">
-                            <div class="w-12 h-12 bg-amber-900/50 rounded mr-4 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform"><i data-lucide="sword"></i></div>
-                            <div>
-                                <div class="font-bold text-white group-hover:text-amber-400 transition-colors">Power Strike</div>
-                                <div class="text-xs text-stone-400">Next Level: +15 DMG</div>
-                            </div>
-                        </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-2 pb-20 content-start" id="char-skills-grid">
+                        <!-- Skills will be rendered here by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -323,9 +339,67 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: all 0.2s ease;
     }
     .inv-slot.empty { opacity: 0.3; border: 1px dashed rgba(255,255,255,0.1); background: transparent; }
-    .inv-slot:not(.empty):hover { border-color: rgba(255,255,255,0.4); box-shadow: 0 0 15px rgba(0,0,0,0.5); transform: scale(1.02); z-index: 10; }
+    .inv-slot:not(.empty):hover { 
+        border-color: rgba(212,175,55,0.5); 
+        box-shadow: 0 0 20px rgba(212,175,55,0.2), inset 0 0 20px rgba(212,175,55,0.05); 
+        transform: scale(1.02); 
+        z-index: 10; 
+    }
+
+    /* Skill Card Styles (Premium Dark/Combat-like) */
+    .skill-card {
+        background: rgba(10,10,10,0.8);
+        border: 1px solid rgba(255,255,255,0.1);
+        backdrop-filter: blur(4px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .skill-card:hover {
+        border-color: rgba(212,175,55,0.6);
+        background: rgba(20,20,20,0.9);
+        box-shadow: 0 4px 20px rgba(212,175,55,0.15), inset 0 0 30px rgba(212,175,55,0.05);
+        transform: translateY(-2px);
+    }
+    .skill-card .qty {
+        position: absolute;
+        bottom: 2px;
+        right: 4px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Enhanced Stat Pills */
+    .stat-pill {
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.08);
+        backdrop-filter: blur(4px);
+    }
+    .stat-pill:hover {
+        background: rgba(255,255,255,0.08);
+        border-color: rgba(212,175,55,0.3);
+        box-shadow: 0 0 10px rgba(212,175,55,0.1);
+    }
+
+    /* Enhanced Bars with Glow */
+    #char-hp-bar {
+        background: linear-gradient(90deg, #991b1b 0%, #dc2626 50%, #ef4444 100%);
+        box-shadow: 0 0 15px rgba(239,68,68,0.5), inset 0 0 10px rgba(239,68,68,0.3);
+    }
+    #char-mana-bar {
+        background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+        box-shadow: 0 0 15px rgba(59,130,246,0.5), inset 0 0 10px rgba(59,130,246,0.3);
+    }
+    #char-xp-bar {
+        background: linear-gradient(90deg, #065f46 0%, #10b981 50%, #34d399 100%);
+        box-shadow: 0 0 15px rgba(16,185,129,0.5), inset 0 0 10px rgba(16,185,129,0.3);
+    }
 </style>
 
 <script>
@@ -357,7 +431,153 @@
         
         // Simple active state logic
         if(tabName === 'inventory' && tabs[0]) tabs[0].classList.add('active');
-        if(tabName === 'skills' && tabs[1]) tabs[1].classList.add('active');
+        if(tabName === 'skills' && tabs[1]) {
+            tabs[1].classList.add('active');
+            // Load skills when switching to skills tab
+            loadSwordmanSkills();
+        }
+    }
+
+    // Swordman skills list (from combat-data.js)
+    const SWORDMAN_SKILL_IDS = [
+        'quick_slash', 'guarded_strike', 'parry_stance', 'heavy_slash',
+        'shield_bash', 'taunting_shout', 'cleave', 'defensive_wall',
+        'crushing_blow', 'battle_focus', 'relentless_strike', 'champions_slash',
+        'life_steal', 'berserk_mode'
+    ];
+
+    // Mock skill data (fallback if skillsData not available)
+    const SWORDMAN_SKILLS_MOCK = {
+        quick_slash: { name: 'Quick Slash', icon: 'sword', mana: 5, desc: 'Basic physical attack against a single target.', type: 'single' },
+        guarded_strike: { name: 'Guarded Strike', icon: 'shield', mana: 15, desc: 'Moderate physical attack. 15% Stun chance.', type: 'single' },
+        parry_stance: { name: 'Parry Stance', icon: 'shield', mana: 15, desc: 'Increases parry chance to 30% for 1 turn.', type: 'ally' },
+        heavy_slash: { name: 'Heavy Slash', icon: 'sword', mana: 20, desc: 'Strong physical attack against a single target.', type: 'single' },
+        shield_bash: { name: 'Shield Bash', icon: 'shield', mana: 25, desc: 'Moderate attack. 50% Stun chance.', type: 'single' },
+        taunting_shout: { name: 'Taunting Shout', icon: 'speaker', mana: 10, desc: 'Provokes enemies to target you (80% chance).', type: 'self' },
+        cleave: { name: 'Cleave', icon: 'target', mana: 30, desc: 'Physical attack that hits all enemies.', type: 'aoe' },
+        defensive_wall: { name: 'Defensive Wall', icon: 'shield-check', mana: 30, desc: 'Reduces damage taken by 50% for 2 turns.', type: 'ally' },
+        crushing_blow: { name: 'Crushing Blow', icon: 'hammer', mana: 25, desc: 'Heavy attack. 30% Bleed chance.', type: 'single' },
+        battle_focus: { name: 'Battle Focus', icon: 'zap', mana: 40, desc: 'Increases target STR, DEX and damage dealt by 50% for 3 turns.', type: 'ally' },
+        relentless_strike: { name: 'Relentless Strike', icon: 'sword', mana: 35, desc: 'Powerful attack that hits the target twice.', type: 'single' },
+        champions_slash: { name: 'Champion\'s Slash', icon: 'crown', mana: 60, desc: 'Signature finisher. High damage + Stun/Bleed chance.', type: 'single' },
+        life_steal: { name: 'Life Steal', icon: 'heart', mana: 55, desc: 'Deals damage and steals 40% of damage dealt as HP. Great for sustain.', type: 'single' },
+        berserk_mode: { name: 'Berserk Mode', icon: 'zap', mana: 65, desc: 'Increases ATK by 100% but reduces DEF by 50% for 3 turns. High risk, high reward.', type: 'self' }
+    };
+
+    function loadSwordmanSkills() {
+        const skillsGrid = document.getElementById('char-skills-grid');
+        if (!skillsGrid) return;
+
+        // Check if skills were already loaded
+        if (skillsGrid.dataset.loaded === 'true') return;
+
+        const skillsData = window.skillsData || {};
+        skillsGrid.innerHTML = '';
+
+        SWORDMAN_SKILL_IDS.forEach(skillId => {
+            // Try to get skill from skillsData, fallback to mock
+            const skillData = skillsData[skillId] || SWORDMAN_SKILLS_MOCK[skillId];
+            if (!skillData) return;
+
+            const skillCard = document.createElement('div');
+            skillCard.className = 'skill-card flex items-start p-4 bg-white/5 rounded-lg border border-white/10 hover:border-amber-500/50 transition-all cursor-pointer group hover:bg-white/10';
+            
+            // Icon
+            const iconEl = document.createElement('div');
+            iconEl.className = 'w-12 h-12 bg-amber-900/50 rounded-lg mr-4 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shrink-0';
+            const icon = document.createElement('i');
+            icon.setAttribute('data-lucide', skillData.icon || 'sword');
+            iconEl.appendChild(icon);
+            
+            // Content
+            const contentEl = document.createElement('div');
+            contentEl.className = 'flex-1 min-w-0';
+            
+            // Name and Mana
+            const headerEl = document.createElement('div');
+            headerEl.className = 'flex items-center justify-between mb-1';
+            
+            const nameEl = document.createElement('div');
+            nameEl.className = 'font-bold text-white group-hover:text-amber-400 transition-colors';
+            nameEl.textContent = skillData.name || skillId;
+            
+            const manaEl = document.createElement('div');
+            manaEl.className = 'text-xs text-blue-400 font-mono ml-2';
+            manaEl.textContent = skillData.mana ? `${skillData.mana} MP` : '';
+            
+            headerEl.appendChild(nameEl);
+            if (skillData.mana) headerEl.appendChild(manaEl);
+            
+            // Type badge
+            const typeEl = document.createElement('div');
+            typeEl.className = 'text-[10px] text-stone-500 uppercase tracking-wider mb-1';
+            const typeText = skillData.type || 'single';
+            typeEl.textContent = typeText === 'aoe' ? 'AOE' : typeText === 'ally' ? 'BUFF' : typeText === 'self' ? 'SELF' : 'SINGLE';
+            
+            // Description
+            const descEl = document.createElement('div');
+            descEl.className = 'text-xs text-stone-400 leading-relaxed';
+            descEl.textContent = skillData.desc || '';
+            
+            contentEl.appendChild(headerEl);
+            contentEl.appendChild(typeEl);
+            contentEl.appendChild(descEl);
+            
+            skillCard.appendChild(iconEl);
+            skillCard.appendChild(contentEl);
+            
+            skillsGrid.appendChild(skillCard);
+        });
+
+        // Mark as loaded
+        skillsGrid.dataset.loaded = 'true';
+
+        // Refresh Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
+    // Calculate derived stats from attributes
+    function calculateSwordmanStats() {
+        const str = 12, agi = 8, vit = 10, int = 5, dex = 8, luk = 5;
+        
+        // Formulas (approximate, based on common RPG patterns)
+        const hp = Math.floor(vit * 100 + str * 10); // ~1200
+        const mp = Math.floor(int * 50 + vit * 10); // ~350
+        const atk = Math.floor(str * 10 + dex * 5); // ~160
+        const def = Math.floor(vit * 8 + str * 3); // ~116
+        const aspd = Math.floor(agi * 10 + dex * 5); // ~120
+        
+        // Update HTML elements
+        const hpMaxEl = document.getElementById('char-hp-max');
+        const hpCurrentEl = document.getElementById('char-hp-current');
+        const hpBarEl = document.getElementById('char-hp-bar');
+        if (hpMaxEl) hpMaxEl.textContent = hp;
+        if (hpCurrentEl) hpCurrentEl.textContent = hp;
+        if (hpBarEl) hpBarEl.style.width = '100%';
+        
+        const mpMaxEl = document.getElementById('char-mana-max');
+        const mpCurrentEl = document.getElementById('char-mana-current');
+        const mpBarEl = document.getElementById('char-mana-bar');
+        if (mpMaxEl) mpMaxEl.textContent = mp;
+        if (mpCurrentEl) mpCurrentEl.textContent = mp;
+        if (mpBarEl) mpBarEl.style.width = '100%';
+        
+        const atkEl = document.getElementById('char-stat-atk');
+        const defEl = document.getElementById('char-stat-def');
+        const aspdEl = document.getElementById('char-stat-aspd');
+        if (atkEl) atkEl.textContent = atk;
+        if (defEl) defEl.textContent = def;
+        if (aspdEl) aspdEl.textContent = aspd;
+    }
+
+    // Initialize stats when modal opens
+    if (document.getElementById('character-modal')) {
+        // Wait for modal to be in DOM, then calculate stats
+        setTimeout(() => {
+            calculateSwordmanStats();
+        }, 100);
     }
 </script>
 

@@ -25,6 +25,10 @@
                     loadingSubtitle: 'Preparing your adventure',
                     onLoaded: function(modalElement) {
                         worldmapModalLoaded = true;
+                        // Hide loading screen before opening modal
+                        if (typeof hideModalLoading === 'function') {
+                            hideModalLoading();
+                        }
                         // Small delay to ensure modal is in DOM
                         setTimeout(() => {
                             openWorldMapModalInternal();

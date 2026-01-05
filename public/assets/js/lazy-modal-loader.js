@@ -116,6 +116,7 @@
         // Check if modal is already loaded
         const existingModal = document.getElementById(elementId);
         if (existingModal && !forceReload) {
+            // Modal already exists, don't show loading screen
             if (onLoaded) onLoaded(existingModal);
             return existingModal;
         }

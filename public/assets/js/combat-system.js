@@ -118,7 +118,7 @@ const combatSystem = {
         const aliveEnemies = this.data?.enemies?.filter(e => e.hp > 0) || [];
         const totalCards = aliveHeroes.length + aliveEnemies.length;
         const isDuel = aliveHeroes.length === 1 && aliveEnemies.length === 1;
-        
+
         // For 1v1, use lower breakpoint (1110px) since only 2 cards fit easily
         // For other scenarios, use standard breakpoint (1640px)
         const layoutBreakpoint = isDuel ? 1110 : 1640;
@@ -183,6 +183,13 @@ const combatSystem = {
         // Initialize particles when modal opens
         if (!this._particleSystem) {
             this.initBackgroundParticles();
+        }
+
+        // Initialize combat visual effects system
+        if (window.CombatEffects && !this._effectsInitialized) {
+            window.CombatEffects.init();
+            this._effectsInitialized = true;
+            console.log('[Combat System] Visual effects initialized');
         }
 
         // Show Setup, Hide Combat
@@ -492,19 +499,27 @@ const combatSystem = {
         this.renderHeroes();
         this.renderEnemies();
         this.renderGraveyard();
-        
+
         // Mark cards as animated after first render (with delay to allow animation to start)
         if (!this.state.cardsAnimated) {
             setTimeout(() => {
                 this.state.cardsAnimated = true;
             }, 1500); // After all animations should have started (500ms + 5 cards * 100ms + buffer)
         }
-        
+
         // Setup resize listener for responsive card sizing
         this.setupResizeListener();
 
         // Initialize debug panel
         this.initDebugPanel();
+
+        // Setup debug target select change listener
+        const debugTargetSelect = document.getElementById('debug-target-select');
+        if (debugTargetSelect) {
+            debugTargetSelect.addEventListener('change', () => {
+                this.updateDebugSkillSelect();
+            });
+        }
 
         // Ensure valid initial ID
         if (this.state.entities.length > 0) {
@@ -528,7 +543,7 @@ const combatSystem = {
                 this.audio.battle.play().catch(() => { });
             }
             this.log("Battle Started!");
-            
+
             // Show turn sequence UI with slide down animation
             const turnSequenceUI = document.getElementById('turn-sequence-ui');
             if (turnSequenceUI) {
@@ -537,7 +552,7 @@ const combatSystem = {
                     turnSequenceUI.classList.add('opacity-100', 'translate-y-0');
                 }, 200); // Small delay after intro hides
             }
-            
+
             this.stepTurn();
         };
 
@@ -567,7 +582,7 @@ const combatSystem = {
         // Filter only alive heroes
         const aliveHeroes = this.data.heroes.filter(h => h.hp > 0);
         const aliveEnemies = this.data.enemies.filter(e => e.hp > 0);
-        
+
         // Calculate dynamic breakpoint based on card count
         const dynamicBreakpoint = this.calculateResponsiveBreakpoint(aliveHeroes.length, aliveEnemies.length);
         const isMobile = window.innerWidth < dynamicBreakpoint || window.innerHeight < 800;
@@ -577,7 +592,7 @@ const combatSystem = {
         // Responsive card sizing with dynamic breakpoints
         let cardSizeClass;
         const totalCards = aliveHeroes.length + aliveEnemies.length;
-        
+
         if (isDuel) {
             // 1v1 (Duel)
             if (isXL) cardSizeClass = "w-[400px] h-[600px]"; // XL duel
@@ -701,7 +716,7 @@ const combatSystem = {
                 <div class="slash-effect absolute inset-0 pointer-events-none z-40 hidden"></div>
             `;
             c.appendChild(el);
-            
+
             // Entrance animation with stagger using CSS classes (only on first render)
             if (!this.state.cardsAnimated) {
                 const heroIndex = aliveHeroes.indexOf(h);
@@ -1526,29 +1541,62 @@ const combatSystem = {
         // Remove UI clutter
         document.getElementById('action-bar')?.classList.add('opacity-0', 'pointer-events-none');
         document.getElementById('turn-banner')?.classList.add('hidden');
+        document.getElementById('turn-sequence-ui')?.classList.add('opacity-0', 'pointer-events-none');
 
-        // Hide existing victory/defeat overlays first
-        const existingVictory = document.getElementById('victory-overlay');
-        const existingDefeat = document.getElementById('defeat-overlay');
+        // CRITICAL: Ensure combat modal is visible before showing overlays
+        const combatModal = document.getElementById('combat-modal');
+        if (combatModal) {
+            combatModal.classList.remove('hidden');
+            combatModal.setAttribute('aria-hidden', 'false');
+            // Ensure modal is visible (remove opacity-0 if present)
+            if (combatModal.classList.contains('opacity-0')) {
+                combatModal.classList.remove('opacity-0');
+            }
+            combatModal.style.display = 'block'; // Ensure display is not none
+        }
+
+        // Find overlays - they should be within the combat modal
+        const existingVictory = combatModal?.querySelector('#victory-overlay') || document.getElementById('victory-overlay');
+        const existingDefeat = combatModal?.querySelector('#defeat-overlay') || document.getElementById('defeat-overlay');
+
+        console.log('[VICTORY/DEFEAT DEBUG] Combat modal found:', !!combatModal);
+        console.log('[VICTORY/DEFEAT DEBUG] Victory overlay found:', !!existingVictory);
+        console.log('[VICTORY/DEFEAT DEBUG] Defeat overlay found:', !!existingDefeat);
 
         if (victory) {
             console.log('[VICTORY/DEFEAT DEBUG] Showing VICTORY overlay');
             this.log('VICTORY! All enemies defeated.');
 
-            if (existingDefeat) existingDefeat.classList.add('hidden', 'opacity-0');
+            if (existingDefeat) {
+                existingDefeat.classList.add('hidden', 'opacity-0');
+            }
             if (existingVictory) {
                 existingVictory.classList.remove('hidden');
-                setTimeout(() => existingVictory.classList.remove('opacity-0'), 100);
+                existingVictory.style.display = 'flex'; // Ensure display is flex
+                existingVictory.style.zIndex = '9999'; // Ensure it's on top
+                requestAnimationFrame(() => {
+                    existingVictory.classList.remove('opacity-0');
+                });
+            } else {
+                console.error('[VICTORY/DEFEAT DEBUG] Victory overlay not found!');
             }
             if (this.audioManager) this.audioManager.play('victory');
         } else {
             console.log('[VICTORY/DEFEAT DEBUG] Showing DEFEAT overlay');
             this.log('DEFEAT! The party has fallen.');
 
-            if (existingVictory) existingVictory.classList.add('hidden', 'opacity-0');
+            if (existingVictory) {
+                existingVictory.classList.add('hidden', 'opacity-0');
+            }
             if (existingDefeat) {
                 existingDefeat.classList.remove('hidden');
-                setTimeout(() => existingDefeat.classList.remove('opacity-0'), 100);
+                existingDefeat.style.display = 'flex'; // Ensure display is flex
+                existingDefeat.style.zIndex = '9999'; // Ensure it's on top
+                requestAnimationFrame(() => {
+                    existingDefeat.classList.remove('opacity-0');
+                });
+            } else {
+                console.error('[VICTORY/DEFEAT DEBUG] Defeat overlay not found!');
             }
             if (this.audioManager) this.audioManager.play('death');
         }
@@ -1777,7 +1825,7 @@ const combatSystem = {
                 this.state.firstPlayerTurnShown = true;
             }
         }
-        
+
         if (!this.skipUI()) {
             // Ensure enemy target markers are cleared when player's turn starts
             document.querySelectorAll('.enemy-target-marker').forEach(el => el.remove());
@@ -2643,6 +2691,15 @@ const combatSystem = {
             this.updateTurnIndicator(hero, "SELECT TARGET");
             const t = this.data.enemies.find(e => e.hp > 0);
             if (t) this.selectEnemyTarget(t.id);
+        } else if (s.type === 'ally') {
+            // New explicit ally targeting type
+            this.state.targetMode = 'ally';
+            this.state.phase = 'selecting_target';
+            this.updateTurnIndicator(hero, "SELECT ALLY");
+            // Auto-select self as default, but allow changing
+            this.state.actionTargets = [hero.id];
+            this.updateTargetUI();
+            this.updateHpPreview();
         } else if (s.type === 'self') {
             // Skills self são aplicadas automaticamente no próprio conjurador
             this.state.actionTargets = [hero.id];
@@ -2652,20 +2709,17 @@ const combatSystem = {
             this.updateTargetUI();
             this.updateHpPreview();
         } else {
-            // Support skills (heal/buff) should be able to target allies in party.
-            // Check if skill name is "Heal" or has support properties
-            const isHeal = s.name && s.name.toLowerCase() === 'heal';
+            // Support skills identification
+            const isHeal = s.name && s.name.toLowerCase().includes('heal'); // more broad check
             const hasHeal = !!(s.heal || s.healPct);
             const isSupport = isHeal || hasHeal || !!(s.buff || s.manaRestore || s.manaRestorePct);
 
-            // If it's a support skill (heal/buff), allow targeting allies
             if (isSupport) {
                 this.state.targetMode = 'ally';
                 this.state.phase = 'selecting_target';
                 this.updateTurnIndicator(hero, "SELECT ALLY");
-                // Auto-select self as default, but allow changing target
                 this.state.actionTargets = [hero.id];
-                this.updateTargetUI(); // Show green marker immediately
+                this.updateTargetUI();
                 this.updateHpPreview();
             } else {
                 this.state.actionTargets = [hero.id];
@@ -3606,7 +3660,18 @@ const combatSystem = {
             return;
         }
 
+
         const targets = this.state.actionTargets;
+
+        // Trigger visual effects for skill
+        const targetEntities = targets.map(tid =>
+            this.data.heroes.find(h => h.id === tid) || this.data.enemies.find(e => e.id === tid)
+        ).filter(t => t && t.hp > 0);
+
+        if (targetEntities.length > 0) {
+            this.triggerSkillVisualEffect(hero, skill, targetEntities);
+        }
+
         targets.forEach((tid, index) => {
             const processTarget = () => {
                 // Healing branch (self or party)
@@ -3934,8 +3999,8 @@ const combatSystem = {
         const card = document.querySelector(cardSelector);
         if (card) {
             const root = card.querySelector('.floater-root');
-            // Green text for heal
-            this.spawnFloater(`+${actualHeal}`, false, null, false, root, 'heal');
+            // Green text with heart icon for heal
+            this.spawnFloater(`+${actualHeal}`, false, null, true, root, 'heal');
         }
     },
 
@@ -4101,6 +4166,13 @@ const combatSystem = {
             const incapacitated = e.statusEffects && e.statusEffects.some(s => ['stun', 'freeze', 'sleep'].includes(s.id));
             if (incapacitated) { e.nextIntent = null; return; }
 
+            // Skip if intent was manually forced (debug mode)
+            // Don't clear the flag here - it will be cleared in startEnemyTurn() after use
+            if (e._debugForcedIntent) {
+                e.nextIntent = e._debugForcedIntent;
+                return;
+            }
+
             // Generate candidates
             let candidates = [{ type: 'attack', skill: null, name: 'Attack' }];
             if (e.skills && e.skills.length > 0) {
@@ -4164,6 +4236,11 @@ const combatSystem = {
                 c.style.setProperty('--ty', '-40px');
                 c.classList.add('z-50');
             }
+        }
+
+        // Clear debug forced intent flag after use (one-time use)
+        if (e._debugForcedIntent) {
+            e._debugForcedIntent = null;
         }
 
         // Execute the forecasted intent or default to attack (fallback)
@@ -4499,7 +4576,7 @@ const combatSystem = {
         // NOTE: Skills with type 'aoe' + healPct (like Celestial Wrath) are NOT support skills
         // They damage enemies AND heal allies separately
         const isSupportSkill = skill.category === 'heal' || skill.category === 'buff' ||
-            skill.type === 'aoe_heal' || 
+            skill.type === 'aoe_heal' || skill.type === 'ally' ||
             (skill.healPct && skill.type !== 'aoe') || // healPct only makes it support if NOT aoe type
             skill.type === 'self' || !!skill.buff;
 
@@ -4559,7 +4636,7 @@ const combatSystem = {
                             // NOTE: Skills with type 'aoe' + healPct (like Celestial Wrath) are NOT support skills
                             // They damage enemies AND heal allies separately
                             const isSupport = skill.category === 'heal' || skill.category === 'buff' ||
-                                skill.type === 'aoe_heal' ||
+                                skill.type === 'aoe_heal' || skill.type === 'ally' ||
                                 (skill.healPct && skill.type !== 'aoe') || // healPct only makes it support if NOT aoe type
                                 skill.type === 'self' || !!skill.buff;
 
@@ -4918,6 +4995,18 @@ const combatSystem = {
             this.log(`${target.name} parried the attack!`);
             if (!this.skipUI()) {
                 this.spawnFloater("PARRY", false, null, false, null, 'miss');
+                // Visual effect: Parry
+                if (window.CombatEffects) {
+                    const card = target.isPlayer
+                        ? document.querySelector(`.hero-card-instance[data-id="${target.id}"]`)
+                        : document.querySelector(`.enemy-card-instance[data-id="${target.id}"]`);
+                    if (card) {
+                        const rect = card.getBoundingClientRect();
+                        const centerX = rect.left + rect.width / 2;
+                        const centerY = rect.top + rect.height / 2;
+                        window.CombatEffects.triggerEffect('parry', centerX, centerY);
+                    }
+                }
                 // Audio: Parry
                 if (this.audioManager) {
                     this.audioManager.play('parry', { attacker, target });
@@ -4932,6 +5021,18 @@ const combatSystem = {
                 this.log(`${target.name} parried the attack!`);
                 if (!this.skipUI()) {
                     this.spawnFloater("PARRY", false, null, false, null, 'miss');
+                    // Visual effect: Parry
+                    if (window.CombatEffects) {
+                        const card = target.isPlayer
+                            ? document.querySelector(`.hero-card-instance[data-id="${target.id}"]`)
+                            : document.querySelector(`.enemy-card-instance[data-id="${target.id}"]`);
+                        if (card) {
+                            const rect = card.getBoundingClientRect();
+                            const centerX = rect.left + rect.width / 2;
+                            const centerY = rect.top + rect.height / 2;
+                            window.CombatEffects.triggerEffect('parry', centerX, centerY);
+                        }
+                    }
                     // Audio: Parry
                     if (this.audioManager) {
                         this.audioManager.play('parry', { attacker, target });
@@ -4988,6 +5089,21 @@ const combatSystem = {
 
         target.hp = Math.max(0, target.hp - damage);
 
+        // Trigger visual effects for damage
+        if (attacker && damage > 0 && !this.skipUI()) {
+            const skill = attacker.activeSkill || null;
+            const hitPos = this.triggerDamageVisualEffect(attacker, target, {
+                damage,
+                isCrit,
+                skill,
+                type
+            });
+
+            // Store position on the entity temporalily for the floater logic below
+            target._lastHitPos = hitPos;
+        }
+
+
         // Detailed Debug Log
         this.debug('DAMAGE', `${attacker ? attacker.name : 'Environment'} deals ${damage} (${type}) to ${target.name}`, {
             attacker: attacker ? attacker.name : 'Environment',
@@ -5021,13 +5137,13 @@ const combatSystem = {
 
             // Show elemental effectiveness text
             if (elementalCategory === 'super') {
-                this.spawnFloater('SUPER EFFECTIVE!', false, null, false, floaterRoot, 'super-effective');
+                this.spawnFloater('SUPER EFFECTIVE!', false, null, false, floaterRoot, 'super-effective', target._lastHitPos);
                 // Audio: Super effective
                 if (this.audioManager && attacker) {
                     this.audioManager.play('super_effective', { attacker, target });
                 }
             } else if (elementalCategory === 'weak') {
-                this.spawnFloater('INEFFECTIVE', false, null, false, floaterRoot, 'not-effective');
+                this.spawnFloater('INEFFECTIVE', false, null, false, floaterRoot, 'not-effective', target._lastHitPos);
             }
         }
 
@@ -5037,7 +5153,7 @@ const combatSystem = {
                 const card = document.querySelector(`.hero-card-instance[data-id="${target.id}"]`);
                 if (card) {
                     const root = card.querySelector('.floater-root');
-                    this.spawnFloater(Math.floor(damage), isCrit, null, false, root, isCrit ? 'crit' : '');
+                    this.spawnFloater(Math.floor(damage), isCrit, null, false, root, isCrit ? 'crit' : '', target._lastHitPos);
                 }
             }
             if (target.hp <= 0) {
@@ -5072,7 +5188,7 @@ const combatSystem = {
                 if (card) {
                     this.updateEnemyBars(target);
                     const floaterRoot = card.querySelector('.floater-root') || card;
-                    this.spawnFloater(Math.floor(damage), isCrit, null, false, floaterRoot, isCrit ? 'crit' : '');
+                    this.spawnFloater(Math.floor(damage), isCrit, null, false, floaterRoot, isCrit ? 'crit' : '', target._lastHitPos);
                 }
             }
             if (target.hp <= 0) {
@@ -5149,6 +5265,234 @@ const combatSystem = {
                 targetCard.classList.remove('hit-shake');
                 targetCard.style.removeProperty('--shake-x');
             }, isCrit ? 200 : 150);
+        }
+    },
+
+    /**
+     * Helper to get a randomized hit position on a card.
+     * Uses "clock zones" to make hits appear in different spots.
+     * @param {HTMLElement} card The card element
+     * @param {Object} options Randomization options
+     * @returns {Object} {x, y} coordinates relative to battlefield
+     */
+    getCardHitPosition(card, options = {}) {
+        const rect = card.getBoundingClientRect();
+        const container = document.getElementById('battlefield-container')?.getBoundingClientRect() || { left: 0, top: 0 };
+
+        // Base center of the portrait area
+        const baseOffset = options.yOffset || 100;
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + baseOffset;
+
+        // Define zones (offsets from center)
+        const offset = options.range || 70;
+        const zones = [
+            { id: 'center', x: 0, y: 0 },
+            { id: '1h', x: offset * 0.5, y: -offset * 0.86 },
+            { id: '3h', x: offset, y: 0 },
+            { id: '5h', x: offset * 0.5, y: offset * 0.86 },
+            { id: '7h', x: -offset * 0.5, y: offset * 0.86 },
+            { id: '9h', x: -offset, y: 0 },
+            { id: '11h', x: -offset * 0.5, y: -offset * 0.86 }
+        ];
+
+        const possibleZones = options.excludeCenter ? zones.slice(1) : zones;
+        const zone = possibleZones[Math.floor(Math.random() * possibleZones.length)];
+
+        return {
+            x: centerX + zone.x - container.left,
+            y: centerY + zone.y - container.top,
+            absX: centerX + zone.x,
+            absY: centerY + zone.y,
+            zone: zone.id
+        };
+    },
+
+    triggerSkillVisualEffect(attacker, skill, targets) {
+        if (this.skipUI() || !window.CombatEffects) return;
+
+        // Map skill to effect
+        const skillId = skill.id || '';
+        const skillName = (skill.name || '').toLowerCase();
+        let effectName = null;
+
+        // === MAGE SPELLS ===
+        // Fire
+        if (skillId === 'fireball' || skillName.includes('fireball') || skillName.includes('fire_bolt')) effectName = 'fire_ball';
+        else if (skillId === 'flamethrower' || skillName.includes('flamethrower')) effectName = 'fire_ball';
+        else if (skillId === 'inferno' || skillId === 'meteor_storm' || skillName.includes('meteor') || skillName.includes('inferno')) effectName = 'meteor_storm';
+        else if (skillName.includes('fire') || skillName.includes('flame') || skillName.includes('burn')) effectName = 'fire_ball';
+
+        // Ice/Frost
+        else if (skillId === 'ice_shard' || skillName.includes('ice_shard') || skillName.includes('ice bolt')) effectName = 'ice';
+        else if (skillId === 'blizzard' || skillId === 'frost_nova' || skillName.includes('frost') || skillName.includes('blizzard')) effectName = 'frost_nova';
+        else if (skillId === 'ice_prison' || skillName.includes('ice_prison') || skillName.includes('freeze')) effectName = 'ice_prison';
+        else if (skillName.includes('ice') || skillName.includes('frozen') || skillName.includes('chill')) effectName = 'ice';
+
+        // Lightning/Thunder
+        else if (skillId === 'lightning_bolt' || skillName.includes('lightning_bolt') || skillName.includes('shock')) effectName = 'lightning';
+        else if (skillId === 'chain_lightning' || skillName.includes('chain') && skillName.includes('lightning')) effectName = 'chain_lightning';
+        else if (skillId === 'thunder_clap' || skillName.includes('thunder')) effectName = 'thunder_clap';
+        else if (skillName.includes('lightning') || skillName.includes('electric')) effectName = 'lightning';
+
+        // Holy/Light
+        else if (skillId === 'holy_smite' || skillName.includes('holy_smite') || skillName.includes('smite')) effectName = 'holy_smite';
+        else if (skillId === 'holy_radiance' || skillId === 'healing_light' || skillName.includes('holy_radiance') || skillName.includes('radiance')) effectName = 'holy_radiance';
+        else if (skillId === 'divine_light' || skillName.includes('divine')) effectName = 'holy_radiance';
+        else if (skillName.includes('holy') || skillName.includes('light') && !skillName.includes('lightning')) effectName = 'holy_smite';
+
+        // Shadow/Void/Dark
+        else if (skillId === 'shadow_bolt' || skillId === 'void_lance' || skillName.includes('void') || skillName.includes('shadow_bolt')) effectName = 'void_lance';
+        else if (skillId === 'necrotic_touch' || skillName.includes('necrotic') || skillName.includes('death')) effectName = 'shadow';
+        else if (skillName.includes('shadow') || skillName.includes('dark') || skillName.includes('curse')) effectName = 'shadow';
+
+        // Arcane/Magic
+        else if (skillId === 'arcane_missiles' || skillId === 'magic_missile' || skillName.includes('arcane') || skillName.includes('magic_missile')) effectName = 'arcane_missiles';
+        else if (skillName.includes('arcane') || skillName.includes('mystic')) effectName = 'arcane_missiles';
+
+        // Poison/Venom/Acid
+        else if (skillId === 'poison_spray' || skillId === 'venom_cloud' || skillId === 'poison_arrow' || skillName.includes('poison') || skillName.includes('venom')) effectName = 'venom_cloud';
+        else if (skillId === 'acid_splash' || skillName.includes('acid') || skillName.includes('corrosive')) effectName = 'acid';
+        else if (skillName.includes('toxic')) effectName = 'poison';
+
+        // Water/Tidal
+        else if (skillId === 'tidal_wave' || skillId === 'water_splash' || skillName.includes('water') || skillName.includes('tidal')) effectName = 'water_splash';
+
+        // Earth/Nature
+        else if (skillId === 'earth_spike' || skillId === 'earthquake' || skillName.includes('earthquake') || skillName.includes('earth')) effectName = 'earth_spikes';
+        else if (skillId === 'vine_entangle' || skillName.includes('vine') || skillName.includes('root')) effectName = 'earth_spikes';
+
+        // Wind/Air
+        else if (skillId === 'wind_blast' || skillName.includes('wind') || skillName.includes('gust') || skillName.includes('cyclone')) effectName = 'wind';
+
+        // === ARCHER SKILLS ===
+        else if (skillId === 'rain_of_arrows' || skillId === 'volcanic_arrowstorm' || skillName.includes('rain') && skillName.includes('arrow')) effectName = 'rain_of_arrows';
+        else if (skillId === 'piercing_arrow' || skillId === 'power_shot' || skillId === 'aimed_shot' || skillName.includes('piercing') || skillName.includes('power_shot')) effectName = 'piercing_shot';
+        else if (skillId === 'multishot' || skillId === 'rapid_fire' || skillName.includes('multi') || skillName.includes('rapid')) effectName = 'multi_hit';
+        else if (skillId === 'crippling_shot' || skillName.includes('crippling')) effectName = 'slow';
+        else if (skillName.includes('arrow') || skillName.includes('shot')) effectName = 'arrow';
+
+        // === WARRIOR/MELEE SKILLS ===
+        else if (skillId === 'cleave' || skillId === 'brutal_swing' || skillName.includes('cleave') || skillName.includes('sweep')) effectName = 'cleave';
+        else if (skillId === 'crushing_blow' || skillId === 'heavy_slam' || skillId === 'ground_slam' || skillName.includes('crush') || skillName.includes('slam')) effectName = 'charge_impact';
+        else if (skillId === 'orc_charge' || skillId === 'goblin_dash' || skillName.includes('charge') || skillName.includes('rush')) effectName = 'charge_impact';
+        else if (skillId === 'backstab' || skillId === 'assassinate' || skillName.includes('backstab') || skillName.includes('assassinate')) effectName = 'backstab';
+        else if (skillId === 'quick_slash' || skillId === 'heavy_slash' || skillId === 'champions_slash' || skillName.includes('slash')) effectName = 'slash';
+        else if (skillId === 'relentless_strike' || skillId === 'rapid_strike' || skillName.includes('rapid') && !skillName.includes('fire')) effectName = 'multi_hit';
+        else if (skillId === 'riposte' || skillId === 'parry_stance' || skillName.includes('riposte') || skillName.includes('parry')) effectName = 'parry';
+        else if (skillId === 'shield_bash' || skillId === 'defensive_wall' || skillName.includes('shield')) effectName = 'shield_block';
+
+        // === SUPPORT/BUFF SKILLS ===
+        else if (skillId === 'heal' || skillId === 'healing_prayer' || skillId === 'mass_heal' || skillName.includes('heal') || skillName.includes('restore') || skillName.includes('rejuvenate')) effectName = 'heal';
+        else if (skillId === 'inspire' || skillId === 'battle_focus' || skillId === 'war_cry' || skillId === 'berserker_rage' || skillName.includes('inspire') || skillName.includes('focus') || skillName.includes('rage')) effectName = 'enrage';
+        else if (skillId === 'shield_wall' || skillId === 'protect' || skillName.includes('protect') || skillName.includes('guard')) effectName = 'shield';
+        else if (skillId === 'haste' || skillId === 'time_skip' || skillName.includes('haste') || skillName.includes('speed')) effectName = 'haste';
+        else if (skillId === 'mana_shield' || skillId === 'barrier' || skillName.includes('barrier')) effectName = 'shield';
+
+        // === DEBUFF/STATUS SKILLS ===
+        else if (skillId === 'stun_strike' || skillId === 'dirty_trick' || skillName.includes('stun')) effectName = 'stun';
+        else if (skillId === 'intimidating_roar' || skillId === 'taunting_shout' || skillName.includes('taunt') || skillName.includes('roar')) effectName = 'taunt';
+        else if (skillName.includes('slow') || skillName.includes('cripple')) effectName = 'slow';
+        else if (skillName.includes('bleed') || skillName.includes('rend')) effectName = 'bleed_dot';
+
+        // === MONSTER SPECIAL ATTACKS ===
+        else if (skillId === 'tail_swipe' || skillName.includes('tail')) effectName = 'cleave';
+        else if (skillId === 'venom_bite' || skillName.includes('bite')) effectName = 'poison';
+        else if (skillId === 'claw_slash' || skillName.includes('claw')) effectName = 'slash';
+        else if (skillId === 'death_coil' || skillName.includes('coil')) effectName = 'shadow';
+        else if (skillId === 'vampiric_drain' || skillId === 'life_steal' || skillName.includes('drain') || skillName.includes('steal')) effectName = 'shadow';
+
+        // === SUMMON SKILLS === (use buff effect for now)
+        else if (skill.type === 'summon' || skillName.includes('summon')) effectName = 'buff';
+
+        // === SPECIAL/ULTIMATE SKILLS ===
+        else if (skill.ultimate === true || skillName.includes('ultimate')) {
+            // Use most impressive effect based on element/type
+            if (skill.element === 'fire') effectName = 'meteor_storm';
+            else if (skill.element === 'ice') effectName = 'frost_nova';
+            else if (skill.element === 'lightning') effectName = 'chain_lightning';
+            else if (skill.element === 'holy') effectName = 'holy_radiance';
+            else effectName = 'critical';
+        }
+
+        // Trigger effect on all targets
+        targets.forEach(target => {
+            const card = target.isPlayer
+                ? document.querySelector(`.hero-card-instance[data-id="${target.id}"]`)
+                : document.querySelector(`.enemy-card-instance[data-id="${target.id}"]`);
+
+            if (card) {
+                // Special case for Meteor Storm: multiple randomized hits
+                if (effectName === 'meteor_storm') {
+                    for (let i = 0; i < 4; i++) {
+                        setTimeout(() => {
+                            const pos = this.getCardHitPosition(card);
+                            if (window.CombatEffects.effects['fireball']) {
+                                window.CombatEffects.triggerEffect('fireball', pos.x, pos.y);
+                            }
+                        }, i * 250); // Sequential timing: 0ms, 250ms, 500ms, 750ms
+                    }
+                } else {
+                    const pos = this.getCardHitPosition(card);
+                    if (effectName && window.CombatEffects.effects[effectName]) {
+                        window.CombatEffects.triggerEffect(effectName, pos.x, pos.y);
+                    } else {
+                        // Fallback to generic hit effect
+                        window.CombatEffects.triggerEffect('hit', pos.x, pos.y);
+                    }
+                }
+            }
+        });
+    },
+
+    triggerDamageVisualEffect(attacker, target, { damage, isCrit, skill, type }) {
+        if (this.skipUI() || !window.CombatEffects) return null;
+
+        const card = target.isPlayer
+            ? document.querySelector(`.hero-card-instance[data-id="${target.id}"]`)
+            : document.querySelector(`.enemy-card-instance[data-id="${target.id}"]`);
+
+        if (!card) return null;
+
+        const pos = this.getCardHitPosition(card);
+
+        // Choose effect based on damage type
+        let effectName = 'hit';
+        if (isCrit) effectName = 'critical';
+        else if (type === 'magic') effectName = 'explosion';
+
+        if (window.CombatEffects.effects[effectName]) {
+            window.CombatEffects.triggerEffect(effectName, pos.x, pos.y);
+        }
+
+        return pos;
+    },
+
+    triggerStatusVisualEffect(entity, statusId) {
+        if (this.skipUI() || !window.CombatEffects) return;
+
+        const card = entity.isPlayer
+            ? document.querySelector(`.hero-card-instance[data-id="${entity.id}"]`)
+            : document.querySelector(`.enemy-card-instance[data-id="${entity.id}"]`);
+
+        if (!card) return;
+
+        const pos = this.getCardHitPosition(card);
+
+        // Map status ID to effect
+        const statusEffectMap = {
+            'burn': 'burn_dot',
+            'poison': 'poison_dot',
+            'bleed': 'bleed_dot',
+            'paralyze': 'paralyze',
+            'slow': 'slow',
+            'freeze': 'freeze',
+            'stun': 'stun'
+        };
+
+        const effectName = statusEffectMap[statusId] || 'hit';
+        if (window.CombatEffects.effects[effectName]) {
+            window.CombatEffects.triggerEffect(effectName, pos.x, pos.y);
         }
     },
 
@@ -5484,8 +5828,13 @@ const combatSystem = {
                 }
 
                 if (dmg > 0) {
+                    // Trigger visual effects for status damage
+                    if (!this.skipUI()) {
+                        this.triggerStatusVisualEffect(entity, effect.id);
+                    }
+
                     this.log(logMsg);
-                    
+
                     // Show status effect floater with icon and larger text
                     if (!this.skipUI()) {
                         const cardSelector = entity.isPlayer
@@ -5498,12 +5847,12 @@ const combatSystem = {
                             const effectName = effectData?.name?.toUpperCase() || effect.id.toUpperCase();
                             const effectIcon = effectData?.lucide || 'circle-dot';
                             const floaterClass = `floater-${effect.id}-damage`;
-                            
+
                             // Create floater with icon and text
                             this.spawnStatusEffectFloater(effectName, effectIcon, floaterRoot, floaterClass);
                         }
                     }
-                    
+
                     this.damageEntity(entity, dmg, false, 'status');
                 }
 
@@ -6223,7 +6572,7 @@ const combatSystem = {
         // Filter only alive enemies
         const aliveEnemies = this.data.enemies.filter(e => e.hp > 0);
         const aliveHeroes = this.data.heroes.filter(h => h.hp > 0);
-        
+
         // Calculate dynamic breakpoint based on card count
         const dynamicBreakpoint = this.calculateResponsiveBreakpoint(aliveHeroes.length, aliveEnemies.length);
         const isMobile = window.innerWidth < dynamicBreakpoint || window.innerHeight < 800;
@@ -6233,7 +6582,7 @@ const combatSystem = {
         // Responsive card sizing with dynamic breakpoints (same as heroes)
         let cardSizeClass;
         const totalCards = aliveHeroes.length + aliveEnemies.length;
-        
+
         if (isDuel) {
             // 1v1 (Duel)
             if (isXL) cardSizeClass = "w-[400px] h-[600px]"; // XL duel
@@ -6339,7 +6688,7 @@ const combatSystem = {
                 </div>
             </div>`;
             c.appendChild(el);
-            
+
             // Entrance animation with stagger (enemies come from right) using CSS classes (only on first render)
             if (!this.state.cardsAnimated) {
                 const enemyIndex = aliveEnemies.indexOf(e);
@@ -6347,7 +6696,7 @@ const combatSystem = {
                     el.classList.add('card-entrance-active');
                 }, enemyIndex * 100 + 500); // Stagger: 100ms delay, start after 500ms
             }
-            
+
             this.renderStatusIcons(e, el.querySelector('.status-container-left'), el.querySelector('.status-container-right'));
         });
         this.refreshIcons();
@@ -6465,7 +6814,26 @@ const combatSystem = {
         }
 
         container.innerHTML = '';
-        const count = Math.min(5, this.state.entities.length * 2);
+
+        // Get only alive entities and build current turn order
+        const aliveEntities = [...this.data.heroes.filter(h => h.hp > 0), ...this.data.enemies.filter(e => e.hp > 0)];
+        if (aliveEntities.length === 0) return;
+
+        // Sort by ASPD to get current order
+        aliveEntities.sort((a, b) => {
+            const spdA = (a.stats && a.stats.aspd !== undefined) ? a.stats.aspd : 0;
+            const spdB = (b.stats && b.stats.aspd !== undefined) ? b.stats.aspd : 0;
+            return spdB - spdA;
+        });
+
+        const currentEntityIds = aliveEntities.map(x => x.id);
+
+        // Find current active entity index in the alive list
+        const currentActiveId = this.state.entities[0];
+        let startIdx = currentEntityIds.indexOf(currentActiveId);
+        if (startIdx === -1) startIdx = 0; // Fallback if current active not found
+
+        const count = Math.min(5, currentEntityIds.length * 2);
 
         // Calculate positions along inverted semicircular arc (barriga para baixo)
         // Arc: M 50 20 Q 300 100 550 20 (quadratic bezier invertido)
@@ -6483,9 +6851,9 @@ const combatSystem = {
         }
 
         for (let i = 0; i < count; i++) {
-            const gIdx = (this.state.turnCount - 1 + i);
-            const eid = this.state.entities[gIdx % this.state.entities.length];
-            const ent = this.data.heroes.find(h => h.id === eid) || this.data.enemies.find(e => e.id === eid);
+            const idx = (startIdx + i) % currentEntityIds.length;
+            const eid = currentEntityIds[idx];
+            const ent = aliveEntities.find(e => e.id === eid);
             if (!ent || ent.hp <= 0) continue;
 
             const active = i === 0;
@@ -6505,7 +6873,7 @@ const combatSystem = {
             circle.className = `relative rounded-full transition-all duration-500 ${active ? 'scale-110 z-20' : 'scale-100 z-10 opacity-70'}`;
             circle.style.width = `${circleSize}px`;
             circle.style.height = `${circleSize}px`;
-            
+
             // Neomorphism liquid glass effect
             if (active) {
                 if (isFromPlayerTeam) {
@@ -6574,15 +6942,15 @@ const combatSystem = {
                 chip.className = `absolute left-1/2 -translate-x-1/2 ${isFromPlayerTeam ? 'bg-blue-500/90 border-blue-400/60' : 'bg-red-500/90 border-red-400/60'} border rounded-full px-2 py-0.5 flex items-center gap-1.5 shadow-lg backdrop-blur-sm`;
                 chip.style.top = `${circleSize + 8}px`;
                 chip.style.whiteSpace = 'nowrap';
-                
+
                 const dot = document.createElement('div');
                 dot.className = `w-1.5 h-1.5 rounded-full ${isFromPlayerTeam ? 'bg-blue-200' : 'bg-red-200'}`;
                 dot.style.boxShadow = `0 0 4px ${isFromPlayerTeam ? 'rgba(147,197,253,0.8)' : 'rgba(254,202,202,0.8)'}`;
-                
+
                 const text = document.createElement('span');
                 text.className = 'text-[9px] font-black text-white uppercase tracking-wider leading-none';
                 text.textContent = isFromPlayerTeam ? 'YOUR TURN' : 'ENEMY TURN';
-                
+
                 chip.appendChild(dot);
                 chip.appendChild(text);
                 avatarCircle.appendChild(chip);
@@ -6594,70 +6962,6 @@ const combatSystem = {
         this.refreshIcons();
     },
 
-    spawnFloater(value, isCrit, color = null, isMana = false, targetNode = null, type = 'normal') {
-        if (this.skipUI()) return;
-        const overlay = document.getElementById('damage-floaters-overlay');
-        if (!overlay) return;
-
-        const floater = document.createElement('div');
-        floater.className = `absolute pointer-events-none font-black italic tracking-tighter transition-all duration-1000 z-[300] select-none`;
-
-        // Base Styling
-        let baseClass = "text-4xl text-white drop-shadow-[0_2px_10px_rgba(0,0,0,1)]";
-        if (type === 'crit') baseClass = "text-6xl text-yellow-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-bounce";
-        if (type === 'miss') baseClass = "text-3xl text-stone-400 drop-shadow-lg";
-        if (type === 'heal') baseClass = "text-4xl text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]";
-        if (type === 'defend') baseClass = "text-5xl text-blue-400 drop-shadow-[0_0_20px_rgba(59,130,246,0.7)] font-black";
-        if (type === 'mana-gain' || type === 'mana') baseClass = "text-3xl text-cyan-300 drop-shadow-[0_0_15px_rgba(103,232,249,0.5)]";
-
-        floater.className += ` ${baseClass}`;
-        floater.innerHTML = value;
-
-        // Position calculation
-        let x = window.innerWidth / 2;
-        let y = window.innerHeight / 2;
-
-        if (targetNode) {
-            const rect = targetNode.getBoundingClientRect();
-            // Target the center-top of the card for floaters to "pop" out
-            x = rect.left + rect.width / 2;
-            y = rect.top + rect.height / 2;
-
-            // Add random offset for damage numbers (more cinematic)
-            if (type === 'normal' || type === 'crit') {
-                const randomX = (Math.random() - 0.5) * 80; // ±40px horizontal
-                const randomY = (Math.random() - 0.5) * 60; // ±30px vertical
-                x += randomX;
-                y += randomY;
-            }
-        }
-
-        // Apply initial position
-        floater.style.left = `${x}px`;
-        floater.style.top = `${y}px`;
-        floater.style.transform = 'translate(-50%, -50%) scale(0.5)';
-        floater.style.opacity = '0';
-
-        overlay.appendChild(floater);
-
-        // Determine float distance based on type
-        let floatDistance = -150; // default
-        if (type === 'super-effective') floatDistance = -220; // Much higher for SUPER EFFECTIVE
-        else if (type === 'not-effective') floatDistance = -120; // Lower for ineffective
-        else if (type === 'immune') floatDistance = -200; // High for immune
-
-        // Animation
-        requestAnimationFrame(() => {
-            floater.style.transform = `translate(-50%, ${floatDistance}px) scale(${isCrit ? 1.5 : 1})`;
-            floater.style.opacity = '1';
-        });
-
-        setTimeout(() => {
-            floater.style.opacity = '0';
-            floater.style.transform = `translate(-50%, ${floatDistance - 90}px) scale(0.8)`;
-            setTimeout(() => floater.remove(), 1000);
-        }, 1200);
-    },
 
     spawnStatusEffectFloater(effectName, iconName, targetNode = null, type = '') {
         if (this.skipUI()) return;
@@ -6670,16 +6974,16 @@ const combatSystem = {
         // Apply status effect damage styling (larger text)
         const baseClass = type ? `text-2xl font-bold drop-shadow-[0_2px_10px_rgba(0,0,0,1)] ${type}` : 'text-2xl text-white font-bold drop-shadow-[0_2px_10px_rgba(0,0,0,1)]';
         floater.className += ` ${baseClass}`;
-        
+
         // Create icon element
         const iconEl = document.createElement('i');
         iconEl.setAttribute('data-lucide', iconName);
         iconEl.className = 'w-6 h-6';
-        
+
         // Create text element
         const textEl = document.createElement('span');
         textEl.textContent = effectName;
-        
+
         floater.appendChild(iconEl);
         floater.appendChild(textEl);
 
@@ -6965,7 +7269,7 @@ const combatSystem = {
 
     // --- Enhanced Visual Method Overrides ---
 
-    spawnFloater(text, isCrit, containerId, isHeal, rootElement, customClass = '') {
+    spawnFloater(text, isCrit, containerId, isHeal, rootElement, customClass = '', posOverride = null) {
         if (this.skipUI()) return;
         const targetEl = rootElement || (containerId ? document.getElementById(containerId) : null);
 
@@ -6974,33 +7278,31 @@ const combatSystem = {
 
         let x, y, dirX = 0;
 
-        if (targetEl) {
-            const rect = targetEl.getBoundingClientRect();
-            // Target the IMAGE area (Top 15-20% of card for better visibility)
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + (rect.height * 0.2);
-
-            // Minimal Jitter to keep it "On Target"
-            const range = 15;
-            const jx = (Math.random() - 0.5) * range;
-            const jy = (Math.random() - 0.5) * range;
-
-            x = cx + jx;
-            y = cy + jy;
-
-            // Smart Direction: Float AWAY from screen center to avoid overlap
-            const screenCenter = window.innerWidth / 2;
-            // -1 (Left) to 1 (Right) relative to screen width
-            const relativePos = (cx - screenCenter) / (window.innerWidth * 0.4);
-            dirX = relativePos * 120; // Throw outwards
-
-            // Add slight randomness 
-            dirX += (Math.random() - 0.5) * 40;
-
+        if (posOverride) {
+            x = posOverride.absX || posOverride.x;
+            y = posOverride.absY || posOverride.y;
+        } else if (targetEl) {
+            // Find parent card if targetEl is a sub-element (like .floater-root)
+            const card = targetEl.closest('.hero-card-instance, .enemy-card-instance') || targetEl;
+            const pos = this.getCardHitPosition(card);
+            x = pos.absX;
+            y = pos.absY;
         } else {
             x = window.innerWidth / 2;
             y = window.innerHeight / 2;
-            dirX = (Math.random() - 0.5) * 200;
+        }
+
+        // Smart Direction: Float AWAY from screen center
+        const screenCenter = window.innerWidth / 2;
+        const relativePos = (x - screenCenter) / (window.innerWidth * 0.4);
+        dirX = relativePos * 120 + (Math.random() - 0.5) * 40;
+
+        // Visuals
+        el.className = `floater ${isCrit ? 'crit' : ''} ${isHeal ? 'heal' : ''} ${customClass}`;
+        if (typeof text === 'number') {
+            el.innerHTML = text;
+        } else {
+            el.innerText = text;
         }
 
         // Safety clamp to keep within screen
@@ -7013,14 +7315,20 @@ const combatSystem = {
         el.style.zIndex = '10000000';
 
         el.className = `combat-floater ${isCrit ? 'crit' : ''} ${isHeal ? 'heal' : ''} ${customClass} font-black pointer-events-none select-none`;
-        el.innerText = text;
+
+        // For heals, add heart icon
+        if (isHeal || customClass === 'heal') {
+            el.innerHTML = `<i data-lucide="heart" class="w-8 h-8 inline-block align-middle mr-2"></i>${text}`;
+        } else {
+            el.innerText = text;
+        }
         el.style.textShadow = '0 0 5px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8)';
 
         // Color & Size Overrides
         const upper = text.toString().toUpperCase();
-        if (isHeal) {
-            el.style.color = '#4ade80';
-            el.style.textShadow = '0 0 15px rgba(74, 222, 128, 0.6)';
+        if (isHeal || customClass === 'heal') {
+            el.style.color = '#22c55e'; // Verde mais vibrante (green-500)
+            el.style.textShadow = '0 0 15px rgba(34, 197, 94, 0.7), 0 0 25px rgba(34, 197, 94, 0.5)';
         } else if (upper.includes('MISS') || upper.includes('RESIST') || upper.includes('BLOCK')) {
             el.style.color = '#a8a29e';
             el.style.fontSize = '2.0rem'; // Smaller 
@@ -7042,6 +7350,11 @@ const combatSystem = {
         el.style.transform = `translate(-50%, -50%) rotate(${rot}deg) scale(0.5)`;
 
         requestAnimationFrame(() => {
+            // Refresh icons if this is a heal (to render the heart icon)
+            if ((isHeal || customClass === 'heal') && window.lucide) {
+                window.lucide.createIcons(el);
+            }
+
             el.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
             el.style.transform = `translate(-50%, -150%) rotate(${rot}deg) scale(1.0)`;
             el.style.opacity = '1';
@@ -7153,44 +7466,38 @@ const combatSystem = {
     initDebugPanel() {
         if (!this.config?.debugMode) return;
 
-        const panel = document.getElementById('debug-panel');
-        if (!panel) return;
-
-        // Show panel
-        panel.classList.remove('hidden');
-
-        // Toggle panel
-        const toggle = document.getElementById('debug-panel-toggle');
-        if (toggle) {
-            toggle.onclick = () => panel.classList.toggle('hidden');
-        }
-
-        // Update target select
+        // Update target select and skill select
         this.updateDebugTargetSelect();
-
-        // Debug actions
-        document.getElementById('debug-kill')?.addEventListener('click', () => this.debugKill());
-        document.getElementById('debug-heal-full')?.addEventListener('click', () => this.debugHealFull());
-        document.getElementById('debug-restore-mana')?.addEventListener('click', () => this.debugRestoreMana());
-        document.getElementById('debug-revive')?.addEventListener('click', () => this.debugRevive());
-        document.getElementById('debug-next-turn')?.addEventListener('click', () => this.debugSkipTurn());
-        document.getElementById('debug-end-battle')?.addEventListener('click', () => this.debugEndBattle());
+        this.updateDebugSkillSelect();
 
         // Refresh icons
         this.refreshIcons();
     },
 
+    toggleDebugMenu() {
+        const menu = document.getElementById('debug-menu');
+        if (menu) {
+            menu.classList.toggle('hidden');
+            if (!menu.classList.contains('hidden')) {
+                this.updateDebugTargetSelect();
+                this.updateDebugSkillSelect();
+            }
+        }
+    },
+
     updateDebugTargetSelect() {
         const select = document.getElementById('debug-target-select');
-        if (!select) return;
+        if (!select || !this.data) return;
 
+        const currentValue = select.value;
         select.innerHTML = '<option value="">-- Select Entity --</option>';
 
         // Add heroes
         this.data.heroes.forEach(hero => {
             const option = document.createElement('option');
             option.value = hero.id;
-            option.textContent = `[ALLY] ${hero.name} (HP: ${hero.hp}/${hero.maxHp})`;
+            const status = hero.hp <= 0 ? '[DEAD]' : '[ALLY]';
+            option.textContent = `${status} ${hero.name} (HP: ${hero.hp}/${hero.maxHp}, MP: ${hero.mana}/${hero.maxMana})`;
             select.appendChild(option);
         });
 
@@ -7198,9 +7505,54 @@ const combatSystem = {
         this.data.enemies.forEach(enemy => {
             const option = document.createElement('option');
             option.value = enemy.id;
-            option.textContent = `[ENEMY] ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp})`;
+            const status = enemy.hp <= 0 ? '[DEAD]' : '[ENEMY]';
+            option.textContent = `${status} ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp}, MP: ${enemy.mana}/${enemy.maxMana})`;
             select.appendChild(option);
         });
+
+        // Restore selection if still valid
+        if (currentValue) {
+            select.value = currentValue;
+            this.updateDebugSkillSelect();
+        }
+    },
+
+    updateDebugSkillSelect() {
+        const select = document.getElementById('debug-force-skill-select');
+        const targetSelect = document.getElementById('debug-target-select');
+        if (!select || !targetSelect || !this.data) return;
+
+        const targetId = targetSelect.value;
+        if (!targetId) {
+            select.innerHTML = '<option value="">-- Select Skill --</option>';
+            return;
+        }
+
+        const target = this.data.heroes.find(h => h.id === targetId) ||
+            this.data.enemies.find(e => e.id === targetId);
+
+        if (!target) {
+            select.innerHTML = '<option value="">-- Select Skill --</option>';
+            return;
+        }
+
+        // Only show skills for enemies (AI)
+        if (target.isPlayer) {
+            select.innerHTML = '<option value="">(Only for enemies)</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">-- Select Skill --</option>';
+        select.innerHTML += '<option value="__attack__">Attack (Basic)</option>';
+
+        if (target.skills && target.skills.length > 0) {
+            target.skills.forEach(skill => {
+                const option = document.createElement('option');
+                option.value = skill.id || skill.name;
+                option.textContent = `${skill.name} (${skill.mana} MP)`;
+                select.appendChild(option);
+            });
+        }
     },
 
     getDebugTarget() {
@@ -7283,6 +7635,114 @@ const combatSystem = {
 
         this.updateDebugTargetSelect();
         this.showToastNotification(`${target.name} mana restored!`, true);
+    },
+
+    debugDamageEntity() {
+        const target = this.getDebugTarget();
+        if (!target) {
+            this.showToastNotification("Select a target first!");
+            return;
+        }
+
+        if (target.hp <= 0) {
+            this.showToastNotification(`${target.name} is already dead!`);
+            return;
+        }
+
+        this.debug('DEBUG', `Damaging ${target.name}`);
+        const damage = Math.floor(target.hp * 0.5);
+        this.damageEntity(target, damage, false, 'physical', null);
+
+        setTimeout(() => {
+            if (target.isPlayer) {
+                this.updateHeroUI(target.id);
+                this.renderHeroes();
+            } else {
+                this.updateEnemyBars(target);
+                this.renderEnemies();
+            }
+            this.updateDebugTargetSelect();
+        }, 600);
+    },
+
+    debugDrainMana() {
+        const target = this.getDebugTarget();
+        if (!target) {
+            this.showToastNotification("Select a target first!");
+            return;
+        }
+
+        this.debug('DEBUG', `Draining mana for ${target.name}`);
+        target.mana = Math.max(0, Math.floor(target.mana * 0.5));
+
+        if (target.isPlayer) {
+            this.updateHeroUI(target.id);
+        } else {
+            this.updateEnemyBars(target);
+        }
+
+        this.updateDebugTargetSelect();
+        this.showToastNotification(`${target.name} mana drained!`);
+    },
+
+    debugForceAISkill() {
+        const targetSelect = document.getElementById('debug-target-select');
+        const skillSelect = document.getElementById('debug-force-skill-select');
+
+        if (!targetSelect || !skillSelect || !this.data) return;
+
+        const targetId = targetSelect.value;
+        const skillId = skillSelect.value;
+
+        if (!targetId) {
+            this.showToastNotification("Select an entity first!");
+            return;
+        }
+
+        if (!skillId) {
+            this.showToastNotification("Select a skill first!");
+            return;
+        }
+
+        const target = this.data.enemies.find(e => e.id === targetId);
+        if (!target) {
+            this.showToastNotification("Target must be an enemy!");
+            return;
+        }
+
+        if (target.hp <= 0) {
+            this.showToastNotification(`${target.name} is dead!`);
+            return;
+        }
+
+        this.debug('DEBUG', `Forcing ${target.name} to use skill: ${skillId}`);
+
+        let forcedIntent;
+        if (skillId === '__attack__') {
+            // Force basic attack
+            forcedIntent = { type: 'attack' };
+        } else {
+            // Find the skill
+            const skill = target.skills?.find(s => (s.id || s.name) === skillId);
+            if (!skill) {
+                this.showToastNotification("Skill not found!");
+                return;
+            }
+
+            // Set next intent
+            forcedIntent = {
+                type: 'skill',
+                skill: skill,
+                targetId: null // Will be determined by AI logic
+            };
+        }
+
+        // Store forced intent with flag so determineIntents() won't overwrite it
+        target._debugForcedIntent = forcedIntent;
+        target.nextIntent = forcedIntent;
+
+        const skillName = skillId === '__attack__' ? 'Attack' : (target.skills?.find(s => (s.id || s.name) === skillId)?.name || skillId);
+        this.showToastNotification(`${target.name} will use ${skillName} next turn!`, true);
     },
 
     debugRevive() {
@@ -7575,17 +8035,17 @@ const combatSystem = {
     updateCardSizes() {
         // Update card sizes without recreating elements to avoid reloading assets
         if (this.skipUI()) return;
-        
+
         const aliveHeroes = this.data.heroes.filter(h => h.hp > 0);
         const aliveEnemies = this.data.enemies.filter(e => e.hp > 0);
         const totalCards = aliveHeroes.length + aliveEnemies.length;
-        
+
         // Calculate dynamic breakpoint
         const dynamicBreakpoint = this.calculateResponsiveBreakpoint(aliveHeroes.length, aliveEnemies.length);
         const isMobile = window.innerWidth < dynamicBreakpoint || window.innerHeight < 800;
         const isXL = window.innerWidth > 2300;
         const isDuel = aliveHeroes.length === 1 && aliveEnemies.length === 1;
-        
+
         // Determine card size class
         let cardSizeClass;
         if (isDuel) {
@@ -7601,7 +8061,7 @@ const combatSystem = {
             else if (isMobile) cardSizeClass = "w-[160px] h-[240px]";
             else cardSizeClass = "w-[240px] h-[360px]";
         }
-        
+
         // Update hero cards - remove old size classes and add new ones
         aliveHeroes.forEach(hero => {
             const card = document.querySelector(`.hero-card-instance[data-id="${hero.id}"]`);
@@ -7612,7 +8072,7 @@ const combatSystem = {
                 card.className = `${card.className.trim()} ${cardSizeClass}`.replace(/\s+/g, ' ');
             }
         });
-        
+
         // Update enemy cards - remove old size classes and add new ones
         aliveEnemies.forEach(enemy => {
             const card = document.querySelector(`.enemy-card-instance[data-id="${enemy.id}"]`);
@@ -7630,13 +8090,13 @@ const combatSystem = {
         if (this.handleResize) {
             window.removeEventListener('resize', this.handleResize);
         }
-        
+
         // Create debounced resize handler
         this.handleResize = () => {
             if (this.resizeTimeout) {
                 clearTimeout(this.resizeTimeout);
             }
-            
+
             this.resizeTimeout = setTimeout(() => {
                 if (this.state.isActive && !this.skipUI()) {
                     // Update card sizes without recreating elements (avoids reloading assets)
@@ -7644,7 +8104,7 @@ const combatSystem = {
                 }
             }, 300); // 300ms debounce
         };
-        
+
         window.addEventListener('resize', this.handleResize);
     },
 

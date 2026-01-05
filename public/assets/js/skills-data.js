@@ -43,7 +43,7 @@ window.skillsData = {
         img: '/public/assets/icons/skills/parry_stance.png',
         mana: 15,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             parryChance: 0.3,
             duration: 1
@@ -107,7 +107,7 @@ window.skillsData = {
         img: '/public/assets/icons/skills/defensive_wall.png',
         mana: 30,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             damageTaken: 0.5,  // 50% damage reduction
             duration: 2
@@ -134,13 +134,13 @@ window.skillsData = {
         img: '/public/assets/icons/skills/battle_focus.png',
         mana: 40,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             stats: { str: 20, dex: 15 },
             damageDealt: 1.5,  // +50% damage
             duration: 3
         },
-        desc: 'Increases STR, DEX and damage dealt by 50% for 3 turns.'
+        desc: 'Increases target STR, DEX and damage dealt by 50% for 3 turns.'
     },
 
     relentless_strike: {
@@ -204,7 +204,7 @@ window.skillsData = {
         img: '/public/assets/icons/skills/evasive_step.png',
         mana: 15,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             stats: { agi: 20 },
             flee: 50,
@@ -295,7 +295,7 @@ window.skillsData = {
         img: '/public/assets/icons/skills/hunters_focus.png',
         mana: 35,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             stats: { dex: 25 },
             damageDealt: 1.3,  // +30% damage
@@ -303,7 +303,7 @@ window.skillsData = {
             hit: 30,           // +30 accuracy
             duration: 2
         },
-        desc: 'Increases DEX, damage, crit chance and accuracy for 2 turns.'
+        desc: 'Increases target DEX, damage, crit chance and accuracy for 2 turns.'
     },
 
     piercing_arrow: {
@@ -395,14 +395,14 @@ window.skillsData = {
         icon: 'volume-2',
         mana: 15,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'war_cry',
             stats: { str: 6 },
             damageDealt: 1.15,
             duration: 2
         },
-        desc: 'Rallying cry that increases strength and damage for 2 turns.'
+        desc: 'Rallying cry that increases target strength and damage for 2 turns.'
     },
     brutal_swing: {
         id: 'brutal_swing',
@@ -419,7 +419,7 @@ window.skillsData = {
         icon: 'frown',
         mana: 35,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'berserker_rage',
             stats: { str: 10 },
@@ -427,7 +427,7 @@ window.skillsData = {
             damageTaken: 1.15,
             duration: 3
         },
-        desc: 'Enters a berserker state: +STR, +damage dealt, but takes more damage for 3 turns.'
+        desc: 'Target enters a berserker state: +STR, +damage dealt, but takes more damage for 3 turns.'
     },
 
     // ========================================
@@ -516,14 +516,14 @@ window.skillsData = {
         icon: 'volume-2',
         mana: 20,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'intimidating_roar',
             stats: { str: 8, vit: 4 },
             damageTaken: 0.9,
             duration: 2
         },
-        desc: 'A fearsome roar that increases strength, vitality, and reduces damage taken for 2 turns.'
+        desc: 'A fearsome roar that increases target strength, vitality, and reduces damage taken for 2 turns.'
     },
     hobgoblin_crush: {
         id: 'hobgoblin_crush',
@@ -803,14 +803,14 @@ window.skillsData = {
         icon: 'shield',
         mana: 16,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'undead_resilience',
             stats: { vit: 4 },
             damageTaken: 0.85,
             duration: 2
         },
-        desc: 'Draws upon undead endurance, increasing defense for 2 turns.'
+        desc: 'Draws upon undead endurance, increasing target defense for 2 turns.'
     },
     scout_charge: {
         id: 'scout_charge',
@@ -859,14 +859,14 @@ window.skillsData = {
         icon: 'heart',
         mana: 22,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'troll_regeneration',
             stats: { vit: 6 },
             damageTaken: 0.9,
             duration: 3
         },
-        desc: 'Activates natural regeneration, increasing vitality and defense for 3 turns.'
+        desc: 'Activates natural regeneration, increasing target vitality and defense for 3 turns.'
     },
     heavy_club: {
         id: 'heavy_club',
@@ -909,14 +909,14 @@ window.skillsData = {
         icon: 'speaker',
         mana: 15,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'captain_taunt',
             tauntChance: 0.9,
             damageTaken: 0.9,
             duration: 2
         },
-        desc: 'Provokes all enemies to target you (90% chance) and reduces damage taken for 2 turns.'
+        desc: 'Target provokes all enemies to target them (90% chance) and reduces damage taken for 2 turns.'
     },
     dark_aura: {
         id: 'dark_aura',
@@ -924,14 +924,14 @@ window.skillsData = {
         icon: 'moon',
         mana: 25,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'dark_aura',
             stats: { str: 8, int: 6 },
             damageDealt: 1.2,
             duration: 3
         },
-        desc: 'Surrounds self with dark energy, increasing strength, magic, and damage dealt for 3 turns.'
+        desc: 'Surrounds target with dark energy, increasing strength, magic, and damage dealt for 3 turns.'
     },
     pirate_rage: {
         id: 'pirate_rage',
@@ -1062,7 +1062,7 @@ window.skillsData = {
         icon: 'shield',
         mana: 16,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'bark_skin',
             stats: { vit: 5 },
@@ -1077,7 +1077,7 @@ window.skillsData = {
         icon: 'heart',
         mana: 18,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         healPct: 0.25,
         desc: 'Draws upon nature to restore 25% of max HP.'
     },
@@ -1147,14 +1147,14 @@ window.skillsData = {
         icon: 'volume-2',
         mana: 20,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'hive_command',
             stats: { agi: 8, dex: 6 },
             critBonus: 0.15,
             duration: 2
         },
-        desc: 'Commands the hive, increasing agility, dexterity, and crit for 2 turns.'
+        desc: 'Commands target, increasing agility, dexterity, and crit for 2 turns.'
     },
     boar_charge: {
         id: 'boar_charge',
@@ -1182,14 +1182,14 @@ window.skillsData = {
         icon: 'shield',
         mana: 20,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'thick_hide',
             stats: { vit: 6 },
             damageTaken: 0.8,
             duration: 3
         },
-        desc: 'Toughens hide, increasing defense significantly for 3 turns.'
+        desc: 'Toughens target hide, increasing defense significantly for 3 turns.'
     },
     nature_bolt: {
         id: 'nature_bolt',
@@ -1208,7 +1208,7 @@ window.skillsData = {
         icon: 'heart',
         mana: 20,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         healPct: 0.3,
         desc: 'A gentle breeze that restores 30% of max HP.'
     },
@@ -1241,14 +1241,14 @@ window.skillsData = {
         icon: 'shield',
         mana: 28,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'bark_armor',
             stats: { vit: 8 },
             damageTaken: 0.75,
             duration: 4
         },
-        desc: 'Covers self in ancient bark, greatly increasing defense for 4 turns.'
+        desc: 'Covers self or ally in ancient bark, greatly increasing defense for 4 turns.'
     },
     nature_wrath: {
         id: 'nature_wrath',
@@ -1291,11 +1291,11 @@ window.skillsData = {
     toxin: { name: 'Envenom', mana: 25, dmgMult: 1.1, icon: 'skull', img: '/public/assets/icons/skills/3.png', desc: '80% Poison chance.', type: 'single', effect: { id: 'poison', chance: 0.8, duration: 4 } },
 
     // Basic supports used by some enemies / legacy data
-    rally: { name: 'Recover', mana: 50, dmgMult: 0, icon: 'flag', img: '/public/assets/icons/skills/2.png', desc: 'Heal self.', type: 'self' },
-    fortify: { name: 'Fortify', mana: 40, dmgMult: 0, icon: 'shield', desc: 'Boost Defense.', type: 'self' },
-    howl: { name: 'Pack Howl', mana: 20, dmgMult: 0, icon: 'speaker', desc: 'Buffs attack.', type: 'self' },
-    rage: { name: 'Battle Rage', mana: 0, dmgMult: 0, icon: 'frown', desc: 'Increases damage taken and dealt.', type: 'self' },
-    repair: { name: 'Field Repair', mana: 20, dmgMult: 0, icon: 'hammer', desc: 'Heals armor.', type: 'self' },
+    rally: { name: 'Recover', mana: 50, dmgMult: 0, icon: 'flag', img: '/public/assets/icons/skills/2.png', desc: 'Heal target.', type: 'ally' },
+    fortify: { name: 'Fortify', mana: 40, dmgMult: 0, icon: 'shield', desc: 'Boost Defense.', type: 'ally' },
+    howl: { name: 'Pack Howl', mana: 20, dmgMult: 0, icon: 'speaker', desc: 'Buffs attack.', type: 'ally' },
+    rage: { name: 'Battle Rage', mana: 0, dmgMult: 0, icon: 'frown', desc: 'Increases damage taken and dealt.', type: 'ally' },
+    repair: { name: 'Field Repair', mana: 20, dmgMult: 0, icon: 'hammer', desc: 'Heals armor.', type: 'ally' },
 
     // ========================================
     // MAGE (Lv 1â€“12) + Legacy keys
@@ -1303,10 +1303,10 @@ window.skillsData = {
     arcane_bolt: { name: 'Arcane Bolt', mana: 8, dmgMult: 0.95, icon: 'sparkles', type: 'single', damageType: 'magic', element: 'neutral', desc: 'A basic arcane projectile.' },
     ember_spear: { name: 'Ember Spear', mana: 12, dmgMult: 1.05, icon: 'flame', type: 'single', damageType: 'magic', element: 'fire', effect: { id: 'burn', chance: 0.2, duration: 2 }, desc: 'A focused flame with a small burn chance.' },
     frost: { name: 'Frost Bolt', mana: 22, dmgMult: 1.1, icon: 'snowflake', img: '/public/assets/icons/skills/2.png', type: 'single', damageType: 'magic', element: 'water', effect: { id: 'freeze', chance: 0.2, duration: 1 }, desc: 'A chilling bolt with a small freeze chance.' },
-    mana_shield: { name: 'Mana Shield', mana: 18, dmgMult: 0, icon: 'shield', type: 'self', buff: { id: 'mana_shield', damageTaken: 0.85, duration: 2 }, desc: 'A protective barrier that reduces incoming damage.' },
+    mana_shield: { name: 'Mana Shield', mana: 18, dmgMult: 0, icon: 'shield', type: 'ally', buff: { id: 'mana_shield', damageTaken: 0.85, duration: 2 }, desc: 'A protective barrier that reduces incoming damage.' },
     fireball: { name: 'Fireball', mana: 30, dmgMult: 1.55, icon: 'flame', img: '/public/assets/icons/skills/2.png', type: 'single', damageType: 'magic', element: 'fire', effect: { id: 'burn', chance: 0.5, duration: 3 }, desc: 'A fire burst with a chance to burn.' },
     chain_spark: { name: 'Chain Spark', mana: 26, dmgMult: 1.1, icon: 'zap', type: 'single', damageType: 'magic', element: 'wind', effect: { id: 'paralyze', chance: 0.25, duration: 1 }, desc: 'Lightning jumps through nerves (small paralyze chance).' },
-    arcane_focus: { name: 'Arcane Focus', mana: 30, dmgMult: 0, icon: 'eye', type: 'self', buff: { id: 'arcane_focus', damageDealt: 1.25, critBonus: 8, duration: 2 }, desc: 'Focus your mind: higher damage and crit for 2 turns.' },
+    arcane_focus: { name: 'Arcane Focus', mana: 30, dmgMult: 0, icon: 'eye', type: 'ally', buff: { id: 'arcane_focus', damageDealt: 1.25, critBonus: 8, duration: 2 }, desc: 'Focus target mind: higher damage and crit for 2 turns.' },
     ice_prison: { name: 'Ice Prison', mana: 34, dmgMult: 1.35, icon: 'snowflake', type: 'single', damageType: 'magic', element: 'water', effect: { id: 'freeze', chance: 0.35, duration: 1 }, desc: 'A freezing burst with higher freeze chance.' },
     lightning_storm: { name: 'Lightning Storm', mana: 45, dmgMult: 1.05, icon: 'cloud-lightning', type: 'aoe', damageType: 'magic', element: 'wind', effect: { id: 'paralyze', chance: 0.2, duration: 1 }, desc: 'Area lightning damage with a small paralyze chance.' },
     shock: { name: 'Thunder Clap', mana: 35, dmgMult: 1.35, icon: 'zap', img: '/public/assets/icons/skills/3.png', type: 'single', damageType: 'magic', element: 'wind', effect: { id: 'paralyze', chance: 0.5, duration: 2 }, desc: 'A shock of lightning with a paralyze chance.' },
@@ -1338,7 +1338,7 @@ window.skillsData = {
     evasive_roll: { name: 'Evasive Roll', mana: 14, dmgMult: 0, icon: 'move-diagonal', type: 'self', buff: { id: 'evasive_roll', stats: { agi: 8 }, flee: 60, duration: 1 }, desc: 'Quick repositioning: higher dodge for 1 turn.' },
     backstab: { name: 'Backstab', mana: 22, dmgMult: 1.45, icon: 'dagger', img: '/public/assets/icons/skills/3.png', type: 'single', critBonus: 0.25, defenseIgnore: 0.15, desc: 'A precise strike from the shadows (+crit).' },
     bleeding_cut: { name: 'Bleeding Cut', mana: 18, dmgMult: 1.15, icon: 'scissors', type: 'single', effect: { id: 'bleed', chance: 0.45, duration: 2 }, desc: 'A cut that may cause bleeding.' },
-    smoke_bomb: { name: 'Smoke Bomb', mana: 22, dmgMult: 0, icon: 'cloud', type: 'self', buff: { id: 'smoke_bomb', damageTaken: 0.85, flee: 40, duration: 2 }, desc: 'Conceal yourself: reduced damage and better evasion.' },
+    smoke_bomb: { name: 'Smoke Bomb', mana: 22, dmgMult: 0, icon: 'cloud', type: 'ally', buff: { id: 'smoke_bomb', damageTaken: 0.85, flee: 40, duration: 2 }, desc: 'Conceal target: reduced damage and better evasion.' },
     shadow_strike: { name: 'Shadow Strike', mana: 28, dmgMult: 0.75, hits: 2, icon: 'swords', type: 'single', desc: 'Two rapid strikes from the shadows.' },
     crippling_poison: { name: 'Crippling Poison', mana: 32, dmgMult: 1.2, icon: 'footprints', type: 'single', debuff: { id: 'crippling_poison', aspd: -20, stats: { agi: -4 }, duration: 2 }, effect: { id: 'poison', chance: 0.35, duration: 3 }, desc: 'Poisons and slows the target.' },
     execution: { name: 'Execution', mana: 40, dmgMult: 1.65, icon: 'crosshair', type: 'single', critBonus: 0.25, desc: 'A decisive strike with higher crit chance.' },
@@ -1349,15 +1349,15 @@ window.skillsData = {
     // ========================================
     // ACOLYTE (Lv 1â€“12)
     // ========================================
-    heal: { name: 'Heal', mana: 22, dmgMult: 0, icon: 'heart', img: '/public/assets/icons/skills/2.png', type: 'self', healPct: 0.40, desc: 'Restore 40% of your max HP.' },
+    heal: { name: 'Heal', mana: 22, dmgMult: 0, icon: 'heart', img: '/public/assets/icons/skills/2.png', type: 'ally', healPct: 0.40, desc: 'Restore 40% target Max HP.' },
     minor_smite: { name: 'Minor Smite', mana: 6, dmgMult: 0.9, icon: 'sun', type: 'single', damageType: 'magic', element: 'holy', desc: 'A basic holy bolt.' },
-    bless: { name: 'Blessing', mana: 28, dmgMult: 0, icon: 'sun', type: 'self', buff: { id: 'bless', stats: { int: 2, vit: 1 }, duration: 3 }, desc: 'Blessing that improves core stats.' },
-    holy_shield: { name: 'Holy Shield', mana: 18, dmgMult: 0, icon: 'shield-check', type: 'self', buff: { id: 'holy_shield', damageTaken: 0.85, duration: 2 }, desc: 'A blessing that reduces incoming damage.' },
+    bless: { name: 'Blessing', mana: 28, dmgMult: 0, icon: 'sun', type: 'ally', buff: { id: 'bless', stats: { int: 2, vit: 1 }, duration: 3 }, desc: 'Blessing that improves core stats.' },
+    holy_shield: { name: 'Holy Shield', mana: 18, dmgMult: 0, icon: 'shield-check', type: 'ally', buff: { id: 'holy_shield', damageTaken: 0.85, duration: 2 }, desc: 'A blessing that reduces incoming damage.' },
     smite: { name: 'Holy Smite', mana: 28, dmgMult: 1.25, icon: 'sun', type: 'single', damageType: 'magic', element: 'holy', desc: 'Holy damage.' },
     purifying_light: { name: 'Purifying Light', mana: 24, dmgMult: 1.15, icon: 'sparkles', type: 'single', damageType: 'magic', element: 'holy', effect: { id: 'paralyze', chance: 0.2, duration: 1 }, desc: 'Holy light that may paralyze.' },
-    renewal: { name: 'Renewal', mana: 30, dmgMult: 0, icon: 'heart', type: 'self', healPct: 0.2, manaRestorePct: 0.12, buff: { id: 'renewal', damageTaken: 0.9, duration: 2 }, desc: 'Restore part of your HP and steady yourself.' },
+    renewal: { name: 'Renewal', mana: 30, dmgMult: 0, icon: 'heart', type: 'ally', healPct: 0.2, manaRestorePct: 0.12, buff: { id: 'renewal', damageTaken: 0.9, duration: 2 }, desc: 'Restore part of HP and steady the target.' },
     radiant_wave: { name: 'Radiant Wave', mana: 36, dmgMult: 1.0, icon: 'sun', type: 'aoe', damageType: 'magic', element: 'holy', desc: 'Holy area damage.' },
-    divine_favor: { name: 'Divine Favor', mana: 45, dmgMult: 0, icon: 'zap', type: 'self', buff: { id: 'divine_favor', stats: { int: 4, vit: 2 }, damageDealt: 1.2, duration: 2 }, desc: 'Empowers your spirit (more INT/VIT and damage).' },
+    divine_favor: { name: 'Divine Favor', mana: 45, dmgMult: 0, icon: 'zap', type: 'ally', buff: { id: 'divine_favor', stats: { int: 4, vit: 2 }, damageDealt: 1.2, duration: 2 }, desc: 'Empowers spirit (more INT/VIT and damage).' },
     sanctuary: { name: 'Sanctuary', mana: 50, dmgMult: 0, icon: 'heart', type: 'aoe_heal', healPct: 0.22, desc: 'Heals all heroes.' },
     judgement: { name: 'Judgement', mana: 55, dmgMult: 1.65, icon: 'scale', type: 'single', damageType: 'magic', element: 'holy', defenseIgnore: 0.25, desc: 'A powerful holy strike that pierces magic defense.' },
     celestial_wrath: {
@@ -1384,9 +1384,9 @@ window.skillsData = {
     // ========================================
     anvil_tap: { name: 'Anvil Tap', mana: 5, dmgMult: 0.95, icon: 'hammer', type: 'single', desc: 'A basic hammer strike. Cheap and reliable.' },
     spark_blow: { name: 'Spark Blow', mana: 10, dmgMult: 1.05, icon: 'flame', type: 'single', effect: { id: 'burn', chance: 0.2, duration: 2 }, desc: 'A hot strike with a small chance to burn.' },
-    field_repair: { name: 'Field Repair', mana: 15, dmgMult: 0, icon: 'wrench', type: 'self', buff: { id: 'field_repair', stats: { vit: 3 }, damageTaken: 0.9, duration: 2 }, desc: 'Quick repairs to stay standing (+VIT, reduced damage).' },
+    field_repair: { name: 'Field Repair', mana: 15, dmgMult: 0, icon: 'wrench', type: 'ally', buff: { id: 'field_repair', stats: { vit: 3 }, damageTaken: 0.9, duration: 2 }, desc: 'Quick repairs to stay standing (+VIT, reduced damage).' },
     tempered_strike: { name: 'Tempered Strike', mana: 18, dmgMult: 1.2, icon: 'shield', type: 'single', effect: { id: 'stun', chance: 0.15, duration: 1 }, desc: 'A solid hit with a small stun chance.' },
-    fortify_armor: { name: 'Fortify Armor', mana: 25, dmgMult: 0, icon: 'shield-check', type: 'self', buff: { id: 'fortify_armor', damageTaken: 0.8, duration: 2 }, desc: 'Reinforce your armor.' },
+    fortify_armor: { name: 'Fortify Armor', mana: 25, dmgMult: 0, icon: 'shield-check', type: 'ally', buff: { id: 'fortify_armor', damageTaken: 0.8, duration: 2 }, desc: 'Reinforce target armor.' },
     seismic_slam: { name: 'Seismic Slam', mana: 30, dmgMult: 0.85, icon: 'waves', type: 'aoe', effect: { id: 'stun', chance: 0.1, duration: 1 }, desc: 'A ground slam that hits all enemies with a small stun chance.' },
     molten_edge: { name: 'Molten Edge', mana: 35, dmgMult: 1.4, icon: 'flame', type: 'single', effect: { id: 'burn', chance: 0.35, duration: 3 }, desc: 'A molten strike with a higher burn chance.' },
     riveting_combo: { name: 'Riveting Combo', mana: 35, dmgMult: 0.7, hits: 2, icon: 'swords', type: 'single', desc: 'Two fast hits in succession.' },
@@ -1420,7 +1420,7 @@ window.skillsData = {
         img: null,
         mana: 12,
         dmgMult: 0,
-        type: 'self',
+        type: 'ally',
         buff: {
             id: 'pack_howl',
             stats: { str: 5 },
@@ -1428,7 +1428,7 @@ window.skillsData = {
             duration: 2
         },
         audioId: 'howl',
-        desc: 'Rallying howl. Increases STR and ASPD for 2 turns.'
+        desc: 'Rallying howl. Increases target STR and ASPD for 2 turns.'
     },
 
     lunge: {
