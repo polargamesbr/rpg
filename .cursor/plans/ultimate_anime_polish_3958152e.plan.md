@@ -22,4 +22,3 @@
 
 - Disparar uma ultimate e validar:
 - Faixa fica **2.6s** e dá tempo de ler.
-- Speed lines vermelho/preto aparecem claramente em cenários claros e escuros.

@@ -51,8 +51,9 @@ class ChatController
             return;
         }
 
-        // Validate message is not empty
-        if (empty($message) || trim($message) === '') {
+        // Validate message is not empty (don't use empty() as it considers "0" as empty)
+        $trimmedMessage = trim($message);
+        if ($trimmedMessage === '') {
             jsonResponse(['success' => false, 'error' => 'Message cannot be empty'], 400);
             return;
         }
@@ -83,9 +84,10 @@ class ChatController
         // Progressive rate limiting
         $rateLimit = ChatMessage::checkRateLimit($character['id']);
         if (!$rateLimit['allowed']) {
+            // Return wait_seconds but no error message - button countdown is enough
             jsonResponse([
                 'success' => false, 
-                'error' => $rateLimit['message'],
+                'error' => '', // No error message - button countdown is enough
                 'wait_seconds' => $rateLimit['wait_seconds'],
                 'penalty_level' => $rateLimit['penalty_level'] ?? 0
             ], 429);

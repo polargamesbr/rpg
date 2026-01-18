@@ -9,6 +9,7 @@ $roomName = $roomName ?? 'tavern';
 $sendUrl = url('game/chat/send');
 $messagesUrl = url('game/chat/messages');
 $pollUrl = url('game/chat/poll');
+$questStartUrl = url('game/quest/start');
 $assetImgBase = asset('img/');
 
 // Escape for JavaScript
@@ -16,6 +17,7 @@ $roomNameJs = htmlspecialchars($roomName, ENT_QUOTES, 'UTF-8');
 $sendUrlJs = htmlspecialchars($sendUrl, ENT_QUOTES, 'UTF-8');
 $messagesUrlJs = htmlspecialchars($messagesUrl, ENT_QUOTES, 'UTF-8');
 $pollUrlJs = htmlspecialchars($pollUrl, ENT_QUOTES, 'UTF-8');
+$questStartUrlJs = htmlspecialchars($questStartUrl, ENT_QUOTES, 'UTF-8');
 $assetImgBaseJs = htmlspecialchars($assetImgBase, ENT_QUOTES, 'UTF-8');
 
 // Prepare CSS with image path
@@ -154,11 +156,24 @@ $additionalStyles = <<<CSS
     border-radius: 6px;
     color: #fff;
     padding: 0.75rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .chat-input:focus {
     outline: none;
     border-color: rgba(212, 175, 55, 0.6);
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+.chat-input.input-error {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3) !important;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+.chat-input.shake-animation {
+    animation: shake 0.5s ease-in-out;
 }
 .quest-item {
     background: linear-gradient(145deg, rgba(42, 42, 62, 0.8), rgba(30, 30, 50, 0.8));
@@ -359,6 +374,20 @@ $additionalStyles = <<<CSS
     position: relative;
     z-index: 2;
 }
+#chat-send-btn {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+}
+#chat-send-btn span {
+    white-space: nowrap !important;
+    display: inline-block !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .tavern-footer-bg {
     position: fixed;
     bottom: 0;
@@ -475,6 +504,186 @@ $additionalStyles = <<<CSS
 .quests-container::-webkit-scrollbar-thumb:hover {
     background: rgba(212, 175, 55, 0.7);
 }
+
+/* ===== QUEST BOARD PREMIUM STYLES ===== */
+.quest-board-header {
+    background: linear-gradient(180deg, rgba(20, 15, 10, 0.6) 0%, transparent 100%);
+}
+
+/* Quest Tabs */
+.quest-tab {
+    color: rgba(255, 255, 255, 0.4);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+.quest-tab:hover {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.05);
+}
+.quest-tab.active {
+    color: #fbbf24;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.1);
+}
+
+/* Quest Card */
+.quest-card {
+    position: relative;
+    background: rgba(15, 12, 8, 0.8);
+    border: 1px solid rgba(138, 109, 59, 0.2);
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.quest-card:hover {
+    border-color: rgba(251, 191, 36, 0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(251, 191, 36, 0.1);
+}
+.quest-card-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 0% 0%, rgba(251, 191, 36, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+}
+.quest-card:hover .quest-card-glow {
+    opacity: 1;
+}
+.quest-card-inner {
+    display: flex;
+    gap: 0;
+}
+.quest-card-image {
+    position: relative;
+    width: 140px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.quest-card-image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 50%, rgba(15, 12, 8, 1) 100%);
+}
+.quest-card-content {
+    flex: 1;
+    padding: 1rem 1.25rem;
+    min-width: 0;
+}
+.quest-card-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f7e8c3;
+    line-height: 1.2;
+}
+.quest-card-desc {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Quest Rewards */
+.quest-reward {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+}
+.quest-reward-xp {
+    background: rgba(52, 211, 153, 0.1);
+    border-color: rgba(52, 211, 153, 0.2);
+    color: #34d399;
+}
+.quest-reward-gold {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+.quest-reward-special {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+}
+
+/* Accept Button */
+.quest-accept-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+    border: none;
+    border-radius: 0.5rem;
+    color: #000;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+.quest-accept-btn:hover {
+    background: linear-gradient(135deg, #f4d03f 0%, #d4af37 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.4);
+}
+
+/* Quest List Scrollbar */
+.quest-list {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.4) rgba(20, 15, 10, 0.3);
+}
+.quest-list::-webkit-scrollbar {
+    width: 6px;
+}
+.quest-list::-webkit-scrollbar-track {
+    background: rgba(20, 15, 10, 0.3);
+    border-radius: 3px;
+}
+.quest-list::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.4);
+    border-radius: 3px;
+}
+.quest-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.6);
+}
+
+/* Ambient Firelight Effect */
+.quest-board-container {
+    position: relative;
+}
+.quest-board-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 150px;
+    background: radial-gradient(ellipse at 50% -50%, rgba(251, 191, 36, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    animation: fireflicker 4s ease-in-out infinite;
+}
+@keyframes fireflicker {
+    0%, 100% { opacity: 0.6; }
+    25% { opacity: 0.8; }
+    50% { opacity: 0.5; }
+    75% { opacity: 0.9; }
+}
 CSS;
 
 ob_start();
@@ -488,7 +697,7 @@ ob_start();
     <?php include __DIR__ . '/../partials/sidebar.php'; ?>
 
     <!-- Área Principal -->
-    <main class="flex-1 flex flex-col h-screen overflow-y-auto overflow-x-hidden custom-scrollbar">
+    <main class="flex-1 ml-[280px] flex flex-col h-screen overflow-y-auto overflow-x-hidden custom-scrollbar">
         
         <!-- Hero Section com Background -->
         <div class="relative w-full" style="height: 38vh; min-height: 300px;">
@@ -496,22 +705,24 @@ ob_start();
             <div class="absolute bottom-0 left-0 right-0" style="height: 20%; background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);"></div>
             
             <!-- Header Superior (Absolute) -->
-            <header class="absolute top-0 left-0 right-0 h-24 flex items-center justify-between px-8 pt-6 z-20">
-                <div>
-                    <h1 class="city-title text-5xl font-bold text-stone-100 drop-shadow-lg">Tavern</h1>
-                    <p class="text-xs text-amber-500/80 font-medium tracking-widest uppercase mt-2">Rumors, contracts and stories</p>
-                </div>
-                <div class="time-weather-panel px-4 py-2 rounded-lg backdrop-blur-md bg-stone-900/60 border border-stone-700/50">
-                    <div class="flex items-center gap-4">
-                        <div>
-                            <div class="text-[10px] text-stone-400 tracking-wider">LOCAL TIME</div>
-                            <div class="text-lg font-mono font-bold text-amber-50 leading-none"><?= date('H:i') ?></div>
-                        </div>
-                        <div class="h-8 w-px bg-stone-700/50"></div>
-                        <div class="flex flex-col items-end">
-                            <span class="text-[10px] text-stone-300 font-semibold tracking-wider">CLEAR</span>
-                            <div class="text-blue-300">
-                                <i data-lucide="sun" class="w-4 h-4"></i>
+            <header class="absolute top-0 left-0 right-0 h-24 z-20 pt-6 px-8">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div>
+                        <h1 class="city-title text-5xl font-bold text-stone-100 drop-shadow-lg">Tavern</h1>
+                        <p class="text-xs text-amber-500/80 font-medium tracking-widest uppercase mt-2">Rumors, contracts and stories</p>
+                    </div>
+                    <div class="time-weather-panel px-4 py-2 rounded-lg backdrop-blur-md bg-stone-900/60 border border-stone-700/50">
+                        <div class="flex items-center gap-4">
+                            <div>
+                                <div class="text-[10px] text-stone-400 tracking-wider">LOCAL TIME</div>
+                                <div class="text-lg font-mono font-bold text-amber-50 leading-none"><?= date('H:i') ?></div>
+                            </div>
+                            <div class="h-8 w-px bg-stone-700/50"></div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-[10px] text-stone-300 font-semibold tracking-wider">CLEAR</span>
+                                <div class="text-blue-300">
+                                    <i data-lucide="sun" class="w-4 h-4"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -554,106 +765,192 @@ ob_start();
                                             <span id="chat-char-count">0</span>/1000
                                         </div>
                                     </div>
-                                    <button id="chat-send-btn" class="tavern-button text-sm px-4">
-                                        <span>SEND</span>
+                                    <button id="chat-send-btn" class="tavern-button text-sm px-4" style="width: 140px; min-width: 140px; max-width: 140px; text-align: center; display: inline-flex; justify-content: center; align-items: center; box-sizing: border-box; white-space: nowrap; overflow: hidden;">
+                                        <span style="white-space: nowrap; display: inline-block;">SEND</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Coluna Direita: Quests -->
+                    <!-- Coluna Direita: Quest Board -->
                     <div class="col-span-7">
-                        <div class="tavern-panel p-4 flex flex-col quests-container" style="height: 60vh; min-height: 500px; max-height: 60vh; overflow-y: auto;">
-                            <h2 class="text-xl font-bold text-amber-400 mb-6" style="flex-shrink: 0;">Stormhaven Quests</h2>
-                            <div class="space-y-4 flex-1" style="min-height: 0;">
+                        <div class="tavern-panel p-0 flex flex-col quest-board-container" style="height: 60vh; min-height: 500px; max-height: 60vh; overflow: hidden;">
+                            
+                            <!-- Quest Board Header with Tabs -->
+                            <div class="quest-board-header px-5 py-4 border-b border-amber-900/30">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center shadow-lg shadow-amber-900/30">
+                                            <i data-lucide="scroll-text" class="w-5 h-5 text-amber-200"></i>
+                                        </div>
+                                        <div>
+                                            <h2 class="text-lg font-bold text-amber-100 font-serif">Quest Board</h2>
+                                            <p class="text-[10px] text-amber-600/80 uppercase tracking-widest">Stormhaven Chapter</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                            3 Available
+                                        </span>
+                                    </div>
+                                </div>
                                 
-                                <!-- Quest 1: First Steps -->
-                                <div class="quest-item p-5">
-                                    <div class="quest-content">
-                                        <div class="quest-thumbnail">
-                                            <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%); display: flex; align-items: center; justify-content: center;">
-                                                <i data-lucide="sword" class="w-16 h-16 text-blue-300 opacity-60"></i>
+                                <!-- Tabs -->
+                                <div class="flex gap-1 bg-black/20 p-1 rounded-xl">
+                                    <button class="quest-tab active flex-1 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all">
+                                        <i data-lucide="sword" class="w-3.5 h-3.5 inline mr-1.5"></i>Quests
+                                    </button>
+                                    <button class="quest-tab flex-1 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all">
+                                        <i data-lucide="message-circle" class="w-3.5 h-3.5 inline mr-1.5"></i>Rumors
+                                    </button>
+                                    <button class="quest-tab flex-1 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all">
+                                        <i data-lucide="skull" class="w-3.5 h-3.5 inline mr-1.5"></i>Bounties
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Quests List -->
+                            <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar quest-list">
+                                
+                                <!-- Quest 1: First Steps (Tutorial) -->
+                                <div class="quest-card quest-card-tutorial group">
+                                    <div class="quest-card-glow"></div>
+                                    <div class="quest-card-inner">
+                                        <!-- Quest Image -->
+                                        <div class="quest-card-image">
+                                            <img src="<?= asset('img/torvin.png') ?>" alt="First Steps" class="absolute inset-0 w-full h-full object-cover">
+                                            <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-blue-500/80 text-[9px] font-black text-white uppercase tracking-wider">
+                                                Tutorial
                                             </div>
                                         </div>
-                                        <div class="quest-info">
-                                            <h3 class="quest-title">First Steps</h3>
-                                            <p class="quest-description">Learn the basics of combat and exploration in Stormhaven. Master your first sword techniques, learn to navigate the city, and discover the fundamentals of adventuring.</p>
-                                            <div class="quest-rewards">
-                                                <div class="reward-item xp-reward">
-                                                    <i data-lucide="star" class="w-4 h-4"></i>
-                                                    <span>+50 XP</span>
-                                                </div>
-                                                <div class="reward-item">
-                                                    <i data-lucide="clock" class="w-4 h-4"></i>
-                                                    <span>~15 minutes</span>
+                                        
+                                        <!-- Quest Content -->
+                                        <div class="quest-card-content">
+                                            <div class="flex items-start justify-between gap-2 mb-2">
+                                                <h3 class="quest-card-title">First Steps</h3>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <i data-lucide="star" class="w-3 h-3 text-amber-400 fill-amber-400"></i>
+                                                    <span class="text-[10px] font-bold text-amber-400/80">Easy</span>
                                                 </div>
                                             </div>
-                                            <div class="quest-footer">
-                                                <div class="quest-meta">Available for: All Classes</div>
-                                                <button class="tavern-button"><span>Accept Quest</span></button>
+                                            
+                                            <p class="quest-card-desc">Learn the basics of combat and exploration. Master your first sword techniques.</p>
+                                            
+                                            <!-- Rewards -->
+                                            <div class="flex items-center gap-3 mt-3">
+                                                <div class="quest-reward quest-reward-xp">
+                                                    <i data-lucide="sparkles" class="w-3 h-3"></i>
+                                                    <span>50 XP</span>
+                                                </div>
+                                                <div class="quest-reward">
+                                                    <i data-lucide="clock" class="w-3 h-3"></i>
+                                                    <span>~15 min</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Action -->
+                                            <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                                                <span class="text-[10px] text-white/30">All Classes</span>
+                                                <button class="quest-accept-btn" data-quest-id="first-steps">
+                                                    <span>Accept</span>
+                                                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
+                                
                                 <!-- Quest 2: Join the Guild -->
-                                <div class="quest-item p-5">
-                                    <div class="quest-content">
-                                        <div class="quest-thumbnail">
-                                            <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #7c2d12 0%, #dc2626 50%, #f87171 100%); display: flex; align-items: center; justify-content: center;">
-                                                <i data-lucide="scroll" class="w-16 h-16 text-red-300 opacity-60"></i>
+                                <div class="quest-card quest-card-main group">
+                                    <div class="quest-card-glow"></div>
+                                    <div class="quest-card-inner">
+                                        <div class="quest-card-image">
+                                            <div class="absolute inset-0 bg-gradient-to-br from-red-700 via-red-800 to-rose-900"></div>
+                                            <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-amber-500/80 text-[9px] font-black text-black uppercase tracking-wider">
+                                                Main Quest
                                             </div>
                                         </div>
-                                        <div class="quest-info">
-                                            <h3 class="quest-title">Join the Guild</h3>
-                                            <p class="quest-description">Visit the Guild Hall and enlist as an official adventurer. Prove your worth to the Guild Master and gain access to exclusive quests, rewards, and adventuring parties.</p>
-                                            <div class="quest-rewards">
-                                                <div class="reward-item gold-reward">
-                                                    <i data-lucide="coins" class="w-4 h-4"></i>
+                                        
+                                        <div class="quest-card-content">
+                                            <div class="flex items-start justify-between gap-2 mb-2">
+                                                <h3 class="quest-card-title">Join the Guild</h3>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <i data-lucide="star" class="w-3 h-3 text-amber-400 fill-amber-400"></i>
+                                                    <i data-lucide="star" class="w-3 h-3 text-amber-400 fill-amber-400"></i>
+                                                    <span class="text-[10px] font-bold text-amber-400/80">Medium</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <p class="quest-card-desc">Enlist as an official adventurer. Prove your worth to the Guild Master.</p>
+                                            
+                                            <div class="flex items-center gap-3 mt-3">
+                                                <div class="quest-reward quest-reward-gold">
+                                                    <i data-lucide="coins" class="w-3 h-3"></i>
                                                     <span>100 Gold</span>
                                                 </div>
-                                                <div class="reward-item">
-                                                    <i data-lucide="key" class="w-4 h-4"></i>
+                                                <div class="quest-reward quest-reward-special">
+                                                    <i data-lucide="key" class="w-3 h-3"></i>
                                                     <span>Guild Access</span>
                                                 </div>
                                             </div>
-                                            <div class="quest-footer">
-                                                <div class="quest-meta">Prerequisite: Complete "First Steps"</div>
-                                                <button class="tavern-button"><span>Accept Quest</span></button>
+                                            
+                                            <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                                                <span class="text-[10px] text-amber-500/60">Requires: First Steps</span>
+                                                <button class="quest-accept-btn" data-quest-id="join-the-guild">
+                                                    <span>Accept</span>
+                                                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
+                                
                                 <!-- Quest 3: A Knight's Duty -->
-                                <div class="quest-item p-5">
-                                    <div class="quest-content">
-                                        <div class="quest-thumbnail">
-                                            <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #78350f 0%, #f59e0b 50%, #fbbf24 100%); display: flex; align-items: center; justify-content: center;">
-                                                <i data-lucide="shield" class="w-16 h-16 text-amber-300 opacity-60"></i>
+                                <div class="quest-card quest-card-combat group">
+                                    <div class="quest-card-glow"></div>
+                                    <div class="quest-card-inner">
+                                        <div class="quest-card-image">
+                                            <div class="absolute inset-0 bg-gradient-to-br from-amber-600 via-amber-700 to-orange-900"></div>
+                                            <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-red-500/80 text-[9px] font-black text-white uppercase tracking-wider flex items-center gap-1">
+                                                <i data-lucide="swords" class="w-2.5 h-2.5"></i>Combat
                                             </div>
                                         </div>
-                                        <div class="quest-info">
-                                            <h3 class="quest-title">A Knight's Duty</h3>
-                                            <p class="quest-description">Patrol the city gates and protect the citizens of Stormhaven from bandit raids. Engage in combat with enemy forces and prove your valor as a guardian of the realm.</p>
-                                            <div class="quest-rewards">
-                                                <div class="reward-item xp-reward">
-                                                    <i data-lucide="star" class="w-4 h-4"></i>
-                                                    <span>+120 XP</span>
-                                                </div>
-                                                <div class="reward-item gold-reward">
-                                                    <i data-lucide="coins" class="w-4 h-4"></i>
-                                                    <span>75 Gold</span>
-                                                </div>
-                                                <div class="reward-item">
-                                                    <i data-lucide="medal" class="w-4 h-4"></i>
-                                                    <span>Knight's Favor</span>
+                                        
+                                        <div class="quest-card-content">
+                                            <div class="flex items-start justify-between gap-2 mb-2">
+                                                <h3 class="quest-card-title">A Knight's Duty</h3>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <i data-lucide="star" class="w-3 h-3 text-amber-400 fill-amber-400"></i>
+                                                    <i data-lucide="star" class="w-3 h-3 text-amber-400 fill-amber-400"></i>
+                                                    <i data-lucide="star" class="w-3 h-3 text-amber-400 fill-amber-400"></i>
+                                                    <span class="text-[10px] font-bold text-red-400/80">Hard</span>
                                                 </div>
                                             </div>
-                                            <div class="quest-footer">
-                                                <div class="quest-meta">Recommended for: Warriors, Paladins</div>
-                                                <button class="tavern-button"><span>Accept Quest</span></button>
+                                            
+                                            <p class="quest-card-desc">Patrol the city gates and protect citizens from bandit raids.</p>
+                                            
+                                            <div class="flex flex-wrap items-center gap-2 mt-3">
+                                                <div class="quest-reward quest-reward-xp">
+                                                    <i data-lucide="sparkles" class="w-3 h-3"></i>
+                                                    <span>120 XP</span>
+                                                </div>
+                                                <div class="quest-reward quest-reward-gold">
+                                                    <i data-lucide="coins" class="w-3 h-3"></i>
+                                                    <span>75 Gold</span>
+                                                </div>
+                                                <div class="quest-reward quest-reward-special">
+                                                    <i data-lucide="medal" class="w-3 h-3"></i>
+                                                    <span>Favor</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                                                <span class="text-[10px] text-white/30">Warriors, Paladins</span>
+                                                <button class="quest-accept-btn" data-quest-id="knights-duty">
+                                                    <span>Accept</span>
+                                                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -804,11 +1101,24 @@ ob_start();
     border-radius: 6px;
     color: #fff;
     padding: 0.75rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .chat-input:focus {
     outline: none;
     border-color: rgba(212, 175, 55, 0.6);
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+.chat-input.input-error {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3) !important;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+.chat-input.shake-animation {
+    animation: shake 0.5s ease-in-out;
 }
 .quest-item {
     background: linear-gradient(145deg, rgba(42, 42, 62, 0.8), rgba(30, 30, 50, 0.8));
@@ -1009,6 +1319,20 @@ ob_start();
     position: relative;
     z-index: 2;
 }
+#chat-send-btn {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+}
+#chat-send-btn span {
+    white-space: nowrap !important;
+    display: inline-block !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .tavern-footer-bg {
     position: fixed;
     bottom: 0;
@@ -1109,6 +1433,11 @@ ob_start();
 // Close output buffer temporarily to define additionalScripts
 $htmlContent = ob_get_clean();
 
+// Capture the quest preview modal content
+ob_start();
+include __DIR__ . '/../partials/modals/quest_preview.php';
+$htmlContent .= ob_get_clean();
+
 // Define JavaScript with escaped variables using heredoc (normal, not nowdoc)
 $additionalScripts = <<<JSSCRIPT
 (function() {
@@ -1118,6 +1447,7 @@ $additionalScripts = <<<JSSCRIPT
     const sendUrl = '{$sendUrlJs}';
     const messagesUrl = '{$messagesUrlJs}';
     const pollUrl = '{$pollUrlJs}';
+    const questStartUrl = '{$questStartUrlJs}';
     const assetImgBase = '{$assetImgBaseJs}';
     
     // State
@@ -1133,11 +1463,169 @@ $additionalScripts = <<<JSSCRIPT
     const sendBtn = document.getElementById('chat-send-btn');
     const charCount = document.getElementById('chat-char-count');
     
+    // Fix button width to prevent flicker and text breaking
+    if (sendBtn) {
+        sendBtn.style.width = '140px';
+        sendBtn.style.minWidth = '140px';
+        sendBtn.style.maxWidth = '140px';
+        sendBtn.style.textAlign = 'center';
+        sendBtn.style.display = 'inline-flex';
+        sendBtn.style.justifyContent = 'center';
+        sendBtn.style.alignItems = 'center';
+        sendBtn.style.boxSizing = 'border-box';
+        sendBtn.style.flexShrink = '0';
+        sendBtn.style.whiteSpace = 'nowrap';
+        sendBtn.style.overflow = 'hidden';
+        
+        // Fix span inside button
+        const span = sendBtn.querySelector('span');
+        if (span) {
+            span.style.whiteSpace = 'nowrap';
+            span.style.display = 'inline-block';
+        }
+    }
+    
+    // Quest Data (fixed)
+    const QUEST_DB = {
+        'first-steps': {
+            id: 'first-steps',
+            title: 'First Steps',
+            description: 'Learn the basics of combat and exploration. Master your first sword techniques.',
+            type: 'Tutorial',
+            difficulty: 'Easy',
+            image: '/public/assets/img/torvin.png',
+            time: '~15 min',
+            rewards: [
+                { icon: 'sparkles', text: '50 XP' },
+                { icon: 'clock', text: '~15 min' }
+            ]
+        }
+    };
+
+    function openQuestModal(questData) {
+        const modal = document.getElementById('quest-preview-modal');
+        const backdrop = document.getElementById('quest-preview-backdrop');
+        const panel = document.getElementById('quest-preview-panel');
+        if (!modal || !panel) return;
+
+        document.getElementById('quest-preview-title').textContent = questData.title;
+        document.getElementById('quest-preview-desc').textContent = questData.description;
+        document.getElementById('quest-preview-type').textContent = questData.type || 'Quest';
+        document.getElementById('quest-preview-image').src = questData.image;
+        document.getElementById('quest-preview-difficulty').textContent = questData.difficulty + ' Difficulty';
+        document.getElementById('quest-preview-time').textContent = questData.time || '~20 min';
+
+        const starsContainer = document.getElementById('quest-preview-stars');
+        starsContainer.innerHTML = '';
+        const starCount = questData.difficulty === 'Easy' ? 1 : (questData.difficulty === 'Medium' ? 2 : 3);
+        const starColor = questData.difficulty === 'Easy' ? 'text-amber-400' : (questData.difficulty === 'Medium' ? 'text-amber-400' : 'text-red-400');
+        for (let i = 0; i < starCount; i++) {
+            const star = document.createElement('i');
+            star.setAttribute('data-lucide', 'star');
+            star.className = `w-4 h-4 \${starColor} fill-current`;
+            starsContainer.appendChild(star);
+        }
+
+        const rewardsContainer = document.getElementById('quest-preview-rewards');
+        rewardsContainer.innerHTML = '';
+        questData.rewards.forEach(reward => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3 text-sm';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-amber-400">
+                    <i data-lucide="\${reward.icon}" class="w-4 h-4"></i>
+                </div>
+                <span class="text-white font-medium">\${reward.text}</span>
+            `;
+            rewardsContainer.appendChild(div);
+        });
+
+        const startBtn = document.getElementById('quest-preview-start-btn');
+        startBtn.onclick = () => startQuest(questData.id);
+
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            backdrop?.classList.remove('opacity-0');
+            panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+            panel.classList.add('translate-y-0', 'scale-100');
+        });
+
+        lucide.createIcons();
+    }
+
+    function closeQuestModal() {
+        const modal = document.getElementById('quest-preview-modal');
+        const backdrop = document.getElementById('quest-preview-backdrop');
+        const panel = document.getElementById('quest-preview-panel');
+        if (!modal || !panel) return;
+
+        backdrop?.classList.add('opacity-0');
+        panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+        panel.classList.remove('translate-y-0', 'scale-100');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+
+    async function startQuest(questId) {
+        const modalBtn = document.getElementById('quest-preview-start-btn');
+        const originalText = modalBtn ? modalBtn.innerHTML : '';
+
+        if (modalBtn) {
+            modalBtn.disabled = true;
+            modalBtn.innerHTML = '<span>Loading...</span>';
+        }
+
+        try {
+            const response = await fetch(questStartUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quest_id: questId })
+            });
+
+            const data = await response.json();
+            if (data.success && data.redirect) {
+                window.location.href = data.redirect;
+                return;
+            }
+
+            alert(data.error || 'Erro ao iniciar quest');
+        } catch (error) {
+            console.error('Error starting quest:', error);
+            alert('Erro ao iniciar quest. Tente novamente.');
+        } finally {
+            if (modalBtn) {
+                modalBtn.disabled = false;
+                modalBtn.innerHTML = originalText;
+            }
+        }
+    }
+
+    function setupQuestButtons() {
+        const buttons = document.querySelectorAll('.quest-accept-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const questId = btn.dataset.questId;
+                const questData = QUEST_DB[questId];
+                if (questData) {
+                    openQuestModal(questData);
+                } else {
+                    alert('Quest indisponível.');
+                }
+            });
+        });
+    }
+
+    window.closeQuestModal = closeQuestModal;
+    
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
         setupEventListeners();
         loadMessages();
+        setupQuestButtons();
         
         // Start polling after initial load (delay to reduce initial server load)
         setTimeout(() => {
@@ -1160,18 +1648,14 @@ $additionalScripts = <<<JSSCRIPT
     function validateMessageClient(message) {
         const trimmed = message.trim();
         
-        // Empty check
-        if (!trimmed || trimmed.length === 0) {
+        // Empty check (only check length, don't use !trimmed as it's falsy for "0")
+        if (trimmed.length === 0) {
             return { valid: false, error: 'Message cannot be empty' };
         }
         
         // Length check
         if (trimmed.length > 1000) {
             return { valid: false, error: 'Message is too long (max 1000 characters)' };
-        }
-        
-        if (trimmed.length < 1) {
-            return { valid: false, error: 'Message is too short' };
         }
         
         // Removed: repeated characters check (allows "kkkkk", "hahaha", etc.)
@@ -1197,6 +1681,9 @@ $additionalScripts = <<<JSSCRIPT
             const message = messageInput.value;
             const length = message.length;
             charCount.textContent = length;
+            
+            // Clear validation errors when user types
+            clearInputValidationError();
             
             // Update counter color
             if (length > 1000) {
@@ -1458,15 +1945,30 @@ $additionalScripts = <<<JSSCRIPT
     
     function updateCooldownUI() {
         const now = Date.now();
+        let span = sendBtn.querySelector('span');
+        
+        // Ensure span exists with proper styling
+        if (!span) {
+            span = document.createElement('span');
+            span.style.whiteSpace = 'nowrap';
+            span.style.display = 'inline-block';
+            sendBtn.appendChild(span);
+        }
+        
         if (now < cooldownUntil) {
             const remaining = Math.ceil((cooldownUntil - now) / 1000);
             sendBtn.disabled = true;
-            sendBtn.innerHTML = '<span>WAIT ' + remaining + 's</span>';
+            // Keep everything in one line - no padding needed with fixed width
+            span.textContent = 'WAIT ' + remaining + 's';
+            span.style.whiteSpace = 'nowrap';
+            span.style.display = 'inline-block';
             sendBtn.style.opacity = '0.6';
             sendBtn.style.cursor = 'not-allowed';
         } else {
             sendBtn.disabled = false;
-            sendBtn.innerHTML = '<span>SEND</span>';
+            span.textContent = 'SEND';
+            span.style.whiteSpace = 'nowrap';
+            span.style.display = 'inline-block';
             sendBtn.style.opacity = '1';
             sendBtn.style.cursor = 'pointer';
         }
@@ -1488,18 +1990,14 @@ $additionalScripts = <<<JSSCRIPT
     function validateMessageClient(message) {
         const trimmed = message.trim();
         
-        // Empty check
-        if (!trimmed || trimmed.length === 0) {
+        // Empty check (only check length, don't use !trimmed as it's falsy for "0")
+        if (trimmed.length === 0) {
             return { valid: false, error: 'Message cannot be empty' };
         }
         
         // Length check
         if (trimmed.length > 1000) {
             return { valid: false, error: 'Message is too long (max 1000 characters)' };
-        }
-        
-        if (trimmed.length < 1) {
-            return { valid: false, error: 'Message is too short' };
         }
         
         // Removed: repeated characters check (allows "kkkkk", "hahaha", etc.)
@@ -1511,18 +2009,19 @@ $additionalScripts = <<<JSSCRIPT
     async function handleSend() {
         const message = messageInput.value.trim();
         
-        // Client-side validation
+        // Client-side validation (visual feedback, no chat message)
         const validation = validateMessageClient(message);
         if (!validation.valid) {
-            showError(validation.error);
+            showInputValidationError(validation.error);
             messageInput.focus();
             return;
         }
         
-        // Check cooldown
+        // Clear any validation errors
+        clearInputValidationError();
+        
+        // Check cooldown (silent - button already shows countdown)
         if (Date.now() < cooldownUntil) {
-            const remaining = Math.ceil((cooldownUntil - Date.now()) / 1000);
-            showError('Please wait ' + remaining + ' second' + (remaining > 1 ? 's' : '') + ' before sending another message.');
             return;
         }
         
@@ -1530,7 +2029,17 @@ $additionalScripts = <<<JSSCRIPT
         messageInput.disabled = true;
         sendBtn.disabled = true;
         sendBtn.style.opacity = '0.5';
-        sendBtn.innerHTML = '<span>SENDING...</span>';
+        // Use textContent on span for better performance and no flicker
+        let span = sendBtn.querySelector('span');
+        if (!span) {
+            span = document.createElement('span');
+            span.style.whiteSpace = 'nowrap';
+            span.style.display = 'inline-block';
+            sendBtn.appendChild(span);
+        }
+        span.textContent = 'SENDING...';
+        span.style.whiteSpace = 'nowrap';
+        span.style.display = 'inline-block';
         
         try {
             const response = await fetch(sendUrl, {
@@ -1565,11 +2074,12 @@ $additionalScripts = <<<JSSCRIPT
                 setTimeout(() => scrollToBottom(true), 100);
                 isAtBottom = true;
             } else {
-                // Handle rate limiting with wait time
+                // Handle rate limiting with wait time (silent - button already shows countdown)
                 if (data.wait_seconds) {
                     startCooldown(data.wait_seconds);
-                    showError(data.error || 'Please wait before sending another message.');
+                    // Don't show error message - button countdown is enough
                 } else {
+                    // Only show error for actual failures (not rate limiting)
                     showError(data.error || 'Failed to send message');
                 }
             }
@@ -1583,7 +2093,29 @@ $additionalScripts = <<<JSSCRIPT
         }
     }
     
+    function showInputValidationError(errorType) {
+        // Visual feedback on input - no chat message
+        messageInput.classList.add('input-error');
+        messageInput.classList.add('shake-animation');
+        
+        // Remove shake animation after it completes
+        setTimeout(() => {
+            messageInput.classList.remove('shake-animation');
+        }, 500);
+        
+        // Auto-remove error state after 2 seconds
+        setTimeout(() => {
+            clearInputValidationError();
+        }, 2000);
+    }
+    
+    function clearInputValidationError() {
+        messageInput.classList.remove('input-error');
+        messageInput.classList.remove('shake-animation');
+    }
+    
     function showError(message) {
+        // Only show errors for actual failures (not validation)
         // Create temporary error message
         const errorDiv = document.createElement('div');
         errorDiv.className = 'chat-message system';
@@ -1596,6 +2128,7 @@ $additionalScripts = <<<JSSCRIPT
             setTimeout(() => errorDiv.remove(), 500);
         }, 3000);
     }
+    
     
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {

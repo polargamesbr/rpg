@@ -29,6 +29,31 @@ return [
     'GET /game/chat/messages' => 'ChatController@messages',
     'GET /game/chat/poll' => 'ChatController@poll',
     
+    // Quest Routes
+    'POST /game/quest/start' => 'QuestController@start',
+
+    // Battle Routes (Quest Sessions)
+    'POST /game/battle/start' => 'BattleController@start',
+    'GET /game/battle/active' => 'BattleController@active',
+    'GET /game/battle/state' => 'BattleController@state',
+    'POST /game/battle/state' => 'BattleController@save',
+    'POST /game/battle/complete' => 'BattleController@complete',
+    
+    // Explore Routes (Canvas Map System)
+    'GET /game/explore' => 'ExploreController@index',
+    'GET /game/explore/state' => 'ExploreController@getState',
+    'POST /game/explore/state' => 'ExploreController@setState',
+    'POST /game/explore/move' => 'ExploreController@move',
+    'POST /game/explore/complete' => 'ExploreController@complete',
+    'POST /game/explore/reset' => 'ExploreController@reset',
+    
+    // Battle Routes (From Map Encounters)
+    'GET /game/battle-from-map' => 'ExploreController@battleFromMap',
+    'GET /game/battle-test' => 'ExploreController@battleTest',
+    
     // Modal Routes (Lazy Loading)
     'GET /game/modal/{modalName}' => 'GameController@loadModal',
+    
+    // Debug Route (temporary)
+    'GET /debug/gemini' => 'DebugController@gemini',
 ];

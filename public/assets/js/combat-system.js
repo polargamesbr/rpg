@@ -14,7 +14,18 @@ const combatSystem = {
         entities: [],
         enemyVisualOrder: [],
         parry: { active: false, attacker: null, damage: 0, attacksRemaining: 0, timeout: null },
-        selection: { heroes: [], enemies: [], heroLevels: {}, enemyLevels: {} }, // Multi-Hero Selection State + Levels
+        selection: {
+            heroes: [],
+            enemies: [],
+            heroLevels: {},
+            enemyLevels: {},
+            heroEquipment: {} // Temporary gear choices per hero (e.g., { hero_swordman: { head: 'hat_id', ... } })
+        },
+        equipSetup: {
+            activeHeroKey: null,
+            filter: 'class', // 'class' | 'all'
+            search: ''
+        },
         statsOverlay: { open: false, entityId: null },
         usedSummonTypes: [], // Track which summon entity types have been used (e.g., ['wolf', 'ifrit'])
         autoGameEnabled: false, // AutoGame debug mode - AI controls both heroes and enemies
@@ -102,8 +113,7 @@ const combatSystem = {
         window.addEventListener('resize', () => this.updateScale());
         this.updateScale();
 
-        // Load audio preferences from localStorage
-        setTimeout(() => this.loadAudioPreferences(), 500);
+        // Audio preferences are session-only (no storage)
     },
 
     updateScale() {
@@ -203,6 +213,242 @@ const combatSystem = {
         this.updateSetupUI();
     },
 
+    /**
+     * Start battle directly from map encounter (bypasses setup screen)
+     * @param {Object} battleData - Data from map encounter
+     * @param {Array} battleData.heroKeys - Array of combat entity keys for heroes
+     * @param {Array} battleData.enemyKeys - Array of combat entity keys for enemies
+     * @param {Array} battleData.heroMapIds - Original map unit IDs for heroes
+     * @param {Array} battleData.enemyMapIds - Original map unit IDs for enemies
+     */
+    startBattleFromMap(battleData, sessionUid = null, battleUid = null) {
+        console.log('[Combat] Starting battle from map:', battleData);
+
+        // Store map IDs for result communication
+        this.mapBattleData = battleData;
+        this.state.sessionUid = sessionUid || battleData?.sessionUid || this.state.sessionUid || null;
+        this.state.battleUid = battleUid || battleData?.battleUid || this.state.battleUid || null;
+
+        // Set selection state directly
+        this.state.selection.heroes = battleData.heroKeys || [];
+        this.state.selection.enemies = battleData.enemyKeys || [];
+
+        // Use default levels for map entities
+        this.state.selection.heroLevels = {};
+        this.state.selection.enemyLevels = {};
+
+        // Validate we have participants
+        if (this.state.selection.heroes.length === 0 || this.state.selection.enemies.length === 0) {
+            console.error('[Combat] Invalid battle data - missing heroes or enemies');
+            return;
+        }
+
+        // Show the combat modal
+        const m = document.getElementById('combat-modal');
+        if (m) {
+            m.classList.remove('hidden');
+            m.setAttribute('aria-hidden', 'false');
+            setTimeout(() => m.classList.remove('opacity-0'), 10);
+        }
+
+        // Initialize particles
+        if (!this._particleSystem) {
+            this.initBackgroundParticles();
+        }
+
+        // Initialize combat visual effects system
+        if (window.CombatEffects && !this._effectsInitialized) {
+            window.CombatEffects.init();
+            this._effectsInitialized = true;
+        }
+
+        // Hide setup, we're going straight to battle
+        const setup = document.getElementById('combat-setup');
+        if (setup) {
+            setup.classList.add('hidden');
+            setup.classList.add('opacity-0');
+        }
+
+        // Start the battle directly
+        this.startBattle();
+    },
+
+    /**
+     * Export battle state snapshot (for persistence)
+     */
+    getBattleState() {
+        const clone = (value) => JSON.parse(JSON.stringify(value ?? null));
+        return {
+            turnCount: this.state.turnCount,
+            activeEntityId: this.state.activeEntityId,
+            phase: this.state.phase,
+            entities: this.state.entities,
+            heroes: clone(this.data?.heroes || []),
+            enemies: clone(this.data?.enemies || []),
+            mapBattleData: clone(this.mapBattleData || {})
+        };
+    },
+
+    /**
+     * Restore battle state snapshot
+     */
+    restoreBattleState(snapshot) {
+        if (!snapshot) return;
+
+        this.mapBattleData = snapshot.mapBattleData || {};
+        this.data.heroes = snapshot.heroes || [];
+        this.data.enemies = snapshot.enemies || [];
+
+        // Rehydrate skills from combatData when possible
+        const rehydrateSkills = (entity) => {
+            if (!entity || !Array.isArray(entity.skills)) return;
+            entity.skills = entity.skills.map((skill) => {
+                if (!skill) return skill;
+                const skillId = skill.id || skill.skill_id || skill.sid;
+                if (!skillId || !this.data?.skills?.[skillId]) return skill;
+                return { ...this.data.skills[skillId], id: skillId, ...skill };
+            });
+        };
+        this.data.heroes.forEach(rehydrateSkills);
+        this.data.enemies.forEach(rehydrateSkills);
+        this.data.player = this.data.heroes[0] || null;
+
+        this.state.isActive = true;
+        this.state.turnCount = snapshot.state?.turnCount ?? 0;
+        this.state.phase = snapshot.state?.phase ?? 'player';
+        this.state.entities = snapshot.state?.entities || [];
+
+        if (this.state.entities.length === 0) {
+            this.determineTurnOrder();
+        }
+
+        this.state.activeEntityId = snapshot.state?.activeEntityId || this.state.entities[0] || null;
+
+        document.getElementById('combat-setup')?.classList.add('hidden');
+        document.getElementById('combat-setup')?.classList.add('opacity-0');
+        document.getElementById('battlefield-container')?.classList.remove('hidden');
+        document.getElementById('action-bar')?.classList.remove('hidden');
+
+        this.renderHeroes();
+        this.renderEnemies();
+        this.renderGraveyard();
+        this.updateTimelineUI?.();
+        this.determineIntents?.();
+        this.renderEnemyIntents?.();
+        this.updateTargetUI?.();
+        this.setupResizeListener();
+        this.initDebugPanel();
+
+        const active = this.data.heroes.find(h => h.id === this.state.activeEntityId)
+            || this.data.enemies.find(e => e.id === this.state.activeEntityId);
+        if (active) {
+            // Se estava em execução no momento do refresh, normalize para permitir input
+            if (active.isPlayer && this.state.phase === 'executing') {
+                this.state.phase = 'idle';
+                this.state.selectedActionType = null;
+                this.state.selectedSkill = null;
+                this.state.actionTargets = [];
+                this.updateTargetUI();
+            }
+            this.updateTurnIndicator(active);
+            if (this.state.phase === 'idle') {
+                active.isPlayer ? this.startPlayerTurn() : this.startEnemyTurn(active);
+            }
+            if (active.isPlayer && (this.state.phase === 'idle' || this.state.phase === 'executing')) {
+                const actionBar = document.getElementById('action-bar');
+                if (actionBar) {
+                    actionBar.classList.remove('translate-y-[150%]', 'opacity-0', 'pointer-events-none');
+                    actionBar.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+                }
+            }
+        }
+
+        // If battle already ended (no enemies or heroes), show result overlay
+        const aliveHeroes = this.data.heroes.filter(h => h.hp > 0);
+        const aliveEnemies = this.data.enemies.filter(e => e.hp > 0);
+        if (aliveEnemies.length === 0 && aliveHeroes.length > 0) {
+            this.endCombat(true);
+            return;
+        }
+        if (aliveHeroes.length === 0) {
+            this.endCombat(false);
+            return;
+        }
+
+        const turnSequenceUI = document.getElementById('turn-sequence-ui');
+        if (turnSequenceUI) {
+            turnSequenceUI.classList.remove('opacity-0', '-translate-y-full');
+            turnSequenceUI.classList.add('opacity-100', 'translate-y-0');
+        }
+    },
+
+    queueBattleSave(delay = 600) {
+        if (!this.state?.sessionUid || !this.state?.battleUid) return;
+        if (this._battleSaveTimer) clearTimeout(this._battleSaveTimer);
+        this._battleSaveTimer = setTimeout(() => this.saveBattleStateNow(), delay);
+    },
+
+    saveBattleStateNow() {
+        if (!this.state?.sessionUid || !this.state?.battleUid) return;
+        if (!this.getBattleState) return;
+        const state = this.getBattleState();
+        fetch(`/game/battle/state?session=${encodeURIComponent(this.state.sessionUid)}&battle=${encodeURIComponent(this.state.battleUid)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ battle_state: state })
+        }).catch(() => {});
+    },
+
+    /**
+     * Get battle result for map integration
+     * @returns {Object} Battle result with outcome and affected unit IDs
+     */
+    getBattleResult() {
+        const heroes = this.data?.heroes || [];
+        const enemies = this.data?.enemies || [];
+
+        const aliveHeroes = heroes.filter(h => h.hp > 0);
+        const aliveEnemies = enemies.filter(e => e.hp > 0);
+
+        let outcome = 'ongoing';
+        if (aliveEnemies.length === 0 && aliveHeroes.length > 0) {
+            outcome = 'victory';
+        } else if (aliveHeroes.length === 0) {
+            outcome = 'defeat';
+        }
+
+        // Map back to original map unit IDs if available
+        const mapData = this.mapBattleData || {};
+
+        return {
+            outcome: outcome,
+            initiatorId: mapData.initiatorId || null,
+            // Detailed stats for all participants to sync back to map
+            units: [
+                ...heroes.map((h, i) => ({
+                    mapId: mapData.heroMapIds?.[i],
+                    hp: h.hp,
+                    maxHp: h.maxHp,
+                    sp: h.mana !== undefined ? h.mana : (h.sp || 0),
+                    maxSp: h.maxMana !== undefined ? h.maxMana : (h.maxSp || 100)
+                })),
+                ...enemies.map((e, i) => ({
+                    mapId: mapData.enemyMapIds?.[i],
+                    hp: e.hp,
+                    maxHp: e.maxHp
+                }))
+            ],
+            defeatedEnemyMapIds: mapData.enemyMapIds?.filter((id, idx) => {
+                const enemy = enemies[idx];
+                return enemy && enemy.hp <= 0;
+            }) || [],
+            defeatedHeroMapIds: mapData.heroMapIds?.filter((id, idx) => {
+                const hero = heroes[idx];
+                return hero && hero.hp <= 0;
+            }) || []
+        };
+    },
+
     renderSetupLists() {
         const hList = document.getElementById('setup-hero-list');
         const eList = document.getElementById('setup-enemy-list');
@@ -266,6 +512,14 @@ const combatSystem = {
                 <button class="quick-level text-[9px] px-2 py-0.5 bg-zinc-800 rounded hover:bg-${type === 'hero' ? 'blue' : 'red'}-500 transition-colors" data-level="50">50</button>
                 <button class="quick-level text-[9px] px-2 py-0.5 bg-zinc-800 rounded hover:bg-${type === 'hero' ? 'blue' : 'red'}-500 transition-colors" data-level="100">100</button>
             </div>
+
+            <!-- Equip Button (ONLY for Heroes) -->
+            ${type === 'hero' ? `
+                <button class="equip-btn mt-auto w-full py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center gap-2" 
+                        onclick="event.stopPropagation(); combatSystem.openEquipmentSetup('${key}')">
+                    <i data-lucide="shield-check" class="w-3 h-3"></i> Equip Gear
+                </button>
+            ` : ''}
         `;
 
         // Card click - toggle selection
@@ -422,6 +676,16 @@ const combatSystem = {
                 this.scaleStatsForLevel(hero, selectedLevel);
             }
 
+            // Apply setup equipment
+            if (this.state.selection.heroEquipment[hKey]) {
+                hero.equipment = JSON.parse(JSON.stringify(this.state.selection.heroEquipment[hKey]));
+            } else {
+                hero.equipment = {
+                    head: null, body: null, left_hand: null, right_hand: null,
+                    boots: null, accessory_1: null, accessory_2: null
+                };
+            }
+
             this.data.heroes.push(hero);
         });
 
@@ -467,15 +731,39 @@ const combatSystem = {
 
         // 3. Prepare Stats & Ensure Full Vitality at Start
         this.data.heroes.forEach(h => {
+            if (window.EquipmentManager) EquipmentManager.applyEquipmentStats(h);
             this.calculateStats(h);
             h.hp = h.maxHp;
             h.mana = h.maxMana;
         });
         this.data.enemies.forEach(e => {
+            if (e.canEquip && window.EquipmentManager) EquipmentManager.applyEquipmentStats(e);
             this.calculateStats(e);
             e.hp = e.maxHp;
             e.mana = e.maxMana;
         });
+
+        // Apply map overrides (current HP/MP from exploration)
+        if (this.mapBattleData?.heroStates?.length) {
+            this.data.heroes.forEach((hero, idx) => {
+                const snap = this.mapBattleData.heroStates[idx];
+                if (!snap) return;
+                if (typeof snap.maxHp === 'number') hero.maxHp = snap.maxHp;
+                if (typeof snap.maxMana === 'number') hero.maxMana = snap.maxMana;
+                if (typeof snap.hp === 'number') hero.hp = Math.max(0, Math.min(hero.maxHp, snap.hp));
+                if (typeof snap.mana === 'number') hero.mana = Math.max(0, Math.min(hero.maxMana, snap.mana));
+            });
+        }
+        if (this.mapBattleData?.enemyStates?.length) {
+            this.data.enemies.forEach((enemy, idx) => {
+                const snap = this.mapBattleData.enemyStates[idx];
+                if (!snap) return;
+                if (typeof snap.maxHp === 'number') enemy.maxHp = snap.maxHp;
+                if (typeof snap.maxMana === 'number') enemy.maxMana = snap.maxMana;
+                if (typeof snap.hp === 'number') enemy.hp = Math.max(0, Math.min(enemy.maxHp, snap.hp));
+                if (typeof snap.mana === 'number') enemy.mana = Math.max(0, Math.min(enemy.maxMana, snap.mana));
+            });
+        }
 
         // 4. Set primary hero for compatibility with reward logic
         this.data.player = this.data.heroes[0];
@@ -1209,6 +1497,394 @@ const combatSystem = {
         this.state.statsOverlayEntityId = null;
     },
 
+    // --- EQUIPMENT SETUP METHODS (New v16) ---
+    openEquipmentSetup(heroKey) {
+        const heroDef = this.data.entities[heroKey];
+        if (!heroDef) return;
+
+        this.state.equipSetup.activeHeroKey = heroKey;
+        this.state.equipSetup.filter = 'class';
+        this.state.equipSetup.search = '';
+
+        // Initialize temporary equipment for this hero if not exists
+        if (!this.state.selection.heroEquipment[heroKey]) {
+            this.state.selection.heroEquipment[heroKey] = {
+                head: null, body: null, left_hand: null, right_hand: null,
+                boots: null, accessory_1: null, accessory_2: null
+            };
+        }
+
+        const setupEl = document.getElementById('combat-equipment-setup');
+        if (setupEl) {
+            setupEl.classList.remove('hidden');
+            setTimeout(() => setupEl.classList.remove('opacity-0'), 10);
+
+            // Header Info
+            const header = document.getElementById('setup-equipment-hero-header');
+            if (header) {
+                header.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/20">
+                        <img src="${heroDef.img}" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black text-blue-400 uppercase tracking-widest">${heroDef.name}</div>
+                        <div class="text-sm font-bold text-white uppercase tracking-wider">Level ${this.state.selection.heroLevels[heroKey] || heroDef.baseLevel || 10}</div>
+                    </div>
+                `;
+            }
+
+            this.renderEquipList();
+            this.renderEquipSim();
+        }
+        if (window.lucide) lucide.createIcons();
+    },
+
+    closeEquipmentSetup() {
+        const setupEl = document.getElementById('combat-equipment-setup');
+        if (setupEl) {
+            setupEl.classList.add('opacity-0');
+            setTimeout(() => setupEl.classList.add('hidden'), 500);
+        }
+        this.state.equipSetup.activeHeroKey = null;
+    },
+
+    setEquipFilter(filter) {
+        this.state.equipSetup.filter = filter;
+        const btnClass = document.getElementById('equip-filter-btn-class');
+        const btnAll = document.getElementById('equip-filter-btn-all');
+
+        if (btnClass && btnAll) {
+            if (filter === 'class') {
+                btnClass.classList.replace('text-stone-400', 'bg-blue-600');
+                btnClass.classList.add('text-white');
+                btnAll.classList.replace('bg-blue-600', 'text-stone-400');
+                btnAll.classList.remove('text-white');
+            } else {
+                btnAll.classList.replace('text-stone-400', 'bg-blue-600');
+                btnAll.classList.add('text-white');
+                btnClass.classList.replace('bg-blue-600', 'text-stone-400');
+                btnClass.classList.remove('text-white');
+            }
+        }
+        this.renderEquipList();
+    },
+
+    setEquipSlotFilter(slot) {
+        if (!this.state.equipSetup) this.state.equipSetup = {};
+        this.state.equipSetup.slotFilter = slot;
+
+        // Update UI buttons
+        document.querySelectorAll('.equip-slot-filter').forEach(btn => {
+            if (btn.getAttribute('data-slot') === slot) {
+                btn.classList.add('bg-white/10', 'text-white');
+                btn.classList.remove('text-stone-400');
+            } else {
+                btn.classList.remove('bg-white/10', 'text-white');
+                btn.classList.add('text-stone-400');
+            }
+        });
+
+        this.renderEquipList();
+    },
+
+    renderEquipList() {
+        const list = document.getElementById('equip-store-list');
+        if (!list) return;
+
+        const heroKey = this.state.equipSetup.activeHeroKey;
+        const heroDef = this.data.entities[heroKey];
+        const search = document.getElementById('equip-search-input')?.value.toLowerCase() || '';
+        const slotFilter = this.state.equipSetup.slotFilter || 'all';
+
+        // Filter items
+        let items = Object.entries(window.itemsData).filter(([id, item]) => item.type === 'Equipment');
+
+        if (slotFilter !== 'all') {
+            items = items.filter(([id, item]) => {
+                if (slotFilter === 'sets') return !!item.set;
+                if (slotFilter === 'weapon') return ['right_hand', 'left_hand'].includes(item.slot) && !id.includes('shield');
+                if (slotFilter === 'accessory') return item.slot.startsWith('accessory');
+                return item.slot === slotFilter;
+            });
+        }
+
+        if (this.state.equipSetup.filter === 'class' && heroDef) {
+            items = items.filter(([id, item]) => {
+                if (!item.requiredClass || item.requiredClass.length === 0) return true;
+                return item.requiredClass.some(c => c === heroKey || c === heroDef.role || c === heroDef.name);
+            });
+        }
+
+        if (search) {
+            items = items.filter(([id, item]) => item.name.toLowerCase().includes(search) || (item.desc && item.desc.toLowerCase().includes(search)));
+        }
+
+        // AAA SORTING: Order by Rarity
+        const rarityOrder = { 'legendary': 5, 'epic': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
+        items.sort((a, b) => (rarityOrder[b[1].rarity] || 0) - (rarityOrder[a[1].rarity] || 0) || a[1].name.localeCompare(b[1].name));
+
+        const equippedHeroGear = this.state.selection.heroEquipment[heroKey] || {};
+
+        list.innerHTML = items.map(([id, item]) => {
+            const isEquipped = Object.values(equippedHeroGear).includes(id);
+            const rarity = (item.rarity || 'common').toLowerCase();
+
+            // Level Requirement Check
+            const reqLv = item.requiredLevel || 1;
+            const heroLv = this.state.selection.heroLevels[heroKey] || 10;
+            const canEquipLv = heroLv >= reqLv;
+
+            // Class Icon Mapping - AAA Style
+            let classIcon = '';
+            let classColor = 'text-zinc-500';
+            if (item.requiredClass) {
+                if (item.requiredClass.includes('hero_swordman')) { classIcon = 'sword'; classColor = 'text-orange-400'; }
+                else if (item.requiredClass.includes('hero_archer')) { classIcon = 'target'; classColor = 'text-emerald-400'; }
+                else if (item.requiredClass.includes('hero_mage')) { classIcon = 'zap'; classColor = 'text-blue-400'; }
+            }
+
+            const setTag = item.set ? `
+                <div class="mt-auto pt-3 border-t border-white/5 flex items-center gap-2 item-set-tag">
+                    <div class="w-4 h-4 rounded bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                        <i data-lucide="sparkles" class="w-2.5 h-2.5 text-amber-500"></i>
+                    </div>
+                    <span class="text-[9px] font-black text-amber-500 uppercase tracking-tight">${window.setItemData[item.set].name}</span>
+                </div>` : '';
+
+            return `
+                <div class="equip-item-card rarity-${rarity} group relative bg-zinc-900/40 border border-white/5 rounded-3xl p-5 hover:border-white/20 hover:bg-zinc-800/60 transition-all cursor-pointer flex flex-col gap-4 min-h-[220px] ${isEquipped ? 'ring-2 ring-blue-500/50 bg-blue-500/5' : ''}"
+                     onclick="combatSystem.equipItemSimulation('${item.slot}', '${id}')">
+                    
+                    <div class="rarity-glow pointer-events-none"></div>
+
+                    <div class="relative z-10 flex justify-between items-start gap-2">
+                         <div class="flex flex-col">
+                            <span class="text-[8px] font-black text-zinc-500 uppercase tracking-widest leading-none flex items-center gap-1.5">
+                                ${item.slot.split('_').join(' ')}
+                                ${classIcon ? `<i data-lucide="${classIcon}" class="w-2.5 h-2.5 ${classColor}"></i>` : ''}
+                            </span>
+                            <h4 class="text-base font-black text-white group-hover:text-yellow-400 transition-colors uppercase tracking-tight leading-tight mt-1">${item.name}</h4>
+                         </div>
+                         <span class="rarity-badge text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-tighter shadow-sm bg-white/5 border border-white/10 ${rarity === 'legendary' ? 'text-amber-400 border-amber-500/30' : rarity === 'epic' ? 'text-purple-400 border-purple-500/30' : rarity === 'rare' ? 'text-blue-400 border-blue-500/30' : 'text-zinc-400'}">
+                            ${rarity}
+                         </span>
+                    </div>
+
+                    <div class="relative z-10 flex gap-4">
+                        <div class="w-20 h-20 rounded-2xl bg-black/60 border border-white/5 p-1 shrink-0 relative overflow-hidden group-hover:scale-105 transition-transform shadow-inner">
+                            <img src="${item.png || '/assets/icons/equips/placeholder.png'}" class="w-full h-full object-contain filter drop-shadow-lg">
+                            ${isEquipped ? `<div class="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]"><i data-lucide="check" class="w-8 h-8 text-white drop-shadow-lg"></i></div>` : ''}
+                            ${!canEquipLv ? `<div class="absolute inset-0 bg-red-950/60 flex items-center justify-center text-[8px] font-black text-white text-center uppercase leading-none px-1">Low Lvl</div>` : ''}
+                        </div>
+
+                        <div class="flex-1 flex flex-col gap-2 py-1">
+                            <div class="flex flex-wrap gap-x-3 gap-y-1.5">
+                                ${Object.entries(item.stats || {}).map(([s, v]) => `
+                                    <div class="flex items-center gap-1.5 min-w-[70px]">
+                                        <span class="text-[8px] font-black text-zinc-500 uppercase">${s}</span>
+                                        <span class="text-xs font-black ${v > 0 ? 'text-emerald-400' : 'text-red-400'}">${v > 0 ? '+' : ''}${v}</span>
+                                    </div>
+                                `).slice(0, 4).join('')}
+                            </div>
+                            <div class="text-[9px] font-black ${canEquipLv ? 'text-zinc-400' : 'text-red-500 animate-pulse'} uppercase tracking-tight mt-auto border-t border-white/5 pt-2">
+                                REQ LEVEL: ${reqLv}
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="relative z-10 text-[10px] text-zinc-400 leading-relaxed italic line-clamp-2 flex-grow">${item.desc || ''}</p>
+                    <div class="relative z-10">${setTag}</div>
+                </div>
+            `;
+        }).join('');
+
+        if (window.lucide) lucide.createIcons();
+    },
+
+    renderEquipSim() {
+        const heroKey = this.state.equipSetup.activeHeroKey;
+        const heroDef = this.data.entities[heroKey];
+        if (!heroDef) return;
+
+        const currentEquip = this.state.selection.heroEquipment[heroKey];
+
+        // 1. Calculate Attributes Breakdown + Sets
+        const attrContainer = document.getElementById('equip-sim-attributes');
+        const baseAttr = heroDef.attributes || {};
+        const equipAttr = { str: 0, agi: 0, vit: 0, int: 0, dex: 0, luk: 0 };
+        const extraStats = { atk: 0, matk: 0, defense: 0, hit: 0, flee: 0, crit: 0 };
+
+        const setCounts = {};
+        const activeSets = [];
+
+        Object.values(currentEquip).forEach(id => {
+            if (!id) return;
+            const item = window.itemsData[id];
+            if (item) {
+                // Item Stats
+                if (item.stats) {
+                    Object.entries(item.stats).forEach(([s, v]) => {
+                        if (equipAttr[s] !== undefined) equipAttr[s] += v;
+                        else if (extraStats[s] !== undefined) extraStats[s] += v;
+                    });
+                }
+                // Item Set
+                if (item.set) {
+                    setCounts[item.set] = (setCounts[item.set] || 0) + 1;
+                }
+            }
+        });
+
+        // Calculate Set Bonuses for Preview
+        Object.entries(setCounts).forEach(([setId, count]) => {
+            const setData = window.setItemData[setId];
+            if (!setData || !setData.bonuses) return;
+
+            setData.bonuses.forEach(bonus => {
+                if (count >= bonus.count) {
+                    activeSets.push({ name: setData.name, desc: bonus.desc });
+                    // Apply set stats to preview
+                    Object.entries(bonus.stats).forEach(([s, v]) => {
+                        if (s === 'all_stats') {
+                            Object.keys(equipAttr).forEach(k => equipAttr[k] += v);
+                        } else if (equipAttr[s] !== undefined) {
+                            equipAttr[s] += v;
+                        } else if (extraStats[s] !== undefined) {
+                            extraStats[s] += v;
+                        }
+                    });
+                }
+            });
+        });
+
+        if (attrContainer) {
+            let html = `
+                <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                    ${['str', 'agi', 'vit', 'int', 'dex', 'luk'].map(k => {
+                const total = (baseAttr[k] || 0) + (equipAttr[k] || 0);
+                const bonus = equipAttr[k] || 0;
+                return `
+                            <div class="bg-zinc-900/60 border border-white/5 rounded-2xl p-3 flex flex-col items-center">
+                                <div class="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">${k}</div>
+                                <div class="flex items-end gap-1.5">
+                                    <div class="text-xl font-black text-white leading-none">${total}</div>
+                                    ${bonus !== 0 ? `<div class="text-[10px] font-bold ${bonus > 0 ? 'text-emerald-400' : 'text-red-400'} mb-0.5">${bonus > 0 ? '+' : ''}${bonus}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+            }).join('')}
+                </div>
+            `;
+
+            if (activeSets.length > 0) {
+                html += `
+                    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
+                        <div class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-3 h-3"></i> Active Set Bonuses
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            ${activeSets.map(s => `
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-amber-200">${s.name}</span>
+                                    <span class="text-[9px] text-amber-500 italic font-black">${s.desc}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            attrContainer.innerHTML = html;
+        }
+
+        // 2. Render Slot List
+        const slotContainer = document.getElementById('equip-sim-slots');
+        const slots = [
+            { id: 'head', name: 'Head' },
+            { id: 'body', name: 'Body' },
+            { id: 'right_hand', name: 'Right Hand' },
+            { id: 'left_hand', name: 'Left Hand' },
+            { id: 'boots', name: 'Boots' },
+            { id: 'accessory_1', name: 'Acc. 1' },
+            { id: 'accessory_2', name: 'Acc. 2' }
+        ];
+
+        if (slotContainer) {
+            slotContainer.innerHTML = slots.map(slot => {
+                const itemId = currentEquip[slot.id];
+                const item = itemId ? window.itemsData[itemId] : null;
+
+                return `
+                    <div class="flex items-center gap-4 bg-zinc-900/40 border border-white/5 p-3 rounded-2xl hover:bg-zinc-800/60 transition-colors group">
+                        <div class="w-12 h-12 rounded-xl bg-black/60 border border-white/5 flex items-center justify-center shrink-0 shadow-inner relative overflow-hidden">
+                            ${item ? `<img src="${item.png || 'https://via.placeholder.com/128/000000/ffffff?text=' + item.name[0]}" class="w-full h-full object-contain">` : `<i data-lucide="${this.getEquipSlotIcon(slot.id)}" class="w-5 h-5 text-zinc-700"></i>`}
+                            ${item?.rarity === 'legendary' ? '<div class="absolute inset-x-0 bottom-0 h-1 bg-amber-500 shadow-[0_-2px_6px_rgba(245,158,11,0.5)]"></div>' : ''}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[8px] font-black text-zinc-600 uppercase tracking-widest leading-none mb-1">${slot.name}</div>
+                            <div class="text-[11px] font-bold ${item ? 'text-white' : 'text-zinc-500 italic uppercase tracking-tighter'} truncate">
+                                ${item ? item.name : 'Empty Slot'}
+                            </div>
+                        </div>
+                        ${item ? `
+                            <button class="p-2 hover:bg-red-500/20 text-zinc-600 hover:text-red-400 rounded-lg transition-colors" onclick="combatSystem.removeEquipSimulation('${slot.id}')">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        if (window.lucide) lucide.createIcons();
+    },
+
+    getEquipSlotIcon(slot) {
+        const icons = {
+            head: 'hard-hat',
+            body: 'shirt',
+            left_hand: 'shield',
+            right_hand: 'sword',
+            boots: 'footprints',
+            accessory_1: 'sparkles',
+            accessory_2: 'sparkles'
+        };
+        return icons[slot] || 'package';
+    },
+
+    equipItemSimulation(slot, itemId) {
+        const heroKey = this.state.equipSetup.activeHeroKey;
+        if (!heroKey) return;
+        const item = window.itemsData[itemId];
+        if (!item) return;
+
+        const current = this.state.selection.heroEquipment[heroKey];
+
+        // 2-Handed logic
+        if (item.isTwoHanded) {
+            current.right_hand = itemId;
+            current.left_hand = null;
+        } else {
+            // Check if holding a 2H weapon in right hand
+            const rightItem = current.right_hand ? window.itemsData[current.right_hand] : null;
+            if ((slot === 'right_hand' || slot === 'left_hand') && rightItem && rightItem.isTwoHanded) {
+                current.right_hand = null;
+            }
+            current[slot] = itemId;
+        }
+
+        this.renderEquipList();
+        this.renderEquipSim();
+    },
+
+    removeEquipSimulation(slot) {
+        const heroKey = this.state.equipSetup.activeHeroKey;
+        if (!heroKey) return;
+        this.state.selection.heroEquipment[heroKey][slot] = null;
+        this.renderEquipList();
+        this.renderEquipSim();
+    },
+
     getStatusInfo(statusId) {
         // Prefer registry (effects-data.js) so UI never shows raw ids like "focus_hunter".
         const reg = (window.effectsData && window.effectsData[statusId]) ? window.effectsData[statusId] : null;
@@ -1874,11 +2550,15 @@ const combatSystem = {
             this.updateTurnIndicator(hero, "SELECT TARGET");
             const sm = document.getElementById('skills-menu');
             if (sm) sm.classList.add('hidden', 'opacity-0');
+            const im = document.getElementById('items-menu');
+            if (im) im.classList.add('hidden', 'opacity-0');
         } else if (type === 'defend') {
             // Defend doesn't need target selection, go straight to confirming
             this.updateTurnIndicator(hero, "DEFENSIVE STANCE");
             const sm = document.getElementById('skills-menu');
             if (sm) sm.classList.add('hidden', 'opacity-0');
+            const im = document.getElementById('items-menu');
+            if (im) im.classList.add('hidden', 'opacity-0');
         }
 
         this.refreshIcons();
@@ -1952,10 +2632,14 @@ const combatSystem = {
                 this.restoreEnemyCardsOpacity();
             }
 
-            // Auto-preview first skill when opening
+            // Render list on opening to avoid stale/empty list
             const isOpening = !m.classList.contains('hidden');
             if (isOpening) {
-                this.state.skillPreviewId = this.state.skillPreviewId || (hero.skills[0]?.id ?? null);
+                this.renderSkillList();
+                const firstSkillId = (hero.skills && hero.skills.length)
+                    ? (typeof hero.skills[0] === 'string' ? hero.skills[0] : (hero.skills[0].id ?? null))
+                    : null;
+                this.state.skillPreviewId = this.state.skillPreviewId || firstSkillId;
                 if (this.state.skillPreviewId) this.previewSkill(this.state.skillPreviewId);
                 this.bindSkillMenuHotkeys(true);
             } else {
@@ -2248,6 +2932,7 @@ const combatSystem = {
         // Finalize turn
         this.processStatusEffects(caster, 'turn_end');
         this.determineIntents();
+        this.queueBattleSave();
 
         if (this.skipUI()) {
             this.stepTurn();
@@ -2267,6 +2952,7 @@ const combatSystem = {
         } else {
             this.updateEnemyBars(entity);
         }
+        this.queueBattleSave();
 
         // Visual Floater
         const cardSelector = entity.isPlayer
@@ -3314,6 +4000,7 @@ const combatSystem = {
             console.log('[DEFEND DEBUG] Calling usePlayerSkill');
             await this.usePlayerSkill(this.state.selectedSkill);
         }
+        this.queueBattleSave();
     },
 
     playerAttack() {
@@ -3350,6 +4037,7 @@ const combatSystem = {
         } else {
             setTimeout(() => this.stepTurn(), 1000);
         }
+        this.queueBattleSave();
     },
 
     async usePlayerSkill(skill) {
@@ -3886,6 +4574,7 @@ const combatSystem = {
         const finalizeSkill = () => {
             this.processStatusEffects(hero, 'turn_end');
             this.determineIntents();
+            this.queueBattleSave();
             this.stepTurn();
         };
 
@@ -3966,6 +4655,7 @@ const combatSystem = {
         const finalizeDefend = () => {
             this.processStatusEffects(hero, 'turn_end');
             this.determineIntents();
+            this.queueBattleSave();
             this.stepTurn();
         };
 
@@ -3991,6 +4681,7 @@ const combatSystem = {
         } else {
             this.updateEnemyBars(entity);
         }
+        this.queueBattleSave();
 
         // Visual Floater
         const cardSelector = entity.isPlayer
@@ -4917,9 +5608,16 @@ const combatSystem = {
         let elementalMultiplier = 1.0;
         let elementalCategory = 'normal';
         if (attacker && window.elementalData && type !== 'status') {
-            // Get attack element - ONLY from activeSkill, NOT from character element
-            // Character element affects DEFENSE only, not basic attacks
-            const attackElement = attacker.activeSkill?.element || 'neutral';
+            // Get attack element - From skill OR weapon
+            let attackElement = attacker.activeSkill?.element;
+
+            // If it's a basic attack (no activeSkill element) or activeSkill is null, check equipment
+            if (!attackElement && window.EquipmentManager) {
+                attackElement = EquipmentManager.getAttackElement(attacker);
+            }
+
+            if (!attackElement) attackElement = 'neutral';
+
             const defenseElement = target.element || 'neutral';
 
             // Calculate multiplier
@@ -5088,6 +5786,7 @@ const combatSystem = {
         }
 
         target.hp = Math.max(0, target.hp - damage);
+        this.queueBattleSave();
 
         // Trigger visual effects for damage
         if (attacker && damage > 0 && !this.skipUI()) {
@@ -5899,6 +6598,7 @@ const combatSystem = {
             SkillEngine.processBuffs(entity, timing);
         }
 
+        this.queueBattleSave();
         return skipTurn;
     },
 
@@ -5926,9 +6626,7 @@ const combatSystem = {
 
     // Audio Control Functions
     toggleMusic() {
-        const isMuted = localStorage.getItem('combat_music_muted') === 'true';
-        const newState = !isMuted;
-        localStorage.setItem('combat_music_muted', newState);
+        const newState = !(this.audio?.battle?.muted);
 
         // Toggle battle music
         if (this.audio.battle) {
@@ -5969,9 +6667,7 @@ const combatSystem = {
     },
 
     toggleSFX() {
-        const isMuted = localStorage.getItem('combat_sfx_muted') === 'true';
-        const newState = !isMuted;
-        localStorage.setItem('combat_sfx_muted', newState);
+        const newState = !(this.audioManager?.muted);
 
         // Update AudioManager if available
         if (this.audioManager) {
@@ -6008,66 +6704,7 @@ const combatSystem = {
 
     // Load audio preferences on init
     loadAudioPreferences() {
-        const musicMuted = localStorage.getItem('combat_music_muted') === 'true';
-        const sfxMuted = localStorage.getItem('combat_sfx_muted') === 'true';
-
-        if (musicMuted && this.audio.battle) {
-            this.audio.battle.muted = true;
-        }
-
-        if (sfxMuted && this.audioManager) {
-            this.audioManager.setMuted(true);
-        }
-
-        // Update Music button visuals (circular button)
-        const musicBtn = document.getElementById('btn-toggle-music');
-        if (musicBtn) {
-            const icon = musicBtn.querySelector('i');
-
-            if (musicMuted) {
-                if (icon) {
-                    icon.setAttribute('data-lucide', 'volume-x');
-                    icon.classList.remove('text-amber-400', 'group-hover:text-amber-300');
-                    icon.classList.add('text-red-400', 'group-hover:text-red-300');
-                }
-                musicBtn.classList.remove('border-amber-500/40', 'hover:border-amber-500/60');
-                musicBtn.classList.add('border-red-500/40', 'hover:border-red-500/60', 'opacity-60');
-            } else {
-                if (icon) {
-                    icon.setAttribute('data-lucide', 'volume-2');
-                    icon.classList.remove('text-red-400', 'group-hover:text-red-300');
-                    icon.classList.add('text-amber-400', 'group-hover:text-amber-300');
-                }
-                musicBtn.classList.remove('border-red-500/40', 'hover:border-red-500/60', 'opacity-60');
-                musicBtn.classList.add('border-amber-500/40', 'hover:border-amber-500/60');
-            }
-        }
-
-        // Update SFX button visuals (circular button)
-        const sfxBtn = document.getElementById('btn-toggle-sfx');
-        if (sfxBtn) {
-            const icon = sfxBtn.querySelector('i');
-
-            if (sfxMuted) {
-                if (icon) {
-                    icon.setAttribute('data-lucide', 'volume-x');
-                    icon.classList.remove('text-blue-400', 'group-hover:text-blue-300');
-                    icon.classList.add('text-red-400', 'group-hover:text-red-300');
-                }
-                sfxBtn.classList.remove('border-blue-500/40', 'hover:border-blue-500/60');
-                sfxBtn.classList.add('border-red-500/40', 'hover:border-red-500/60', 'opacity-60');
-            } else {
-                if (icon) {
-                    icon.setAttribute('data-lucide', 'volume-1');
-                    icon.classList.remove('text-red-400', 'group-hover:text-red-300');
-                    icon.classList.add('text-blue-400', 'group-hover:text-blue-300');
-                }
-                sfxBtn.classList.remove('border-red-500/40', 'hover:border-red-500/60', 'opacity-60');
-                sfxBtn.classList.add('border-blue-500/40', 'hover:border-blue-500/60');
-            }
-        }
-
-        this.refreshIcons();
+        return;
     },
 
     handleSummonSkill(skill, summoner) {
@@ -6746,7 +7383,14 @@ const combatSystem = {
         }
         this.state.skillPreviewId = null;
 
-        hero.skills.forEach(s => {
+        const skills = (hero.skills || []).map(s => {
+            if (!s) return null;
+            if (typeof s === 'string') return this.data.skills?.[s] ? { ...this.data.skills[s], id: s } : null;
+            if (s.id && this.data.skills?.[s.id]) return { ...this.data.skills[s.id], ...s };
+            return s;
+        }).filter(Boolean);
+
+        skills.forEach(s => {
             const row = document.createElement('div');
             row.className = 'skill-row';
             row.dataset.sid = s.id;
@@ -7247,9 +7891,11 @@ const combatSystem = {
     },
     debugKillAll() {
         console.log('[VICTORY/DEFEAT DEBUG] debugKillAll called - killing all enemies');
-        this.data.enemies.forEach(e => {
-            if (e.hp > 0) this.damageEntity(e, 99999, true, 'physical', null);
-        });
+        if (this.data && this.data.enemies) {
+            this.data.enemies.forEach(e => {
+                if (e.hp > 0) this.damageEntity(e, 99999, true, 'physical', null);
+            });
+        }
         setTimeout(() => {
             console.log('[VICTORY/DEFEAT DEBUG] debugKillAll timeout - calling stepTurn');
             this.stepTurn();
@@ -7257,15 +7903,91 @@ const combatSystem = {
     },
     debugDie() {
         console.log('[VICTORY/DEFEAT DEBUG] debugDie called - killing all heroes');
-        this.data.heroes.forEach(h => {
-            if (h.hp > 0) this.damageEntity(h, 99999, true, 'physical', null);
-        });
+        if (this.data && this.data.heroes) {
+            this.data.heroes.forEach(h => {
+                if (h.hp > 0) this.damageEntity(h, 99999, true, 'physical', null);
+            });
+        }
         setTimeout(() => {
             console.log('[VICTORY/DEFEAT DEBUG] debugDie timeout - calling stepTurn');
             this.stepTurn();
         }, 500);
     },
-    debugInspect() { console.group("--- COMBAT STATS INSPECTOR ---"); console.log("PLAYER:"); console.table(this.data.player.stats); console.log("ATTRIBUTES:"); console.table(this.data.player.attributes); console.groupEnd(); this.data.enemies.forEach(e => { if (e.hp > 0) { console.group(`ENEMY: ${e.name} (Level ${e.level || e.baseLevel || '?'})`); console.table(e.stats); console.table(e.attributes); console.groupEnd(); } }); this.showToastNotification("Stats Logged to Console"); },
+    debugInspect() {
+        console.group("%c 🛡️ COMBAT STATS INSPECTOR ", "background: #111; color: #fbbf24; font-size: 14px; font-weight: bold; padding: 4px; border-radius: 4px;");
+
+        const logEntity = (e, label) => {
+            const isPlayer = label === 'PLAYER';
+            const name = e.name || (isPlayer ? 'Active Hero' : 'Unknown');
+            const level = e.level || e.baseLevel || '?';
+
+            console.group(`%c ${label}: ${name} (Lv${level}) `, "background: #222; color: #fff; font-weight: bold;");
+
+            // 1. Equipment Breakdown
+            console.group("📦 Equipment");
+            if (e.equipment) {
+                const equipTable = {};
+                Object.entries(e.equipment).forEach(([slot, itemId]) => {
+                    if (itemId) {
+                        const item = window.itemsData[itemId];
+                        equipTable[slot.toUpperCase()] = {
+                            Item: item?.name || itemId,
+                            Element: item?.elementOverride || 'Neutral',
+                            Stats: item?.stats ? JSON.stringify(item.stats) : 'None'
+                        };
+                    } else {
+                        equipTable[slot.toUpperCase()] = { Item: 'Empty', Element: '-', Stats: '-' };
+                    }
+                });
+                console.table(equipTable);
+            } else {
+                console.log("No equipment system active for this entity.");
+            }
+            console.groupEnd();
+
+            // 2. Attributes Breakdown (Base vs Total)
+            console.group("📊 Attributes (Base + Equip + Buffs)");
+            const attrTable = {};
+            const baseAttr = e.baseAttributes || e.attributes || {};
+            const curAttr = e.currentAttributes || e.attributes || {};
+            const equipAttr = e.equipmentAttributes || {};
+
+            ['str', 'agi', 'vit', 'int', 'dex', 'luk'].forEach(k => {
+                const base = baseAttr[k] || 0;
+                const total = curAttr[k] || 0;
+                const equip = equipAttr[k] || 0;
+                const buff = total - (base + equip);
+
+                attrTable[k.toUpperCase()] = {
+                    Base: base,
+                    Equip: (equip >= 0 ? '+' : '') + equip,
+                    Buff: (buff >= 0 ? '+' : '') + buff,
+                    TOTAL: total
+                };
+            });
+            console.table(attrTable);
+            console.groupEnd();
+
+            // 3. Combat Derived Stats
+            console.group("⚔️ Combat Stats");
+            console.table(e.stats);
+            console.groupEnd();
+
+            console.groupEnd();
+        };
+
+        // Log Player
+        const activeHero = this.getActiveHero();
+        if (activeHero) logEntity(activeHero, 'PLAYER');
+
+        // Log Enemies
+        this.data.enemies.forEach(e => {
+            if (e.hp > 0) logEntity(e, 'ENEMY');
+        });
+
+        console.groupEnd();
+        this.showToastNotification("Detailed Stats Logged to Console");
+    },
 
     // --- Enhanced Visual Method Overrides ---
 
@@ -7493,22 +8215,26 @@ const combatSystem = {
         select.innerHTML = '<option value="">-- Select Entity --</option>';
 
         // Add heroes
-        this.data.heroes.forEach(hero => {
-            const option = document.createElement('option');
-            option.value = hero.id;
-            const status = hero.hp <= 0 ? '[DEAD]' : '[ALLY]';
-            option.textContent = `${status} ${hero.name} (HP: ${hero.hp}/${hero.maxHp}, MP: ${hero.mana}/${hero.maxMana})`;
-            select.appendChild(option);
-        });
+        if (this.data.heroes) {
+            this.data.heroes.forEach(hero => {
+                const option = document.createElement('option');
+                option.value = hero.id;
+                const status = hero.hp <= 0 ? '[DEAD]' : '[ALLY]';
+                option.textContent = `${status} ${hero.name} (HP: ${hero.hp}/${hero.maxHp}, MP: ${hero.mana}/${hero.maxMana})`;
+                select.appendChild(option);
+            });
+        }
 
         // Add enemies
-        this.data.enemies.forEach(enemy => {
-            const option = document.createElement('option');
-            option.value = enemy.id;
-            const status = enemy.hp <= 0 ? '[DEAD]' : '[ENEMY]';
-            option.textContent = `${status} ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp}, MP: ${enemy.mana}/${enemy.maxMana})`;
-            select.appendChild(option);
-        });
+        if (this.data.enemies) {
+            this.data.enemies.forEach(enemy => {
+                const option = document.createElement('option');
+                option.value = enemy.id;
+                const status = enemy.hp <= 0 ? '[DEAD]' : '[ENEMY]';
+                option.textContent = `${status} ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp}, MP: ${enemy.mana}/${enemy.maxMana})`;
+                select.appendChild(option);
+            });
+        }
 
         // Restore selection if still valid
         if (currentValue) {

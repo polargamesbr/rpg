@@ -18,7 +18,7 @@ ob_start();
     <?php include __DIR__ . '/../partials/sidebar.php'; ?>
 
     <!-- Área Principal -->
-    <main class="flex-1 flex flex-col h-screen overflow-y-auto overflow-x-hidden custom-scrollbar">
+    <main class="flex-1 ml-[280px] flex flex-col h-screen overflow-y-auto overflow-x-hidden custom-scrollbar">
         
         <!-- Hero Section com Background -->
         <div class="relative w-full shrink-0" style="height: 50vh; min-height: 400px;">
@@ -41,22 +41,24 @@ ob_start();
             <div class="fog-layer fog-layer-1" style="height: 100%;"></div>
             
             <!-- Header Superior (Absolute) -->
-            <header class="absolute top-0 left-0 right-0 h-24 flex items-center justify-between pl-8 pr-8 pt-6 z-20">
-                <div>
-                    <h1 class="city-title text-5xl font-bold text-stone-100 drop-shadow-lg"><?= htmlspecialchars($originCity) ?></h1>
-                    <p class="text-xs text-amber-500/80 font-medium tracking-widest uppercase mt-2">The Capital City</p>
-                </div>
-                <div class="time-weather-panel px-4 py-2 rounded-lg backdrop-blur-md bg-stone-900/60 border border-stone-700/50">
-                    <div class="flex items-center gap-4">
-                        <div>
-                            <div class="text-[10px] text-stone-400 tracking-wider">LOCAL TIME</div>
-                            <div class="text-lg font-mono font-bold text-amber-50 leading-none"><?= date('H:i') ?></div>
-                        </div>
-                        <div class="h-8 w-px bg-stone-700/50"></div>
-                        <div class="flex flex-col items-end">
-                            <span class="text-[10px] text-stone-300 font-semibold tracking-wider">CLEAR</span>
-                            <div class="text-blue-300">
-                                <i data-lucide="sun" class="w-4 h-4"></i>
+            <header class="absolute top-0 left-0 right-0 h-24 z-20 pt-6 px-8">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div>
+                        <h1 class="city-title text-5xl font-bold text-stone-100 drop-shadow-lg"><?= htmlspecialchars($originCity) ?></h1>
+                        <p class="text-xs text-amber-500/80 font-medium tracking-widest uppercase mt-2">The Capital City</p>
+                    </div>
+                    <div class="time-weather-panel px-4 py-2 rounded-lg backdrop-blur-md bg-stone-900/60 border border-stone-700/50">
+                        <div class="flex items-center gap-4">
+                            <div>
+                                <div class="text-[10px] text-stone-400 tracking-wider">LOCAL TIME</div>
+                                <div class="text-lg font-mono font-bold text-amber-50 leading-none"><?= date('H:i') ?></div>
+                            </div>
+                            <div class="h-8 w-px bg-stone-700/50"></div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-[10px] text-stone-300 font-semibold tracking-wider">CLEAR</span>
+                                <div class="text-blue-300">
+                                    <i data-lucide="sun" class="w-4 h-4"></i>
+                                </div>
                             </div>
                         </div>
                     </div>

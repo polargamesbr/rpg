@@ -143,6 +143,77 @@
         </div>
     </div>
 
+    <!-- EQUIPMENT SETUP SCREEN (New v16) -->
+    <div id="combat-equipment-setup" class="absolute inset-0 z-[600] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center text-white hidden opacity-0 transition-all duration-500">
+        <!-- Header -->
+        <div class="w-full max-w-[1600px] px-8 mb-8 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <button onclick="combatSystem.closeEquipmentSetup()" class="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center border border-white/10 transition-all">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+                <div>
+                    <h2 class="text-xs font-black text-blue-500 tracking-[0.4em] uppercase">Configuration</h2>
+                    <h1 class="text-3xl font-black uppercase tracking-widest text-white">Hero Equipment</h1>
+                </div>
+            </div>
+            
+            <div id="setup-equipment-hero-header" class="flex items-center gap-4 bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
+                <!-- Hero Info (Injected) -->
+            </div>
+        </div>
+
+        <div class="flex gap-8 w-full max-w-[1600px] h-[75vh] px-8">
+            <!-- Left: Available Items -->
+            <div class="w-2/3 flex flex-col gap-4 bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 relative overflow-hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-4">
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500"></i>
+                            <input type="text" id="equip-search-input" oninput="combatSystem.renderEquipList()" placeholder="Search equipment..." class="bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500/50 w-64">
+                        </div>
+                        <div class="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                            <button onclick="combatSystem.setEquipFilter('class')" id="equip-filter-btn-class" class="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all bg-blue-600 text-white">By Class</button>
+                            <button onclick="combatSystem.setEquipFilter('all')" id="equip-filter-btn-all" class="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-stone-400 hover:text-white">All</button>
+                        </div>
+                        <div class="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                            <button onclick="combatSystem.setEquipSlotFilter('all')" class="equip-slot-filter px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all bg-white/10 text-white" data-slot="all">All Slots</button>
+                            <button onclick="combatSystem.setEquipSlotFilter('weapon')" class="equip-slot-filter px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-stone-400 hover:text-white" data-slot="weapon">Weapons</button>
+                            <button onclick="combatSystem.setEquipSlotFilter('body')" class="equip-slot-filter px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-stone-400 hover:text-white" data-slot="body">Armor</button>
+                            <button onclick="combatSystem.setEquipSlotFilter('boots')" class="equip-slot-filter px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-stone-400 hover:text-white" data-slot="boots">Boots</button>
+                            <button onclick="combatSystem.setEquipSlotFilter('accessory')" class="equip-slot-filter px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-stone-400 hover:text-white" data-slot="accessory">Acc.</button>
+                            <button onclick="combatSystem.setEquipSlotFilter('sets')" class="equip-slot-filter px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-stone-400 hover:text-white" data-slot="sets">Sets</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="equip-store-list" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 overflow-y-auto custom-scrollbar p-1 pb-12">
+                    <!-- JS Injected Items -->
+                </div>
+            </div>
+
+            <!-- Right: Character Simulation -->
+            <div class="w-1/3 flex flex-col gap-6 bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md relative overflow-hidden">
+                <!-- Attributes Simulation -->
+                <div id="equip-sim-attributes" class="grid grid-cols-2 gap-3 mb-4">
+                    <!-- Attribute Cards (Injected) -->
+                </div>
+
+                <!-- Equipment Slots -->
+                <div class="flex-1 flex flex-col gap-4">
+                    <h3 class="text-[10px] font-black text-stone-500 uppercase tracking-[0.3em]">Equipped Slots</h3>
+                    <div id="equip-sim-slots" class="space-y-3 overflow-y-auto custom-scrollbar pr-2 pb-12">
+                        <!-- Slot Rows (Injected) -->
+                    </div>
+                </div>
+
+                <!-- Footer Action -->
+                <button onclick="combatSystem.closeEquipmentSetup()" class="w-full py-4 bg-white text-black font-black uppercase tracking-widest rounded-2xl hover:bg-stone-200 transition-all transform active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                    Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Premium Turn Sequence UI (Top Center, Semicircular - Inverted) -->
     <div id="turn-sequence-ui" class="fixed top-4 left-1/2 -translate-x-1/2 z-[199] pointer-events-none opacity-0 -translate-y-full transition-all duration-700 ease-out">
         <div class="relative">
@@ -593,7 +664,9 @@
     <!-- External Combat Scripts -->
     <script src="<?= asset('js/effects-data.js') ?>"></script>
     <script src="<?= asset('js/elemental-data.js') ?>"></script>
+    <script src="<?= asset('js/items-data.js') ?>"></script>
     <script src="<?= asset('js/skills-data.js') ?>"></script>
+    <script src="<?= asset('js/equipment-manager.js') ?>"></script>
     <script src="<?= asset('js/combat-data.js') ?>"></script>
     <script src="<?= asset('js/audio.registry.js') ?>"></script>
     <script src="<?= asset('js/audio-manager.js') ?>"></script>

@@ -21,6 +21,10 @@ window.skillsData = {
         mana: 5,
         dmgMult: 1.0,
         type: 'single',
+        range: 1,
+        rangeType: 'single',
+        aoe: 0,
+        gridVisual: 'melee',
         desc: 'Basic physical attack against a single target.'
     },
 
@@ -57,9 +61,14 @@ window.skillsData = {
         icon: 'sword',
         img: '/public/assets/icons/skills/heavy_slash.png',
         mana: 20,
-        dmgMult: 1.5,
+        dmgMult: 2.0,
+        hits: 2,
         type: 'single',
-        desc: 'Strong physical attack against a single target.'
+        range: 1,
+        rangeType: 'single',
+        aoe: 0,
+        gridVisual: 'melee',
+        desc: 'Strong physical attack that strikes twice.'
     },
 
     shield_bash: {
@@ -97,6 +106,10 @@ window.skillsData = {
         mana: 30,
         dmgMult: 0.8,
         type: 'aoe',
+        range: 1,
+        rangeType: 'aoe',
+        aoe: 1,
+        gridVisual: 'aoe_small',
         desc: 'Physical attack that hits all enemies.'
     },
 
@@ -161,13 +174,19 @@ window.skillsData = {
         icon: 'crown',
         img: '/public/assets/icons/skills/champions_slash.png',
         mana: 60,
-        dmgMult: 2.2,
+        dmgMult: 3.0,
+        hits: 3,
         type: 'single',
+        range: 3,
+        rangeType: 'line',
+        aoe: 0,
+        gridVisual: 'line',
+        ultimate: true,
         effects: [
             { id: 'stun', chance: 0.4, duration: 1 },
             { id: 'bleed', chance: 0.4, duration: 2 }
         ],
-        desc: 'Signature finisher. High damage + Stun/Bleed chance.'
+        desc: 'ULTIMATE: Devastating 3-hit combo with Stun/Bleed chance.'
     },
 
     // ========================================

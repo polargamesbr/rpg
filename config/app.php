@@ -1,5 +1,21 @@
 <?php
 
+// Load .env if not already loaded
+$envPath = __DIR__ . '/../.env';
+if (file_exists($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line) || strpos($line, '#') === 0) continue;
+        if (strpos($line, '=') !== false) {
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            $_ENV[$key] = $value;
+        }
+    }
+}
+
 return [
     'name' => 'RPG Game',
     'env' => $_ENV['APP_ENV'] ?? 'development',
@@ -23,6 +39,12 @@ return [
         'expiration' => 3600,
         'iss' => 'rpg-game',
         'aud' => 'rpg-game'
+    ],
+    'gemini' => [
+        'api_key' => $_ENV['GEMINI_API_KEY'] ?? '',
+        'model' => 'gemini-2.5-flash-lite',
+        'temperature' => 0.8,
+        'api_url' => 'https://generativelanguage.googleapis.com/v1beta/models/'
     ]
 ];
 

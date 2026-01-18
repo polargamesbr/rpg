@@ -14,7 +14,12 @@
                 'fortify_armor', 'seismic_slam', 'molten_edge', 'riveting_combo',
                 'shatter_armor', 'forge_overdrive', 'masterwork_precision', 'worldbreaker'
             ],
-            inventory: { potion_hp: 2, potion_mana: 1, potion_panacea: 1 }
+            inventory: { potion_hp: 2, potion_mana: 1, potion_panacea: 1 },
+            canEquip: true,
+            equipment: {
+                head: null, body: null, left_hand: null, right_hand: null,
+                boots: null, accessory_1: null, accessory_2: null
+            }
         },
         hero_mage: {
             name: 'Mage', type: 'class', element: 'fire', img: '/public/assets/img/mage-male.png',
@@ -28,7 +33,12 @@
                 'lightning_storm', 'shock', 'void_lance', 'meteor',
                 'mana_drain', 'time_skip'
             ],
-            inventory: { potion_hp: 1, potion_mana: 3, potion_antidote: 1 }
+            inventory: { potion_hp: 1, potion_mana: 3, potion_antidote: 1 },
+            canEquip: true,
+            equipment: {
+                head: null, body: null, left_hand: null, right_hand: null,
+                boots: null, accessory_1: null, accessory_2: null
+            }
         },
         hero_swordman: {
             name: 'Swordman', type: 'class', element: 'neutral', img: '/public/assets/img/swordman-male.png',
@@ -41,7 +51,12 @@
                 'crushing_blow', 'battle_focus', 'relentless_strike', 'champions_slash',
                 'life_steal', 'berserk_mode'
             ],
-            inventory: { potion_hp: 3, potion_mana: 1, potion_antidote: 1 }
+            inventory: { potion_hp: 3, potion_mana: 1, potion_antidote: 1 },
+            canEquip: true,
+            equipment: {
+                head: null, body: null, left_hand: null, right_hand: null,
+                boots: null, accessory_1: null, accessory_2: null
+            }
         },
         hero_archer: {
             name: 'Archer', type: 'class', element: 'wind', img: '/public/assets/img/archer-female.png', video: '/public/assets/video/archer-female.mp4',
@@ -54,7 +69,12 @@
                 'shadow_volley', 'hunters_focus', 'piercing_arrow', 'rain_of_arrows',
                 'volcanic_arrowstorm', 'summon_wolf'
             ],
-            inventory: { potion_hp: 2, potion_mana: 1, poison_vial: 2 }
+            inventory: { potion_hp: 2, potion_mana: 1, poison_vial: 2 },
+            canEquip: true,
+            equipment: {
+                head: null, body: null, left_hand: null, right_hand: null,
+                boots: null, accessory_1: null, accessory_2: null
+            }
         },
         // NOTE: Renamed to match your actual class set/assets (Thief/Acolyte)
         hero_thief: {
@@ -69,7 +89,12 @@
                 'execution', 'fan_of_knives', 'nightmare_combo', 'assassinate',
                 'life_steal', 'time_skip'
             ],
-            inventory: { potion_hp: 1, poison_vial: 3, potion_antidote: 1 }
+            inventory: { potion_hp: 1, poison_vial: 3, potion_antidote: 1 },
+            canEquip: true,
+            equipment: {
+                head: null, body: null, left_hand: null, right_hand: null,
+                boots: null, accessory_1: null, accessory_2: null
+            }
         },
         hero_acolyte: {
             name: 'Acolyte', type: 'class', element: 'holy', img: '/public/assets/img/sacer-female.png', video: '/public/assets/video/acolyte-female.mp4',
@@ -84,7 +109,12 @@
                 'divine_favor', 'sanctuary', 'judgement', 'celestial_wrath',
                 'reflect_shield', 'revive'
             ],
-            inventory: { potion_hp: 1, potion_mana: 3, potion_panacea: 1 }
+            inventory: { potion_hp: 1, potion_mana: 3, potion_panacea: 1 },
+            canEquip: true,
+            equipment: {
+                head: null, body: null, left_hand: null, right_hand: null,
+                boots: null, accessory_1: null, accessory_2: null
+            }
         },
 
         // --- MONSTERS ---
@@ -92,7 +122,7 @@
             name: 'Dire Wolf', type: 'monster', element: 'neutral', img: '/public/assets/img/wolf.png', video: '/public/assets/video/wolf.mp4',
             desc: 'A fierce and intelligent wolf that hunts in packs. Known for their savage bites and coordinated attacks, they are dangerous predators of the wilderness.',
             attributes: { str: 10, agi: 12, vit: 8, int: 2, dex: 10, luk: 3 },
-            maxHp: 1, maxMana: 1, baseLevel: 4,
+            maxHp: 1, maxMana: 1, baseLevel: 100,
             exp: 15, gold: 12,
             skills: ['savage_bite', 'pack_howl', 'lunge', 'feral_claws', 'blood_frenzy', 'lunar_rampage'],
             inventory: { potion_hp: 1 }
@@ -110,7 +140,7 @@
             name: 'Toxic Slime', type: 'monster', element: 'poison', img: '/public/assets/img/slime.png', video: '/public/assets/video/slime.mp4',
             desc: 'A poisonous slime creature that oozes through dark places. Their toxic touch can dissolve flesh and spread disease to those unfortunate enough to encounter them.',
             attributes: { str: 8, agi: 3, vit: 12, int: 6, dex: 3, luk: 5 },
-            maxHp: 1, maxMana: 1, baseLevel: 2,
+            maxHp: 1, maxMana: 1, baseLevel: 100,
             exp: 8, gold: 5,
             skills: ['dissolve', 'bounce', 'slime_split', 'toxic_spit']
         },
@@ -763,25 +793,7 @@
     // Loaded from ui/assets/js/skills-data.js
     skills: (window.skillsData || {}),
 
-    items: {
-        // --- CONSUMABLES ---
-        potion_hp: { name: 'HP Potion', type: 'Consumable', desc: 'Restores 50 HP.', icon: 'heart', png: 'https://via.placeholder.com/64/10b981/ffffff?text=HP', healHp: 50, rarity: 'common' },
-        potion_mana: { name: 'Mana Potion', type: 'Consumable', desc: 'Restores 30 Mana.', icon: 'zap', png: 'https://via.placeholder.com/64/3b82f6/ffffff?text=MP', restoreMana: 30, rarity: 'common' },
-        potion_antidote: { name: 'Antidote', type: 'Consumable', desc: 'Cures Poison status.', icon: 'skull', png: 'https://via.placeholder.com/64/22c55e/ffffff?text=ANT', cureStatus: ['poison'], rarity: 'common' },
-        potion_panacea: { name: 'Panacea', type: 'Consumable', desc: 'Cures all negative statuses.', icon: 'sparkles', png: 'https://via.placeholder.com/64/a855f7/ffffff?text=PAN', cureAllStatuses: true, rarity: 'rare' },
-        poison_vial: { name: 'Poison Vial', type: 'Consumable', desc: 'Applies Poison to an enemy.', icon: 'skull', png: 'https://via.placeholder.com/64/8b5cf6/ffffff?text=PSN', applyStatus: { id: 'poison', chance: 1.0, duration: 3 }, rarity: 'uncommon', target: 'enemy' },
-
-        // --- MATERIALS & LOOT ---
-        goblin_ear: { name: 'Goblin Ear', type: 'Materials', desc: 'A disgusting trophy.', icon: 'origami', rarity: 'common' },
-        mystic_scroll: { name: 'Mystic Scroll', type: 'Consumable', desc: 'Faint energy glows.', icon: 'scroll', rarity: 'uncommon' },
-        goblin_staff: { name: 'Goblin Staff', type: 'Weapon', desc: 'Smells of charcoal.', icon: 'wand-2', rarity: 'rare' },
-        iron_shard: { name: 'Iron Shard', type: 'Materials', desc: 'Rusty but useful.', icon: 'hammer', rarity: 'common' },
-        heavy_plated_belt: { name: 'Plated Belt', type: 'Equipment', desc: 'High defense.', icon: 'shield-check', rarity: 'uncommon' },
-        hobgoblin_hammer: { name: 'Hobgoblin Mauler', type: 'Weapon', desc: 'Pure brute force.', icon: 'swords', rarity: 'epic' },
-        broken_arrow: { name: 'Broken Arrow', type: 'Materials', desc: 'Good for wood.', icon: 'target', rarity: 'common' },
-        leather_quiver: { name: 'Sturdy Quiver', type: 'Equipment', desc: 'Increases speed.', icon: 'briefcase', rarity: 'uncommon' },
-        hunters_bow: { name: 'Hunters Longbow', type: 'Weapon', desc: 'Piercing power.', icon: 'target', rarity: 'rare' }
-    },
+    items: (window.itemsData || {}),
 
     // Global Party Inventory (Shared by all heroes)
     partyInventory: {
@@ -789,7 +801,11 @@
         potion_mana: 3,
         potion_antidote: 2,
         potion_panacea: 1,
-        poison_vial: 2
+        poison_vial: 2,
+        iron_sword: 1,
+        hunters_bow: 1,
+        iron_plate: 1,
+        steel_shield: 1
     }
 };
 

@@ -41,7 +41,10 @@ try {
         '005_insert_classes_data.php',
         '006_add_image_prefix_column.php',
         '007_add_image_prefix_and_update.php',
-        '008_update_classes_to_english.php'
+        '008_update_classes_to_english.php',
+        '014_create_quest_tables.php',
+        '015_seed_quest_definitions.php',
+        '016_create_quest_battle_tables.php'
     ];
     
     foreach ($migrations as $migration) {

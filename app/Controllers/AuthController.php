@@ -23,7 +23,7 @@ class AuthController
             return;
         }
 
-        view('auth.login');
+        view('auth.auth', ['activeTab' => 'login']);
     }
 
     public function login(): void
@@ -78,7 +78,7 @@ class AuthController
             return;
         }
 
-        view('auth.register');
+        view('auth.auth', ['activeTab' => 'register']);
     }
 
     public function register(): void

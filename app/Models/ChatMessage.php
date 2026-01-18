@@ -214,7 +214,7 @@ class ChatMessage
                 return [
                     'allowed' => false,
                     'wait_seconds' => $remainingWait,
-                    'message' => "You are sending messages too quickly. Please wait {$remainingWait} second" . ($remainingWait > 1 ? 's' : '') . ".",
+                    'message' => '', // No error message - button countdown is enough
                     'penalty_level' => $penaltyLevel
                 ];
             }

@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batalha Tática - Final Fantasy Tactics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            color: #e6e6e6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+        
+        h1 {
+            color: #ffcc00;
+            font-size: 2.8rem;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+        
+        .subtitle {
+            color: #66ccff;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            margin-bottom: 20px;
+        }
+        
+        .canvas-container {
+            position: relative;
+            border: 3px solid #4a4a6d;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+        
+        canvas {
+            display: block;
+            background-color: #0d1b2a;
+        }
+        
+        .ui-panel {
+            background-color: rgba(26, 26, 46, 0.9);
+            border: 2px solid #4a4a6d;
+            border-radius: 8px;
+            padding: 20px;
+            width: 300px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        .turn-indicator {
+            background: linear-gradient(to right, #2d5a8c, #1e3a5f);
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            border: 2px solid #4a7bac;
+            box-shadow: 0 0 10px rgba(74, 123, 172, 0.5);
+        }
+        
+        .hero-turn {
+            color: #66ff99;
+        }
+        
+        .enemy-turn {
+            color: #ff6666;
+        }
+        
+        .character-info {
+            background-color: rgba(30, 30, 60, 0.8);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #555577;
+        }
+        
+        .character-info h3 {
+            color: #ffcc00;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #555577;
+            padding-bottom: 5px;
+        }
+        
+        .hp-bar {
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            border: 1px solid #555;
+        }
+        
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff3333, #ff6666);
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+        
+        .hp-text {
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            background: linear-gradient(to bottom, #4a7bac, #2d5a8c);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 #1e3a5f;
+        }
+        
+        button:hover {
+            background: linear-gradient(to bottom, #5a8bbc, #3d6a9c);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #1e3a5f;
+        }
+        
+        button:disabled {
+            background: linear-gradient(to bottom, #555, #333);
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 0 #222;
+        }
+        
+        .action-description {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: rgba(40, 40, 70, 0.8);
+            border-radius: 5px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            min-height: 80px;
+            border: 1px solid #555577;
+        }
+        
+        .characters-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .character-portrait {
+            display: flex;
+            align-items: center;
+            background-color: rgba(40, 40, 70, 0.8);
+            border-radius: 5px;
+            padding: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .character-portrait.active {
+            border-color: #ffcc00;
+            background-color: rgba(60, 60, 100, 0.9);
+        }
+        
+        .character-portrait.hero {
+            border-left: 4px solid #66ff99;
+        }
+        
+        .character-portrait.enemy {
+            border-left: 4px solid #ff6666;
+        }
+        
+        .portrait-img {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            border-radius: 50%;
+            border: 2px solid #4a4a6d;
+        }
+        
+        .portrait-info {
+            flex-grow: 1;
+        }
+        
+        .portrait-name {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .portrait-hp {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+        
+        .instructions {
+            max-width: 900px;
+            background-color: rgba(26, 26, 46, 0.8);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 2px solid #4a4a6d;
+        }
+        
+        .instructions h3 {
+            color: #66ccff;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .instructions li {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        
+        .instructions p {
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        
+        .status-text {
+            text-align: center;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            background-color: rgba(30, 30, 60, 0.8);
+        }
+        
+        .victory {
+            color: #66ff99;
+            background-color: rgba(30, 60, 30, 0.8);
+        }
+        
+        .defeat {
+            color: #ff6666;
+            background-color: rgba(60, 30, 30, 0.8);
+        }
+        
+        @media (max-width: 1100px) {
+            .game-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .ui-panel {
+                width: 100%;
+                max-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>BATALHA TÁTICA</h1>
+        <div class="subtitle">Inspirado em Final Fantasy Tactics</div>
+    </header>
+    
+    <main class="game-container">
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="700" height="700"></canvas>
+        </div>
+        
+        <div class="ui-panel">
+            <div id="turnIndicator" class="turn-indicator">
+                Turno: <span id="currentTurn">Guerreiro</span>
+            </div>
+            
+            <div class="character-info">
+                <h3 id="selectedCharName">Guerreiro</h3>
+                <div class="hp-bar">
+                    <div id="hpFill" class="hp-fill" style="width: 100%"></div>
+                </div>
+                <div id="hpText" class="hp-text">HP: 100/100</div>
+                
+                <div class="stats">
+                    <div class="stat"><span>ATQ:</span> <span id="statAtk">15</span></div>
+                    <div class="stat"><span>DEF:</span> <span id="statDef">12</span></div>
+                    <div class="stat"><span>VEL:</span> <span id="statSpd">8</span></div>
+                    <div class="stat"><span>MOV:</span> <span id="statMov">4</span></div>
+                    <div class="stat"><span>ALC:</span> <span id="statRange">1</span></div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button id="btnMove" onclick="selectAction('move')">Mover</button>
+                <button id="btnAttack" onclick="selectAction('attack')">Atacar</button>
+                <button id="btnSkill" onclick="selectAction('skill')">Skill</button>
+                <button id="btnEndTurn" onclick="endTurn()">Passar Turno</button>
+            </div>
+            
+            <div id="actionDescription" class="action-description">
+                Selecione uma unidade para começar. Clique em um personagem para selecioná-lo.
+            </div>
+            
+            <div class="characters-list">
+                <!-- Personagens serão adicionados dinamicamente -->
+            </div>
+            
+            <div id="statusText" class="status-text"></div>
+        </div>
+    </main>
+    
+    <div class="instructions">
+        <h3>INSTRUÇÕES</h3>
+        <ul>
+            <li><strong>Objetivo:</strong> Derrote todos os inimigos (2 Slimes e 1 Werewolf).</li>
+            <li><strong>Seleção:</strong> Clique em um personagem para selecioná-lo.</li>
+            <li><strong>Mover:</strong> Mostra os tiles onde o personagem pode se mover.</li>
+            <li><strong>Atacar:</strong> Mostra os tiles dentro do alcance de ataque.</li>
+            <li><strong>Skill:</strong> Cada personagem tem uma habilidade especial com área de efeito.</li>
+            <li><strong>Turnos:</strong> A ordem é determinada pela velocidade (VEL) de cada personagem.</li>
+        </ul>
+        <p><strong>Dica:</strong> Priorize eliminar o Werewolf primeiro, pois ele causa mais dano.</p>
+    </div>
+
+    <script>
+        // Configurações do jogo
+        const TILE_SIZE = 70;
+        const GRID_WIDTH = 10;
+        const GRID_HEIGHT = 10;
+        const CANVAS_WIDTH = TILE_SIZE * GRID_WIDTH;
+        const CANVAS_HEIGHT = TILE_SIZE * GRID_HEIGHT;
+
+        // Elementos do DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const turnIndicator = document.getElementById('turnIndicator');
+        const currentTurnSpan = document.getElementById('currentTurn');
+        const selectedCharName = document.getElementById('selectedCharName');
+        const hpFill = document.getElementById('hpFill');
+        const hpText = document.getElementById('hpText');
+        const statAtk = document.getElementById('statAtk');
+        const statDef = document.getElementById('statDef');
+        const statSpd = document.getElementById('statSpd');
+        const statMov = document.getElementById('statMov');
+        const statRange = document.getElementById('statRange');
+        const actionDescription = document.getElementById('actionDescription');
+        const statusText = document.getElementById('statusText');
+        const charactersList = document.querySelector('.characters-list');
+        
+        // Estado do jogo
+        let gameState = {
+            turn: 'player', // 'player' ou 'enemy'
+            phase: 'select', // 'select', 'move', 'attack', 'skill'
+            selectedCharacter: null,
+            characters: [],
+            currentTurnIndex: 0,
+            turnOrder: [],
+            highlightedTiles: [],
+            skillArea: [],
+            gameOver: false,
+            winner: null
+        };
+
+        // Classes do jogo
+        class Character {
+            constructor(name, x, y, isHero, stats, color, sprite) {
+                this.name = name;
+                this.x = x;
+                this.y = y;
+                this.isHero = isHero;
+                this.maxHp = stats.hp;
+                this.hp = stats.hp;
+                this.atk = stats.atk;
+                this.def = stats.def;
+                this.spd = stats.spd;
+                this.mov = stats.mov;
+                this.range = stats.range || 1;
+                this.color = color;
+                this.sprite = sprite;
+                this.hasActed = false;
+                this.skillName = "Ataque Básico";
+                this.skillDescription = "Ataque corpo a corpo com alcance de 1 tile.";
+                this.skillRange = 1;
+                this.skillAreaType = "single"; // single, cross, line, square
+                this.skillAreaSize = 1;
+            }
+
+            draw() {
+                // Desenhar o personagem no canvas
+                const screenX = this.x * TILE_SIZE + TILE_SIZE/2;
+                const screenY = this.y * TILE_SIZE + TILE_SIZE/2;
+                
+                // Destacar personagem selecionado
+                if (gameState.selectedCharacter === this) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, TILE_SIZE/2 + 5, 0, Math.PI * 2);
+                    ctx.strokeStyle = this.isHero ? '#66ff99' : '#ff6666';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+                
+                // Desenhar sprite (círculo colorido com símbolo)
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, TILE_SIZE/2 - 5, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Desenhar símbolo do personagem
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.sprite, screenX, screenY);
+                
+                // Desenhar barra de HP
+                const hpWidth = (TILE_SIZE - 10) * (this.hp / this.maxHp);
+                ctx.fillStyle = '#333';
+                ctx.fillRect(this.x * TILE_SIZE + 5, this.y * TILE_SIZE - 10, TILE_SIZE - 10, 6);
+                ctx.fillStyle = this.hp > this.maxHp * 0.5 ? '#ff3333' : this.hp > this.maxHp * 0.25 ? '#ff9933' : '#ff3333';
+                ctx.fillRect(this.x * TILE_SIZE + 5, this.y * TILE_SIZE - 10, hpWidth, 6);
+                
+                // Desenhar indicador de ação realizada
+                if (this.hasActed) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, TILE_SIZE/2 - 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            canMoveTo(x, y, occupiedTiles) {
+                // Verificar se o tile está dentro do grid
+                if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
+                
+                // Verificar se o tile está ocupado por outro personagem
+                const tileKey = `${x},${y}`;
+                if (occupiedTiles.includes(tileKey)) return false;
+                
+                // Calcular distância de movimento (Manhattan)
+                const distance = Math.abs(this.x - x) + Math.abs(this.y - y);
+                return distance <= this.mov;
+            }
+
+            canAttack(x, y) {
+                // Calcular distância de ataque (Manhattan)
+                const distance = Math.abs(this.x - x) + Math.abs(this.y - y);
+                return distance <= this.range;
+            }
+
+            getAttackTargets(x, y) {
+                // Retorna os tiles afetados por um ataque nesta posição
+                const targets = [];
+                if (this.skillAreaType === "single") {
+                    targets.push({x, y});
+                } else if (this.skillAreaType === "cross") {
+                    targets.push({x, y});
+                    targets.push({x: x+1, y});
+                    targets.push({x: x-1, y});
+                    targets.push({x, y: y+1});
+                    targets.push({x, y: y-1});
+                } else if (this.skillAreaType === "line") {
+                    // Linha horizontal de 3 tiles
+                    for (let i = -1; i <= 1; i++) {
+                        targets.push({x: x+i, y});
+                    }
+                } else if (this.skillAreaType === "square") {
+                    // Quadrado 3x3
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            targets.push({x: x+dx, y: y+dy});
+                        }
+                    }
+                }
+                
+                // Filtrar tiles fora do grid
+                return targets.filter(t => 
+                    t.x >= 0 && t.x < GRID_WIDTH && 
+                    t.y >= 0 && t.y < GRID_HEIGHT
+                );
+            }
+
+            attack(target) {
+                const damage = Math.max(1, Math.floor(this.atk * (1 - target.def / 100)));
+                target.hp = Math.max(0, target.hp - damage);
+                return damage;
+            }
+
+            useSkill(target) {
+                // Habilidade especial
+                if (this.skillAreaType === "cross") {
+                    // Habilidade do Guerreiro: Ataque Cruzado
+                    return this.attack(target) * 1.5;
+                } else if (this.skillAreaType === "square") {
+                    // Habilidade do Mago: Bola de Fogo
+                    return this.attack(target) * 1.2;
+                } else if (this.skillAreaType === "line") {
+                    // Habilidade do Werewolf: Investida
+                    return this.attack(target) * 1.3;
+                }
+                return this.attack(target);
+            }
+        }
+
+        // Classes específicas de personagens
+        class Warrior extends Character {
+            constructor(x, y) {
+                super("Guerreiro", x, y, true, {
+                    hp: 120,
+                    atk: 15,
+                    def: 12,
+                    spd: 8,
+                    mov: 4,
+                    range: 1
+                }, '#4a7bac', '⚔️');
+                this.skillName = "Ataque Cruzado";
+                this.skillDescription = "Ataca o alvo e inimigos adjacentes em cruz.";
+                this.skillRange = 1;
+                this.skillAreaType = "cross";
+                this.skillAreaSize = 1;
+            }
+        }
+
+        class Mage extends Character {
+            constructor(x, y) {
+                super("Mago", x, y, true, {
+                    hp: 80,
+                    atk: 18,
+                    def: 6,
+                    spd: 10,
+                    mov: 3,
+                    range: 3
+                }, '#9c4aac', '🔮');
+                this.skillName = "Bola de Fogo";
+                this.skillDescription = "Explosão em área 3x3 que causa dano moderado.";
+                this.skillRange = 3;
+                this.skillAreaType = "square";
+                this.skillAreaSize = 1;
+            }
+        }
+
+        class Slime extends Character {
+            constructor(name, x, y) {
+                super(name, x, y, false, {
+                    hp: 60,
+                    atk: 8,
+                    def: 4,
+                    spd: 5,
+                    mov: 3,
+                    range: 1
+                }, '#4aac5a', '💧');
+                this.skillName = "Pulo";
+                this.skillDescription = "Pula no alvo causando dano leve.";
+                this.skillRange = 1;
+                this.skillAreaType = "single";
+                this.skillAreaSize = 1;
+            }
+        }
+
+        class Werewolf extends Character {
+            constructor(x, y) {
+                super("Werewolf", x, y, false, {
+                    hp: 100,
+                    atk: 20,
+                    def: 8,
+                    spd: 12,
+                    mov: 5,
+                    range: 1
+                }, '#ac4a4a', '🐺');
+                this.skillName = "Investida";
+                this.skillDescription = "Ataca em linha reta, atingindo até 3 tiles.";
+                this.skillRange = 1;
+                this.skillAreaType = "line";
+                this.skillAreaSize = 1;
+            }
+        }
+
+        // Inicialização do jogo
+        function initGame() {
+            // Criar personagens
+            gameState.characters = [
+                new Warrior(2, 2),
+                new Mage(1, 3),
+                new Slime("Slime 1", 7, 6),
+                new Slime("Slime 2", 8, 7),
+                new Werewolf(6, 7)
+            ];
+            
+            // Calcular ordem de turno baseado na velocidade
+            calculateTurnOrder();
+            
+            // Selecionar primeiro personagem do turno
+            gameState.selectedCharacter = gameState.turnOrder[0];
+            updateUI();
+            updateCharactersList();
+            
+            // Desenhar grid inicial
+            drawGrid();
+            drawCharacters();
+            
+            // Adicionar evento de clique no canvas
+            canvas.addEventListener('click', handleCanvasClick);
+        }
+
+        // Calcular ordem de turno
+        function calculateTurnOrder() {
+            // Ordenar personagens por velocidade (mais alta primeiro)
+            gameState.turnOrder = [...gameState.characters]
+                .filter(c => c.hp > 0)
+                .sort((a, b) => b.spd - a.spd);
+            
+            // Resetar ações realizadas
+            gameState.characters.forEach(c => c.hasActed = false);
+            
+            // Atualizar índice do turno atual
+            gameState.currentTurnIndex = 0;
+            
+            // Verificar se o jogo acabou
+            checkGameOver();
+        }
+
+        // Desenhar grid
+        function drawGrid() {
+            // Limpar canvas
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // Desenhar tiles do grid
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                for (let y = 0; y < GRID_HEIGHT; y++) {
+                    const tileX = x * TILE_SIZE;
+                    const tileY = y * TILE_SIZE;
+                    
+                    // Cor do tile (padrão xadrez)
+                    const isEven = (x + y) % 2 === 0;
+                    ctx.fillStyle = isEven ? '#1e3a5f' : '#2d5a8c';
+                    ctx.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                    
+                    // Borda do tile
+                    ctx.strokeStyle = '#0d1b2a';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                }
+            }
+            
+            // Destacar tiles se necessário
+            if (gameState.highlightedTiles.length > 0) {
+                gameState.highlightedTiles.forEach(tile => {
+                    const tileX = tile.x * TILE_SIZE;
+                    const tileY = tile.y * TILE_SIZE;
+                    
+                    if (gameState.phase === 'move') {
+                        ctx.fillStyle = 'rgba(102, 255, 153, 0.3)';
+                    } else if (gameState.phase === 'attack') {
+                        ctx.fillStyle = 'rgba(255, 102, 102, 0.3)';
+                    } else if (gameState.phase === 'skill') {
+                        ctx.fillStyle = 'rgba(255, 204, 0, 0.3)';
+                    }
+                    
+                    ctx.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = gameState.phase === 'move' ? '#66ff99' : 
+                                     gameState.phase === 'attack' ? '#ff6666' : '#ffcc00';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                });
+            }
+            
+            // Destacar área de skill se necessário
+            if (gameState.skillArea.length > 0) {
+                gameState.skillArea.forEach(tile => {
+                    const tileX = tile.x * TILE_SIZE;
+                    const tileY = tile.y * TILE_SIZE;
+                    
+                    ctx.fillStyle = 'rgba(255, 204, 0, 0.5)';
+                    ctx.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#ffcc00';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                });
+            }
+        }
+
+        // Desenhar personagens
+        function drawCharacters() {
+            gameState.characters.forEach(character => {
+                if (character.hp > 0) {
+                    character.draw();
+                }
+            });
+        }
+
+        // Atualizar UI
+        function updateUI() {
+            const char = gameState.selectedCharacter;
+            
+            if (!char) return;
+            
+            // Atualizar informações do personagem
+            selectedCharName.textContent = char.name;
+            hpFill.style.width = `${(char.hp / char.maxHp) * 100}%`;
+            hpText.textContent = `HP: ${char.hp}/${char.maxHp}`;
+            statAtk.textContent = char.atk;
+            statDef.textContent = char.def;
+            statSpd.textContent = char.spd;
+            statMov.textContent = char.mov;
+            statRange.textContent = char.range;
+            
+            // Atualizar indicador de turno
+            const currentChar = gameState.turnOrder[gameState.currentTurnIndex];
+            currentTurnSpan.textContent = currentChar.name;
+            currentTurnSpan.className = currentChar.isHero ? 'hero-turn' : 'enemy-turn';
+            turnIndicator.className = currentChar.isHero ? 'turn-indicator hero-turn' : 'turn-indicator enemy-turn';
+            
+            // Atualizar descrição da ação
+            if (gameState.phase === 'select') {
+                actionDescription.textContent = `${char.name} selecionado. Escolha uma ação.`;
+            } else if (gameState.phase === 'move') {
+                actionDescription.textContent = `Clique em um tile destacado para mover ${char.name}.`;
+            } else if (gameState.phase === 'attack') {
+                actionDescription.textContent = `Clique em um inimigo destacado para atacar com ${char.name}.`;
+            } else if (gameState.phase === 'skill') {
+                actionDescription.textContent = `Clique em um tile para usar ${char.skillName} com ${char.name}.`;
+            }
+            
+            // Atualizar estado dos botões
+            document.getElementById('btnMove').disabled = char.hasActed || !char.isHero;
+            document.getElementById('btnAttack').disabled = char.hasActed || !char.isHero;
+            document.getElementById('btnSkill').disabled = char.hasActed || !char.isHero;
+            document.getElementById('btnEndTurn').disabled = !char.isHero && gameState.turn === 'player';
+        }
+
+        // Atualizar lista de personagens
+        function updateCharactersList() {
+            charactersList.innerHTML = '';
+            
+            gameState.characters.forEach(char => {
+                const portrait = document.createElement('div');
+                portrait.className = `character-portrait ${char.isHero ? 'hero' : 'enemy'} ${gameState.selectedCharacter === char ? 'active' : ''}`;
+                portrait.onclick = () => selectCharacter(char);
+                
+                portrait.innerHTML = `
+                    <div class="portrait-img" style="background-color: ${char.color}">${char.sprite}</div>
+                    <div class="portrait-info">
+                        <div class="portrait-name">${char.name}</div>
+                        <div class="portrait-hp">HP: ${char.hp}/${char.maxHp}</div>
+                    </div>
+                `;
+                
+                charactersList.appendChild(portrait);
+            });
+        }
+
+        // Selecionar personagem
+        function selectCharacter(character) {
+            if (character.hp <= 0) return;
+            
+            // Só pode selecionar heróis durante o turno do jogador
+            if (gameState.turn === 'player' && !character.isHero) return;
+            
+            // Só pode selecionar inimigos durante o turno da IA
+            if (gameState.turn === 'enemy' && character.isHero) return;
+            
+            gameState.selectedCharacter = character;
+            gameState.phase = 'select';
+            gameState.highlightedTiles = [];
+            gameState.skillArea = [];
+            
+            updateUI();
+            updateCharactersList();
+            drawGrid();
+            drawCharacters();
+        }
+
+        // Selecionar ação
+        function selectAction(action) {
+            const char = gameState.selectedCharacter;
+            if (!char || char.hasActed) return;
+            
+            gameState.phase = action;
+            gameState.highlightedTiles = [];
+            gameState.skillArea = [];
+            
+            if (action === 'move') {
+                // Calcular tiles disponíveis para movimento
+                const occupiedTiles = gameState.characters
+                    .filter(c => c !== char && c.hp > 0)
+                    .map(c => `${c.x},${c.y}`);
+                
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    for (let y = 0; y < GRID_HEIGHT; y++) {
+                        if (char.canMoveTo(x, y, occupiedTiles)) {
+                            gameState.highlightedTiles.push({x, y});
+                        }
+                    }
+                }
+                
+                actionDescription.textContent = `Clique em um tile destacado para mover ${char.name}.`;
+            } 
+            else if (action === 'attack') {
+                // Calcular tiles dentro do alcance de ataque
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    for (let y = 0; y < GRID_HEIGHT; y++) {
+                        if (char.canAttack(x, y)) {
+                            // Verificar se há um inimigo no tile (para heróis) ou herói (para inimigos)
+                            const target = gameState.characters.find(c => 
+                                c.x === x && c.y === y && c.hp > 0 && 
+                                ((char.isHero && !c.isHero) || (!char.isHero && c.isHero))
+                            );
+                            
+                            if (target) {
+                                gameState.highlightedTiles.push({x, y});
+                            }
+                        }
+                    }
+                }
+                
+                actionDescription.textContent = `Clique em um inimigo destacado para atacar com ${char.name}.`;
+            }
+            else if (action === 'skill') {
+                // Calcular tiles dentro do alcance da skill
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    for (let y = 0; y < GRID_HEIGHT; y++) {
+                        const distance = Math.abs(char.x - x) + Math.abs(char.y - y);
+                        if (distance <= char.skillRange) {
+                            gameState.highlightedTiles.push({x, y});
+                        }
+                    }
+                }
+                
+                actionDescription.textContent = `Clique em um tile para usar ${char.skillName} com ${char.name}.`;
+            }
+            
+            updateUI();
+            drawGrid();
+            drawCharacters();
+        }
+
+        // Lidar com clique no canvas
+        function handleCanvasClick(event) {
+            if (gameState.gameOver) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((event.clientX - rect.left) / TILE_SIZE);
+            const y = Math.floor((event.clientY - rect.top) / TILE_SIZE);
+            
+            const char = gameState.selectedCharacter;
+            if (!char) return;
+            
+            if (gameState.phase === 'move') {
+                // Verificar se o tile clicado é válido para movimento
+                const occupiedTiles = gameState.characters
+                    .filter(c => c !== char && c.hp > 0)
+                    .map(c => `${c.x},${c.y}`);
+                
+                if (char.canMoveTo(x, y, occupiedTiles)) {
+                    // Mover personagem
+                    char.x = x;
+                    char.y = y;
+                    char.hasActed = true;
+                    
+                    // Voltar para fase de seleção
+                    gameState.phase = 'select';
+                    gameState.highlightedTiles = [];
+                    
+                    actionDescription.textContent = `${char.name} se moveu para (${x}, ${y}).`;
+                    
+                    // Avançar para próximo personagem
+                    advanceTurn();
+                }
+            }
+            else if (gameState.phase === 'attack') {
+                // Verificar se há um alvo válido no tile clicado
+                const target = gameState.characters.find(c => 
+                    c.x === x && c.y === y && c.hp > 0 && 
+                    ((char.isHero && !c.isHero) || (!char.isHero && c.isHero))
+                );
+                
+                if (target && char.canAttack(x, y)) {
+                    // Realizar ataque
+                    const damage = char.attack(target);
+                    char.hasActed = true;
+                    
+                    // Voltar para fase de seleção
+                    gameState.phase = 'select';
+                    gameState.highlightedTiles = [];
+                    
+                    actionDescription.textContent = `${char.name} atacou ${target.name} causando ${damage} de dano!`;
+                    
+                    // Verificar se o alvo foi derrotado
+                    if (target.hp <= 0) {
+                        actionDescription.textContent += ` ${target.name} foi derrotado!`;
+                    }
+                    
+                    // Avançar para próximo personagem
+                    advanceTurn();
+                }
+            }
+            else if (gameState.phase === 'skill') {
+                // Verificar se o tile está no alcance da skill
+                const distance = Math.abs(char.x - x) + Math.abs(char.y - y);
+                if (distance <= char.skillRange) {
+                    // Mostrar área de efeito da skill
+                    gameState.skillArea = char.getAttackTargets(x, y);
+                    
+                    // Verificar se há alvos na área
+                    const targetsInArea = gameState.characters.filter(c => 
+                        c.hp > 0 && gameState.skillArea.some(t => t.x === c.x && t.y === c.y) &&
+                        ((char.isHero && !c.isHero) || (!char.isHero && c.isHero))
+                    );
+                    
+                    if (targetsInArea.length > 0) {
+                        // Realizar ataque de skill em todos os alvos
+                        let totalDamage = 0;
+                        targetsInArea.forEach(target => {
+                            const damage = Math.floor(char.useSkill(target));
+                            totalDamage += damage;
+                            
+                            if (target.hp <= 0) {
+                                actionDescription.textContent += ` ${target.name} foi derrotado!`;
+                            }
+                        });
+                        
+                        char.hasActed = true;
+                        gameState.phase = 'select';
+                        gameState.highlightedTiles = [];
+                        gameState.skillArea = [];
+                        
+                        actionDescription.textContent = `${char.name} usou ${char.skillName} causando ${totalDamage} de dano total!`;
+                        
+                        // Avançar para próximo personagem
+                        advanceTurn();
+                    } else {
+                        actionDescription.textContent = `Nenhum alvo na área de efeito. Clique em outro tile.`;
+                    }
+                }
+            }
+            else if (gameState.phase === 'select') {
+                // Verificar se clicou em um personagem
+                const clickedChar = gameState.characters.find(c => 
+                    c.x === x && c.y === y && c.hp > 0
+                );
+                
+                if (clickedChar) {
+                    selectCharacter(clickedChar);
+                }
+            }
+            
+            updateUI();
+            updateCharactersList();
+            drawGrid();
+            drawCharacters();
+            checkGameOver();
+        }
+
+        // Avançar turno
+        function advanceTurn() {
+            // Encontrar próximo personagem que ainda não agiu
+            let nextIndex = (gameState.currentTurnIndex + 1) % gameState.turnOrder.length;
+            let attempts = 0;
+            
+            while (gameState.turnOrder[nextIndex].hasActed && attempts < gameState.turnOrder.length) {
+                nextIndex = (nextIndex + 1) % gameState.turnOrder.length;
+                attempts++;
+            }
+            
+            // Se todos agiram, recalcular ordem de turno
+            if (gameState.turnOrder[nextIndex].hasActed) {
+                calculateTurnOrder();
+                nextIndex = 0;
+            }
+            
+            gameState.currentTurnIndex = nextIndex;
+            const nextChar = gameState.turnOrder[nextIndex];
+            
+            // Atualizar estado do turno (player ou enemy)
+            gameState.turn = nextChar.isHero ? 'player' : 'enemy';
+            
+            // Selecionar próximo personagem
+            gameState.selectedCharacter = nextChar;
+            gameState.phase = 'select';
+            gameState.highlightedTiles = [];
+            gameState.skillArea = [];
+            
+            // Se for turno da IA, executar ação
+            if (gameState.turn === 'enemy' && !gameState.gameOver) {
+                setTimeout(executeEnemyTurn, 800);
+            }
+            
+            updateUI();
+            updateCharactersList();
+            drawGrid();
+            drawCharacters();
+        }
+
+        // Executar turno da IA
+        function executeEnemyTurn() {
+            const enemy = gameState.selectedCharacter;
+            if (!enemy || enemy.hasActed || enemy.hp <= 0) return;
+            
+            // Encontrar heróis vivos
+            const heroes = gameState.characters.filter(c => c.isHero && c.hp > 0);
+            if (heroes.length === 0) {
+                endTurn();
+                return;
+            }
+            
+            // Encontrar herói mais próximo
+            let closestHero = null;
+            let closestDistance = Infinity;
+            
+            heroes.forEach(hero => {
+                const distance = Math.abs(enemy.x - hero.x) + Math.abs(enemy.y - hero.y);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestHero = hero;
+                }
+            });
+            
+            // Tentar atacar se estiver no alcance
+            if (enemy.canAttack(closestHero.x, closestHero.y)) {
+                // Verificar se pode usar skill (priorizar heróis com menos HP)
+                const lowHpHero = heroes.reduce((lowest, hero) => 
+                    hero.hp < lowest.hp ? hero : lowest, heroes[0]
+                );
+                
+                // Usar skill se o herói com menos HP estiver no alcance
+                if (Math.abs(enemy.x - lowHpHero.x) + Math.abs(enemy.y - lowHpHero.y) <= enemy.skillRange) {
+                    // Usar skill
+                    gameState.phase = 'skill';
+                    gameState.highlightedTiles = [];
+                    
+                    // Calcular área da skill
+                    for (let x = 0; x < GRID_WIDTH; x++) {
+                        for (let y = 0; y < GRID_HEIGHT; y++) {
+                            const distance = Math.abs(enemy.x - x) + Math.abs(enemy.y - y);
+                            if (distance <= enemy.skillRange) {
+                                gameState.highlightedTiles.push({x, y});
+                            }
+                        }
+                    }
+                    
+                    // Encontrar posição para maximizar o dano da skill
+                    let bestPosition = {x: lowHpHero.x, y: lowHpHero.y};
+                    let maxTargets = 0;
+                    
+                    gameState.highlightedTiles.forEach(tile => {
+                        const skillArea = enemy.getAttackTargets(tile.x, tile.y);
+                        const targetsInArea = heroes.filter(hero => 
+                            skillArea.some(t => t.x === hero.x && t.y === hero.y)
+                        ).length;
+                        
+                        if (targetsInArea > maxTargets) {
+                            maxTargets = targetsInArea;
+                            bestPosition = tile;
+                        }
+                    });
+                    
+                    // Executar skill
+                    gameState.skillArea = enemy.getAttackTargets(bestPosition.x, bestPosition.y);
+                    const targetsInArea = gameState.characters.filter(c => 
+                        c.hp > 0 && c.isHero && gameState.skillArea.some(t => t.x === c.x && t.y === c.y)
+                    );
+                    
+                    let totalDamage = 0;
+                    targetsInArea.forEach(target => {
+                        const damage = Math.floor(enemy.useSkill(target));
+                        totalDamage += damage;
+                    });
+                    
+                    enemy.hasActed = true;
+                    actionDescription.textContent = `${enemy.name} usou ${enemy.skillName} causando ${totalDamage} de dano total!`;
+                } else {
+                    // Atacar normalmente
+                    const damage = enemy.attack(closestHero);
+                    enemy.hasActed = true;
+                    actionDescription.textContent = `${enemy.name} atacou ${closestHero.name} causando ${damage} de dano!`;
+                }
+                
+                // Avançar turno após um breve delay
+                setTimeout(() => {
+                    advanceTurn();
+                    checkGameOver();
+                }, 1200);
+            } else {
+                // Tentar mover-se na direção do herói mais próximo
+                const occupiedTiles = gameState.characters
+                    .filter(c => c !== enemy && c.hp > 0)
+                    .map(c => `${c.x},${c.y}`);
+                
+                // Encontrar tile mais próximo do herói que seja alcançável
+                let bestTile = null;
+                let bestTileDistance = Infinity;
+                
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    for (let y = 0; y < GRID_HEIGHT; y++) {
+                        if (enemy.canMoveTo(x, y, occupiedTiles)) {
+                            const distanceToHero = Math.abs(x - closestHero.x) + Math.abs(y - closestHero.y);
+                            if (distanceToHero < bestTileDistance) {
+                                bestTileDistance = distanceToHero;
+                                bestTile = {x, y};
+                            }
+                        }
+                    }
+                }
+                
+                if (bestTile) {
+                    // Mover-se para o tile
+                    enemy.x = bestTile.x;
+                    enemy.y = bestTile.y;
+                    enemy.hasActed = true;
+                    actionDescription.textContent = `${enemy.name} moveu-se para (${bestTile.x}, ${bestTile.y}).`;
+                    
+                    // Avançar turno após um breve delay
+                    setTimeout(() => {
+                        advanceTurn();
+                        checkGameOver();
+                    }, 1200);
+                } else {
+                    // Não pode se mover, passar turno
+                    endTurn();
+                }
+            }
+            
+            updateUI();
+            updateCharactersList();
+            drawGrid();
+            drawCharacters();
+        }
+
+        // Passar turno
+        function endTurn() {
+            const char = gameState.selectedCharacter;
+            if (char) {
+                char.hasActed = true;
+                actionDescription.textContent = `${char.name} passou o turno.`;
+            }
+            
+            advanceTurn();
+        }
+
+        // Verificar se o jogo acabou
+        function checkGameOver() {
+            const heroesAlive = gameState.characters.filter(c => c.isHero && c.hp > 0).length;
+            const enemiesAlive = gameState.characters.filter(c => !c.isHero && c.hp > 0).length;
+            
+            if (heroesAlive === 0) {
+                gameState.gameOver = true;
+                gameState.winner = 'enemy';
+                statusText.textContent = "DERROTA! Todos os heróis foram derrotados.";
+                statusText.className = "status-text defeat";
+            } else if (enemiesAlive === 0) {
+                gameState.gameOver = true;
+                gameState.winner = 'player';
+                statusText.textContent = "VITÓRIA! Todos os inimigos foram derrotados!";
+                statusText.className = "status-text victory";
+            } else {
+                statusText.textContent = "";
+                statusText.className = "status-text";
+            }
+        }
+
+        // Iniciar o jogo quando a página carregar
+        window.onload = initGame;
+    </script>
+</body>
+</html>
