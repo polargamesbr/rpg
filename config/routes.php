@@ -31,13 +31,6 @@ return [
     
     // Quest Routes
     'POST /game/quest/start' => 'QuestController@start',
-
-    // Battle Routes (Quest Sessions)
-    'POST /game/battle/start' => 'BattleController@start',
-    'GET /game/battle/active' => 'BattleController@active',
-    'GET /game/battle/state' => 'BattleController@state',
-    'POST /game/battle/state' => 'BattleController@save',
-    'POST /game/battle/complete' => 'BattleController@complete',
     
     // Explore Routes (Canvas Map System)
     'GET /game/explore' => 'ExploreController@index',
@@ -47,12 +40,14 @@ return [
     'POST /game/explore/complete' => 'ExploreController@complete',
     'POST /game/explore/reset' => 'ExploreController@reset',
     
-    // Battle Routes (From Map Encounters)
-    'GET /game/battle-from-map' => 'ExploreController@battleFromMap',
-    'GET /game/battle-test' => 'ExploreController@battleTest',
-    
     // Modal Routes (Lazy Loading)
     'GET /game/modal/{modalName}' => 'GameController@loadModal',
+    
+    // API Routes (Tactical System)
+    'GET /game/api/entities' => 'EntityController@batch',
+    'GET /game/api/entities/{id}' => 'EntityController@show',
+    'GET /game/api/skills' => 'SkillController@batch',
+    'GET /game/api/skills/{id}' => 'SkillController@show',
     
     // Debug Route (temporary)
     'GET /debug/gemini' => 'DebugController@gemini',

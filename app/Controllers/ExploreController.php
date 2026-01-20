@@ -41,12 +41,6 @@ class ExploreController
             return;
         }
 
-        $activeBattleUid = \App\Services\QuestBattleService::getActiveBattleUid((int)$sessionData['session']['id']);
-        if ($activeBattleUid) {
-            redirect('/game/battle-from-map?session=' . urlencode($sessionUid) . '&battle=' . urlencode($activeBattleUid));
-            return;
-        }
-
         $data = [
             'character' => $character,
             'pageTitle' => 'Explore'
@@ -91,9 +85,11 @@ class ExploreController
             'mapImage' => '/public/assets/img/maps/castle-map.png'
         ];
         
-        // Incluir paredes do config (mapConfig.walls ou config.walls)
-        $walls = $state['walls'] ?? ($config['walls'] ?? []);
+        // Walls são imutáveis e sempre vêm do config, não do state
+        $walls = $config['walls'] ?? [];
         
+        // Contrato: player (objeto), allies (array), entities (array de inimigos).
+        // Frontend usa collectCombatKeysFromSession(); não renomear sem ajustar lá.
         jsonResponse([
             'success' => true,
             'session' => [
@@ -102,7 +98,8 @@ class ExploreController
                 'status' => $sessionData['session']['status']
             ],
             'player' => $state['player'] ?? null,
-            'entities' => $state['enemies'] ?? [],
+            'allies' => $state['allies'] ?? [],
+            'entities' => $state['enemies'] ?? [], // inimigos; chave "entities" no JSON
             'chests' => $chests,
             'portal' => $portal,
             'walls' => $walls,
@@ -204,21 +201,13 @@ class ExploreController
         }
 
         $state = $sessionData['state'] ?? [];
-        $playerInput = $input['player'] ?? null;
-        $portalInput = $input['portal'] ?? null;
-
-        if (is_array($playerInput)) {
-            $state['player']['x'] = (int)($playerInput['x'] ?? ($state['player']['x'] ?? 0));
-            $state['player']['y'] = (int)($playerInput['y'] ?? ($state['player']['y'] ?? 0));
+        if (is_array($input['player'] ?? null)) {
+            $stateInput['player'] = array_merge($stateInput['player'] ?? [], $input['player']);
         }
-        if (is_array($portalInput)) {
-            $state['portal'] = [
-                'x' => (int)($portalInput['x'] ?? 0),
-                'y' => (int)($portalInput['y'] ?? 0)
-            ] + ($state['portal'] ?? []);
+        if (is_array($input['portal'] ?? null)) {
+            $stateInput['portal'] = array_merge($stateInput['portal'] ?? [], $input['portal']);
         }
-        $state = array_merge($state, $stateInput);
-
+        $state = QuestService::mergeStateInput($state, $stateInput);
         QuestService::updateSessionState((int)$sessionData['session']['id'], $state);
         jsonResponse(['success' => true]);
     }
@@ -295,69 +284,13 @@ class ExploreController
     }
 
     /**
-     * Battle triggered from map encounter
-     * Receives battle participants via sessionStorage (pendingBattle)
-     */
-    public function battleFromMap(): void
-    {
-        $user = AuthService::getCurrentUser();
-        if (!$user) {
-            redirect('/login');
-            return;
-        }
-
-        $sessionUid = $_GET['session'] ?? null;
-        if (!$sessionUid) {
-            redirect('/game/tavern');
-            return;
-        }
-
-        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
-        if (!$sessionData) {
-            redirect('/game/tavern');
-            return;
-        }
-
-        $character = Character::findByUser($user['id']);
-        if (!$character) {
-            redirect('/game/character/create');
-            return;
-        }
-
-        $data = [
-            'character' => $character,
-            'pageTitle' => 'Battle',
-            'isFromMap' => true,
-            'sessionUid' => $sessionUid
-        ];
-
-        include __DIR__ . '/../../views/game/combat.php';
-    }
-
-    /**
-     * Battle test page (debug)
+     * Battle test page (debug) - REMOVED: Sistema antigo de cartas
      */
     public function battleTest(): void
     {
-        $user = AuthService::getCurrentUser();
-        if (!$user) {
-            redirect('/login');
-            return;
-        }
-
-        $character = Character::findByUser($user['id']);
-        if (!$character) {
-            redirect('/game/character/create');
-            return;
-        }
-
-        $data = [
-            'character' => $character,
-            'pageTitle' => 'Battle Test',
-            'isFromMap' => false
-        ];
-
-        include __DIR__ . '/../../views/game/combat.php';
+        // Sistema antigo removido - usar sistema tático atual
+        redirect('/game/tavern');
+        return;
     }
 
     /**

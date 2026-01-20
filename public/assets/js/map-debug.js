@@ -312,6 +312,10 @@
                 <div id="debug-selected-unit" style="font-size: 11px; color: #888; min-height: 16px;">
                     Clique em uma unidade
                 </div>
+                <button id="debug-inspect-status" style="width: 100%; margin-top: 8px; padding: 8px; background: #fbbf24; border: 1px solid #eab308; border-radius: 4px; color: #000; cursor: pointer; font-size: 11px; font-weight: bold; opacity: 0.5; pointer-events: none;" disabled>
+                    🔍 Inspect Status
+                </button>
+                <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">Mostra status completo no console</div>
             </div>
             
             <div style="margin-bottom: 15px; padding-top: 10px; border-top: 1px solid #333;">
@@ -375,6 +379,104 @@
                     <button id="debug-fx-bleed" style="padding: 6px; background: #7f1d1d; border: 1px solid #991b1b; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Bleed</button>
                     <button id="debug-fx-champion" style="padding: 6px; background: #854d0e; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Champion</button>
                     <button id="debug-fx-combo" style="padding: 6px; background: #b91c1c; border: 1px solid #ef4444; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Combo</button>
+                    <button id="debug-fx-ice" style="padding: 6px; background: #0ea5e9; border: 1px solid #38bdf8; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Ice Shatter</button>
+                    <button id="debug-fx-soul" style="padding: 6px; background: #059669; border: 1px solid #10b981; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Soul Absorb</button>
+                    <button id="debug-fx-vortex" style="padding: 6px; background: #4c1d95; border: 1px solid #7c3aed; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Dark Vortex</button>
+                    <button id="debug-fx-phoenix" style="padding: 6px; background: #ea580c; border: 1px solid #f97316; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Phoenix Rise</button>
+                    <button id="debug-fx-quake" style="padding: 6px; background: #78350f; border: 1px solid #a16207; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Earth Quake</button>
+                    <button id="debug-fx-spirit" style="padding: 6px; background: #0284c7; border: 1px solid #38bdf8; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Spirit Blast</button>
+                    <button id="debug-fx-poison" style="padding: 6px; background: #15803d; border: 1px solid #22c55e; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Poison Cloud</button>
+                    <button id="debug-fx-shadow" style="padding: 6px; background: #18181b; border: 1px solid #3f3f46; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Shadow Strike</button>
+                    <button id="debug-fx-celestial" style="padding: 6px; background: #a16207; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Celestial Rain</button>
+                    <button id="debug-fx-nova" style="padding: 6px; background: #f97316; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Nova</button>
+                    <button id="debug-fx-circle" style="padding: 6px; background: #7c3aed; border: 1px solid #a855f7; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Magic ⭕</button>
+                    <button id="debug-fx-chain" style="padding: 6px; background: #0284c7; border: 1px solid #38bdf8; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Chain ⚡</button>
+                    <button id="debug-fx-shock" style="padding: 6px; background: #d97706; border: 1px solid #f59e0b; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Shockwave</button>
+                    <button id="debug-fx-meteor" style="padding: 6px; background: #b91c1c; border: 1px solid #ef4444; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Meteor ☄️</button>
+                    <button id="debug-fx-mirror" style="padding: 6px; background: #2563eb; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Mirror 👻</button>
+                    <button id="debug-fx-penta" style="padding: 6px; background: #991b1b; border: 1px solid #dc2626; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Penta ⭐</button>
+                    <button id="debug-fx-timewarp" style="padding: 6px; background: #6d28d9; border: 1px solid #8b5cf6; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Time 🌀</button>
+                    <button id="debug-fx-laser" style="padding: 6px; background: #dc2626; border: 1px solid #f87171; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Laser 💥</button>
+                    <button id="debug-fx-tornado" style="padding: 6px; background: #64748b; border: 1px solid #94a3b8; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Tornado 🌪️</button>
+                    <button id="debug-fx-blackhole" style="padding: 6px; background: #1e1b4b; border: 1px solid #4c1d95; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Black Hole 🕳️</button>
+                    <button id="debug-fx-dragon" style="padding: 6px; background: #b91c1c; border: 1px solid #f97316; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Dragon 🔥</button>
+                    <button id="debug-fx-healrain" style="padding: 6px; background: #059669; border: 1px solid #4ade80; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Heal Rain 💧</button>
+                    <button id="debug-fx-fissure" style="padding: 6px; background: #78350f; border: 1px solid #a16207; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Fissure 🌋</button>
+                    <button id="debug-fx-swordstorm" style="padding: 6px; background: #71717a; border: 1px solid #a1a1aa; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Sword ⚔️</button>
+                    <button id="debug-fx-holy" style="padding: 6px; background: #ca8a04; border: 1px solid #fcd34d; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Holy ✨</button>
+                    <button id="debug-fx-poisonnova" style="padding: 6px; background: #166534; border: 1px solid #4ade80; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">P.Nova ☠️</button>
+                    <button id="debug-fx-frostnova" style="padding: 6px; background: #0369a1; border: 1px solid #7dd3fc; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">F.Nova ❄️</button>
+                    <button id="debug-fx-warcry" style="padding: 6px; background: #d97706; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Warcry 📢</button>
+                    <button id="debug-fx-galaxy" style="padding: 6px; background: #1e1b4b; border: 1px solid #4338ca; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Galaxy 🌌</button>
+                    <button id="debug-fx-samurai" style="padding: 6px; background: #1c1917; border: 1px solid #44403c; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Samurai ⚔️</button>
+                    <button id="debug-fx-supernova" style="padding: 6px; background: #fbbf24; border: 1px solid #fcd34d; border-radius: 4px; color: #1c1917; cursor: pointer; font-size: 10px;">Supernova ✨</button>
+                    <button id="debug-fx-vampire" style="padding: 6px; background: #7f1d1d; border: 1px solid #991b1b; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Vampire 🧛</button>
+                    <button id="debug-fx-storm" style="padding: 6px; background: #1e3a5f; border: 1px solid #3b82f6; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Storm ⛈️</button>
+                    <button id="debug-fx-rift" style="padding: 6px; background: #581c87; border: 1px solid #7c3aed; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Rift 🌀</button>
+                    <button id="debug-fx-atomic" style="padding: 6px; background: #f97316; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Atomic ☢️</button>
+                    <button id="debug-fx-angel" style="padding: 6px; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 4px; color: #1c1917; cursor: pointer; font-size: 10px;">Angel 👼</button>
+                    <button id="debug-fx-demon" style="padding: 6px; background: #450a0a; border: 1px solid #dc2626; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Demon 😈</button>
+                    <button id="debug-fx-gravity" style="padding: 6px; background: #3b0764; border: 1px solid #7c3aed; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Gravity 🕳️</button>
+                    <button id="debug-fx-crystal" style="padding: 6px; background: #0891b2; border: 1px solid #22d3ee; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Crystal 💎</button>
+                    <button id="debug-fx-reaper" style="padding: 6px; background: #18181b; border: 1px solid #581c87; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Reaper 💀</button>
+                    <button id="debug-fx-elemental" style="padding: 6px; background: linear-gradient(90deg, #dc2626, #3b82f6, #fbbf24); border: 1px solid #fff; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Elem 🔥</button>
+                    <button id="debug-fx-spiritbomb" style="padding: 6px; background: #1d4ed8; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Spirit 💫</button>
+                    <button id="debug-fx-bloodmoon" style="padding: 6px; background: #7f1d1d; border: 1px solid #dc2626; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Moon 🌙</button>
+                    <button id="debug-fx-thundergod" style="padding: 6px; background: #ca8a04; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">T.God ⚡</button>
+                    <button id="debug-fx-voidcollapse" style="padding: 6px; background: #1e1b4b; border: 1px solid #4338ca; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Void 🌑</button>
+                    <button id="debug-fx-infernotornado" style="padding: 6px; background: #dc2626; border: 1px solid #f97316; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">F.Torn 🔥</button>
+                    <button id="debug-fx-divinejudgment" style="padding: 6px; background: #fbbf24; border: 1px solid #fcd34d; border-radius: 4px; color: #1c1917; cursor: pointer; font-size: 10px;">Divine ⚔️</button>
+                    <button id="debug-fx-deathmark" style="padding: 6px; background: #18181b; border: 1px solid #3f3f46; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Death 💀</button>
+                </div>
+                <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">Aplica na unidade selecionada</div>
+            </div>
+
+            <div style="margin-bottom: 15px; padding-top: 10px; border-top: 1px solid #333;">
+                <div style="font-size: 10px; color: #22c55e; margin-bottom: 8px; font-weight: bold;">🏹 Archer Skills (Cast/Impact):</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <button id="debug-archer-quickshot-cast" style="padding: 5px; background: #854d0e; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 QuickShot Cast</button>
+                    <button id="debug-archer-quickshot-impact" style="padding: 5px; background: #ca8a04; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">💥 QuickShot Hit</button>
+                    <button id="debug-archer-poison-cast" style="padding: 5px; background: #166534; border: 1px solid #22c55e; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 Poison Cast</button>
+                    <button id="debug-archer-poison-impact" style="padding: 5px; background: #15803d; border: 1px solid #4ade80; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">☠️ Poison Hit</button>
+                    <button id="debug-archer-focused-cast" style="padding: 5px; background: #1e40af; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 Focused Cast</button>
+                    <button id="debug-archer-focused-impact" style="padding: 5px; background: #2563eb; border: 1px solid #93c5fd; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🎯 Focused Hit</button>
+                    <button id="debug-archer-piercing-cast" style="padding: 5px; background: #9a3412; border: 1px solid #f97316; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 Pierce Cast</button>
+                    <button id="debug-archer-piercing-impact" style="padding: 5px; background: #ea580c; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">➡️ Pierce Hit</button>
+                    <button id="debug-archer-multishot-cast" style="padding: 5px; background: #581c87; border: 1px solid #a855f7; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 Multi Cast</button>
+                    <button id="debug-archer-multishot-impact" style="padding: 5px; background: #7c3aed; border: 1px solid #c084fc; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🎯 Multi Hit</button>
+                    <button id="debug-archer-huntersfocus" style="padding: 5px; background: #b45309; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" colspan="2">👁️ Hunter's Focus (Buff)</button>
+                    <button id="debug-archer-tactical-cast" style="padding: 5px; background: #374151; border: 1px solid #9ca3af; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 Tactical Cast</button>
+                    <button id="debug-archer-tactical-impact" style="padding: 5px; background: #6b7280; border: 1px solid #d1d5db; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">💨 Tactical Hit</button>
+                    <button id="debug-archer-rain-cast" style="padding: 5px; background: #854d0e; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 Rain Cast</button>
+                    <button id="debug-archer-rain-impact" style="padding: 5px; background: #d97706; border: 1px solid #fcd34d; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🌧️ Rain Impact</button>
+                    <button id="debug-archer-cripple-cast" style="padding: 5px; background: #0369a1; border: 1px solid #0ea5e9; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">🏹 Cripple Cast</button>
+                    <button id="debug-archer-cripple-impact" style="padding: 5px; background: #0891b2; border: 1px solid #7dd3fc; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">❄️ Cripple Hit</button>
+                    <button id="debug-archer-deadly-cast" style="padding: 5px; background: #7f1d1d; border: 1px solid #dc2626; border-radius: 4px; color: white; cursor: pointer; font-size: 9px; font-weight: bold;">⚡ DEADLY Cast</button>
+                    <button id="debug-archer-deadly-impact" style="padding: 5px; background: #dc2626; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 9px; font-weight: bold;">💀 DEADLY Hit</button>
+                </div>
+                <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">Cast = origem | Impact = alvo</div>
+            </div>
+            
+            <div style="margin-bottom: 15px; padding-top: 10px; border-top: 1px solid #333;">
+                <div style="font-size: 10px; color: #22c55e; margin-bottom: 8px; font-weight: bold;">🛡️ Buffs & Status:</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <button id="debug-buff-berserker" style="padding: 6px; background: #7f1d1d; border: 1px solid #991b1b; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="ATK+25%, DEF-15%, 3 turns">Berserker</button>
+                    <button id="debug-buff-defense" style="padding: 6px; background: #1e3a8a; border: 1px solid #3b82f6; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="Reduce damage 50%, 2 turns">Defensive</button>
+                    <button id="debug-buff-focus" style="padding: 6px; background: #854d0e; border: 1px solid #ca8a04; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="ATK+50%, CRIT+20%, 3 turns">Focus</button>
+                    <button id="debug-buff-evasion" style="padding: 6px; background: #166534; border: 1px solid #22c55e; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="FLEE+50, AGI+20, 2 turns">Evasion</button>
+                    <button id="debug-buff-stone" style="padding: 6px; background: #374151; border: 1px solid #6b7280; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="VIT+5, DMG-20%, 3 turns">Stone Skin</button>
+                    <button id="debug-buff-regen" style="padding: 6px; background: #059669; border: 1px solid #10b981; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="Regen 10% HP/turn, 3 turns">Regen</button>
+                    <button id="debug-buff-haste" style="padding: 6px; background: #0891b2; border: 1px solid #22d3ee; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="Speed+30%, 2 turns">Haste</button>
+                    <button id="debug-buff-crit" style="padding: 6px; background: #9a3412; border: 1px solid #ea580c; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;" title="CRIT+30%, 3 turns">Crit Up</button>
+                </div>
+                <div style="font-size: 9px; color: #f87171; margin-top: 8px; margin-bottom: 4px;">Status Effects:</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;">
+                    <button id="debug-status-poison" style="padding: 5px; background: #4c1d95; border: 1px solid #7c3aed; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">Poison</button>
+                    <button id="debug-status-bleed" style="padding: 5px; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">Bleed</button>
+                    <button id="debug-status-stun" style="padding: 5px; background: #78350f; border: 1px solid #fbbf24; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">Stun</button>
+                    <button id="debug-status-burn" style="padding: 5px; background: #9a3412; border: 1px solid #f97316; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">Burn</button>
+                    <button id="debug-status-slow" style="padding: 5px; background: #1e40af; border: 1px solid #3b82f6; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">Slow</button>
+                    <button id="debug-status-clear" style="padding: 5px; background: #15803d; border: 1px solid #22c55e; border-radius: 4px; color: white; cursor: pointer; font-size: 9px;">Clear All</button>
                 </div>
                 <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">Aplica na unidade selecionada</div>
             </div>
@@ -644,8 +746,61 @@
         // Botões de SFX
         setupSfxButtons();
 
+        // Botões de Buffs/Status
+        setupBuffButtons();
+
         // Aplicar level
         document.getElementById('debug-apply-level')?.addEventListener('click', applyLevel);
+
+        // Botão Inspect Status
+        document.getElementById('debug-inspect-status')?.addEventListener('click', () => {
+            if (!debugSelectedUnit) {
+                console.warn('[MAP-DEBUG] No unit selected for inspection');
+                return;
+            }
+            inspectStatus(debugSelectedUnit);
+        });
+
+        // Botão Copiar JSON da Unidade
+        document.getElementById('debug-copy-config')?.addEventListener('click', () => {
+            if (!debugSelectedUnit) return;
+            const json = JSON.stringify(debugSelectedUnit, null, 2);
+            const done = () => {
+                const btn = document.getElementById('debug-copy-config');
+                if (btn) {
+                    const original = btn.textContent;
+                    btn.textContent = '✓ Copiado!';
+                    btn.style.background = '#16a34a';
+                    setTimeout(() => {
+                        btn.textContent = original;
+                        btn.style.background = '#22c55e';
+                    }, 2000);
+                }
+            };
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                navigator.clipboard.writeText(json).then(done).catch(() => fallbackCopy(json, done));
+            } else {
+                fallbackCopy(json, done);
+            }
+        });
+
+        function fallbackCopy(text, onDone) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.setAttribute('readonly', '');
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                onDone();
+            } catch (e) {
+                console.warn('[MAP-DEBUG] Falha ao copiar:', e);
+                if (typeof onDone === 'function') onDone();
+            }
+            document.body.removeChild(ta);
+        }
     }
 
     /**
@@ -931,6 +1086,559 @@
             }
         });
 
+        // Novos efeitos criativos (10 efeitos)
+        document.getElementById('debug-fx-ice')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnIceShatter) {
+                window.MapSFX.spawnIceShatter(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-soul')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnSoulAbsorb) {
+                window.MapSFX.spawnSoulAbsorb(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-vortex')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnDarkVortex) {
+                window.MapSFX.spawnDarkVortex(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-phoenix')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnPhoenixRise) {
+                window.MapSFX.spawnPhoenixRise(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-quake')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnEarthQuake) {
+                window.MapSFX.spawnEarthQuake(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-spirit')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnSpiritBlast) {
+                window.MapSFX.spawnSpiritBlast(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-poison')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnPoisonCloud) {
+                window.MapSFX.spawnPoisonCloud(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-shadow')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnShadowStrike) {
+                window.MapSFX.spawnShadowStrike(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-celestial')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnCelestialRain) {
+                window.MapSFX.spawnCelestialRain(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-nova')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnNovaExplosion) {
+                window.MapSFX.spawnNovaExplosion(x, y, 1);
+            }
+        });
+
+        // Efeitos únicos e criativos (8 efeitos)
+        document.getElementById('debug-fx-circle')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnMagicCircle) {
+                window.MapSFX.spawnMagicCircle(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-chain')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnChainLightning) {
+                window.MapSFX.spawnChainLightning(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-shock')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnShockwavePulse) {
+                window.MapSFX.spawnShockwavePulse(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-meteor')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnMeteorStrike) {
+                window.MapSFX.spawnMeteorStrike(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-mirror')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnMirrorImages) {
+                window.MapSFX.spawnMirrorImages(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-penta')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnPentagramSummon) {
+                window.MapSFX.spawnPentagramSummon(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-timewarp')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnTimeWarp) {
+                window.MapSFX.spawnTimeWarp(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-laser')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnLaserBeam) {
+                window.MapSFX.spawnLaserBeam(x, y, 1);
+            }
+        });
+
+        // Efeitos épicos batch 3 (10 efeitos)
+        document.getElementById('debug-fx-tornado')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnTornadoVortex) {
+                window.MapSFX.spawnTornadoVortex(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-blackhole')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnBlackHole) {
+                window.MapSFX.spawnBlackHole(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-dragon')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnDragonBreath) {
+                window.MapSFX.spawnDragonBreath(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-healrain')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnHealingRain) {
+                window.MapSFX.spawnHealingRain(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-fissure')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnEarthquakeFissure) {
+                window.MapSFX.spawnEarthquakeFissure(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-swordstorm')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnSwordStorm) {
+                window.MapSFX.spawnSwordStorm(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-holy')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnHolyExplosion) {
+                window.MapSFX.spawnHolyExplosion(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-poisonnova')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnPoisonNova) {
+                window.MapSFX.spawnPoisonNova(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-frostnova')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnFrostNova) {
+                window.MapSFX.spawnFrostNova(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-warcry')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnWarcryRoar) {
+                window.MapSFX.spawnWarcryRoar(x, y, 1);
+            }
+        });
+
+        // Efeitos de cair o queixo batch 1 (10 efeitos)
+        document.getElementById('debug-fx-galaxy')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnGalaxySpiral) {
+                window.MapSFX.spawnGalaxySpiral(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-samurai')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnSamuraiSlash) {
+                window.MapSFX.spawnSamuraiSlash(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-supernova')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnSupernova) {
+                window.MapSFX.spawnSupernova(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-vampire')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnVampireBite) {
+                window.MapSFX.spawnVampireBite(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-storm')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnLightningStorm) {
+                window.MapSFX.spawnLightningStorm(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-rift')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnDimensionRift) {
+                window.MapSFX.spawnDimensionRift(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-atomic')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnAtomicBlast) {
+                window.MapSFX.spawnAtomicBlast(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-angel')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnAngelWings) {
+                window.MapSFX.spawnAngelWings(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-demon')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnDemonSummon) {
+                window.MapSFX.spawnDemonSummon(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-gravity')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnGravityCrush) {
+                window.MapSFX.spawnGravityCrush(x, y, 1);
+            }
+        });
+
+        // Efeitos de cair o queixo batch 2 (10 efeitos)
+        document.getElementById('debug-fx-crystal')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnCrystalPrison) {
+                window.MapSFX.spawnCrystalPrison(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-reaper')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnSoulReaper) {
+                window.MapSFX.spawnSoulReaper(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-elemental')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnElementalFury) {
+                window.MapSFX.spawnElementalFury(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-spiritbomb')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnSpiritBomb) {
+                window.MapSFX.spawnSpiritBomb(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-bloodmoon')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnBloodMoon) {
+                window.MapSFX.spawnBloodMoon(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-thundergod')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnThunderGod) {
+                window.MapSFX.spawnThunderGod(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-voidcollapse')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnVoidCollapse) {
+                window.MapSFX.spawnVoidCollapse(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-infernotornado')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnInfernoTornado) {
+                window.MapSFX.spawnInfernoTornado(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-divinejudgment')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnDivineJudgment) {
+                window.MapSFX.spawnDivineJudgment(x, y, 1);
+            }
+        });
+
+        document.getElementById('debug-fx-deathmark')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX && window.MapSFX.spawnDeathMark) {
+                window.MapSFX.spawnDeathMark(x, y, 1);
+            }
+        });
+
+        // === ARCHER SKILL EFFECT HANDLERS ===
+        document.getElementById('debug-archer-quickshot-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerQuickShotCast) window.MapSFX.archerQuickShotCast(x, y);
+        });
+        document.getElementById('debug-archer-quickshot-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerQuickShotImpact) window.MapSFX.archerQuickShotImpact(x, y);
+        });
+        document.getElementById('debug-archer-poison-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerPoisonArrowCast) window.MapSFX.archerPoisonArrowCast(x, y);
+        });
+        document.getElementById('debug-archer-poison-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerPoisonArrowImpact) window.MapSFX.archerPoisonArrowImpact(x, y);
+        });
+        document.getElementById('debug-archer-focused-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerFocusedShotCast) window.MapSFX.archerFocusedShotCast(x, y);
+        });
+        document.getElementById('debug-archer-focused-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerFocusedShotImpact) window.MapSFX.archerFocusedShotImpact(x, y);
+        });
+        document.getElementById('debug-archer-piercing-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerPiercingArrowCast) window.MapSFX.archerPiercingArrowCast(x, y);
+        });
+        document.getElementById('debug-archer-piercing-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerPiercingArrowImpact) window.MapSFX.archerPiercingArrowImpact(x, y, 0);
+        });
+        document.getElementById('debug-archer-multishot-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerMultishotCast) window.MapSFX.archerMultishotCast(x, y);
+        });
+        document.getElementById('debug-archer-multishot-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerMultishotImpact) window.MapSFX.archerMultishotImpact(x, y);
+        });
+        document.getElementById('debug-archer-huntersfocus')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerHuntersFocusCast) window.MapSFX.archerHuntersFocusCast(x, y);
+        });
+        document.getElementById('debug-archer-tactical-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerTacticalRetreatCast) window.MapSFX.archerTacticalRetreatCast(x, y);
+        });
+        document.getElementById('debug-archer-tactical-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerTacticalRetreatImpact) window.MapSFX.archerTacticalRetreatImpact(x, y);
+        });
+        document.getElementById('debug-archer-rain-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerRainOfArrowsCast) window.MapSFX.archerRainOfArrowsCast(x, y);
+        });
+        document.getElementById('debug-archer-rain-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerRainOfArrowsImpact) window.MapSFX.archerRainOfArrowsImpact(x, y);
+        });
+        document.getElementById('debug-archer-cripple-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerCripplingShotCast) window.MapSFX.archerCripplingShotCast(x, y);
+        });
+        document.getElementById('debug-archer-cripple-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerCripplingShotImpact) window.MapSFX.archerCripplingShotImpact(x, y);
+        });
+        document.getElementById('debug-archer-deadly-cast')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerDeadlyAimCast) window.MapSFX.archerDeadlyAimCast(x, y);
+        });
+        document.getElementById('debug-archer-deadly-impact')?.addEventListener('click', () => {
+            if (!debugSelectedUnit || !mapEngineRef) return;
+            const x = (debugSelectedUnit.x - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            const y = (debugSelectedUnit.y - 0.5) * mapEngineRef.CONFIG.CELL_SIZE;
+            if (window.MapSFX?.archerDeadlyAimImpact) window.MapSFX.archerDeadlyAimImpact(x, y);
+        });
+
         // === WALL EDITOR HANDLERS ===
         document.getElementById('debug-edit-walls')?.addEventListener('change', (e) => {
             debugEditWalls = e.target.checked;
@@ -991,6 +1699,199 @@
         setTimeout(updateWallsCount, 500);
     }
 
+    /**
+     * Setup dos botões de Buffs e Status Effects
+     */
+    function setupBuffButtons() {
+        // Definições de buffs disponíveis
+        const buffDefinitions = {
+            'berserker': {
+                id: 'berserker_mode',
+                name: 'Berserker Mode',
+                icon: 'flame',
+                damageDealt: 2.0, // +100% Damage
+                damageTaken: 1.5, // +50% Damage Taken
+                duration: 3
+            },
+            'defense': {
+                id: 'defensive_wall',
+                name: 'Defensive Wall',
+                icon: 'shield',
+                damageTaken: 0.5, // -50% Damage Taken
+                duration: 2
+            },
+            'focus': {
+                id: 'battle_focus',
+                name: 'Battle Focus',
+                icon: 'crosshair',
+                stats: { str: 20, dex: 15 },
+                damageDealt: 1.5,
+                duration: 3
+            },
+            'evasion': {
+                id: 'evasive_step',
+                name: 'Evasive Step',
+                icon: 'wind',
+                stats: { agi: 20 },
+                flee: 50,
+                duration: 2
+            },
+            'stone': {
+                id: 'stone_skin',
+                name: 'Stone Skin',
+                icon: 'shield-check',
+                stats: { vit: 5 },
+                damageTaken: 0.8,
+                duration: 3
+            },
+            'regen': {
+                id: 'regeneration',
+                name: 'Regeneration',
+                icon: 'heart-pulse',
+                hpRegen: 0.10,  // 10% HP per turn
+                duration: 3
+            },
+            'haste': {
+                id: 'haste',
+                name: 'Haste',
+                icon: 'zap',
+                stats: { agi: 15 },
+                aspd: 30,
+                duration: 2
+            },
+            'crit': {
+                id: 'critical_boost',
+                name: 'Critical Boost',
+                icon: 'star',
+                critBonus: 30,
+                duration: 3
+            }
+        };
+
+        // Status Effects (debuffs/DoT)
+        const statusDefinitions = {
+            'poison': {
+                id: 'poison',
+                name: 'Poison',
+                icon: 'skull',
+                dotDamage: 0.05,  // 5% HP per turn
+                duration: 3
+            },
+            'bleed': {
+                id: 'bleed',
+                name: 'Bleeding',
+                icon: 'droplet',
+                dotDamage: 0.08,  // 8% HP per turn
+                duration: 2
+            },
+            'stun': {
+                id: 'stun',
+                name: 'Stunned',
+                icon: 'circle-off',
+                skipTurn: true,
+                duration: 1
+            },
+            'burn': {
+                id: 'burn',
+                name: 'Burning',
+                icon: 'flame',
+                dotDamage: 0.06,  // 6% HP per turn
+                duration: 2
+            },
+            'slow': {
+                id: 'slow',
+                name: 'Slowed',
+                icon: 'hourglass',
+                stats: { agi: -10 },
+                aspd: -30,
+                duration: 2
+            }
+        };
+
+        // Handler genérico para aplicar buff
+        function applyBuffToUnit(buffData) {
+            if (!debugSelectedUnit) {
+                console.warn('[MAP-DEBUG] Nenhuma unidade selecionada');
+                return;
+            }
+
+            if (!window.TacticalSkillEngine) {
+                console.warn('[MAP-DEBUG] TacticalSkillEngine não disponível');
+                console.warn('[MAP-DEBUG] No unit selected');
+                return;
+            }
+
+            if (!window.TacticalSkillEngine) {
+                console.warn('[MAP-DEBUG] TacticalSkillEngine not available');
+                return;
+            }
+
+            // Aplicar buff usando TacticalSkillEngine
+            window.TacticalSkillEngine.applyBuff(debugSelectedUnit, buffData, { name: 'Debug' }, buffData.id);
+            console.log(`[MAP-DEBUG] Buff '${buffData.name}' applied to ${debugSelectedUnit.name}`);
+
+            // Atualizar UI
+            updateTacticalHUDIfNeeded();
+            triggerRender();
+        }
+
+        // Handler para aplicar status effect (debuff)
+        function applyStatusToUnit(statusData) {
+            if (!debugSelectedUnit) {
+                console.warn('[MAP-DEBUG] No unit selected');
+                return;
+            }
+
+            if (!window.TacticalSkillEngine) {
+                console.warn('[MAP-DEBUG] TacticalSkillEngine not available');
+                return;
+            }
+
+            // Aplicar debuff usando TacticalSkillEngine
+            window.TacticalSkillEngine.applyDebuff(debugSelectedUnit, statusData, { name: 'Debug' }, statusData.id);
+            console.log(`[MAP-DEBUG] Status '${statusData.name}' applied to ${debugSelectedUnit.name}`);
+
+            // Atualizar UI
+            updateTacticalHUDIfNeeded();
+            triggerRender();
+        }
+
+        // Conectar botões de buffs
+        Object.entries(buffDefinitions).forEach(([key, buffData]) => {
+            document.getElementById(`debug-buff-${key}`)?.addEventListener('click', () => {
+                applyBuffToUnit(buffData);
+            });
+        });
+
+        // Conectar botões de status effects
+        Object.entries(statusDefinitions).forEach(([key, statusData]) => {
+            document.getElementById(`debug-status-${key}`)?.addEventListener('click', () => {
+                applyStatusToUnit(statusData);
+            });
+        });
+
+        // Botão limpar todos
+        document.getElementById('debug-status-clear')?.addEventListener('click', () => {
+            if (!debugSelectedUnit) {
+                console.warn('[MAP-DEBUG] No unit selected');
+                return;
+            }
+
+            debugSelectedUnit.activeBuffs = [];
+            debugSelectedUnit.activeDebuffs = [];
+            debugSelectedUnit.statusEffects = [];
+
+            // Recalcular stats
+            if (window.TacticalSkillEngine?.recalculateStats) {
+                window.TacticalSkillEngine.recalculateStats(debugSelectedUnit);
+            }
+
+            console.log(`[MAP-DEBUG] All buffs/debuffs cleared from ${debugSelectedUnit.name}`);
+            updateTacticalHUDIfNeeded();
+            triggerRender();
+        });
+    }
+
     function applyLevel() {
         if (!debugSelectedUnit) return;
 
@@ -1030,6 +1931,20 @@
     function updateDebugPanelFromUnit() {
         const unitDiv = document.getElementById('debug-selected-unit');
         if (!unitDiv) return;
+
+        // Atualizar botão Inspect Status
+        const inspectBtn = document.getElementById('debug-inspect-status');
+        if (inspectBtn) {
+            if (debugSelectedUnit) {
+                inspectBtn.disabled = false;
+                inspectBtn.style.opacity = '1';
+                inspectBtn.style.pointerEvents = 'auto';
+            } else {
+                inspectBtn.disabled = true;
+                inspectBtn.style.opacity = '0.5';
+                inspectBtn.style.pointerEvents = 'none';
+            }
+        }
 
         if (debugSelectedUnit) {
             const unit = debugSelectedUnit;
@@ -1113,6 +2028,14 @@
         } else {
             unitDiv.textContent = 'Clique em uma unidade';
             unitDiv.style.color = '#888';
+
+            // Desabilitar botão Inspect Status quando não há unidade
+            const inspectBtn = document.getElementById('debug-inspect-status');
+            if (inspectBtn) {
+                inspectBtn.disabled = true;
+                inspectBtn.style.opacity = '0.5';
+                inspectBtn.style.pointerEvents = 'none';
+            }
         }
     }
 
@@ -1220,6 +2143,180 @@
         }
     }
 
+    /**
+     * Inspect status completo de uma unidade (similar ao combat-system.js)
+     * @param {Object} unit - Unidade para inspecionar
+     */
+    function inspectStatus(unit) {
+        if (!unit) {
+            console.warn('[MAP-DEBUG] No unit selected for inspection');
+            return;
+        }
+
+        console.group("%c 🛡️ COMBAT STATS INSPECTOR ", "background: #111; color: #fbbf24; font-size: 14px; font-weight: bold; padding: 4px; border-radius: 4px;");
+
+        const label = unit.type === 'player' ? 'PLAYER' : 'ENEMY';
+        const name = unit.name || 'Unknown';
+        const level = unit.level || unit.baseLevel || 1;
+        const element = unit.element || 'neutral';
+
+        console.group(`%c ${label}: ${name} (Lv${level}) [${element}] `, "background: #222; color: #fff; font-weight: bold;");
+
+        // 1. Equipment Breakdown (se houver)
+        console.group("📦 Equipment");
+        if (unit.equipment) {
+            const equipTable = {};
+            Object.entries(unit.equipment).forEach(([slot, itemId]) => {
+                if (itemId) {
+                    const item = window.itemsData?.[itemId];
+                    equipTable[slot.toUpperCase()] = {
+                        Item: item?.name || itemId,
+                        Element: item?.elementOverride || 'Neutral',
+                        Stats: item?.stats ? JSON.stringify(item.stats) : 'None'
+                    };
+                } else {
+                    equipTable[slot.toUpperCase()] = { Item: 'Empty', Element: '-', Stats: '-' };
+                }
+            });
+            console.table(equipTable);
+        } else {
+            console.log("No equipment system active for this entity.");
+        }
+        console.groupEnd();
+
+        // 2. Attributes Breakdown (Base + Buffs)
+        console.group("📊 Attributes (Base + Buffs)");
+        const attrTable = {};
+        // Debug: Log para verificar o que está disponível
+        console.log(`[MAP-DEBUG] inspectStatus para ${unit.name}:`, {
+            hasAttributes: !!unit.attributes,
+            hasBaseAttributes: !!unit.baseAttributes,
+            hasCurrentAttributes: !!unit.currentAttributes,
+            attributes: unit.attributes,
+            baseAttributes: unit.baseAttributes,
+            currentAttributes: unit.currentAttributes,
+            combatKey: unit.combatKey || unit.combat_key
+        });
+
+        const baseAttr = unit.baseAttributes || unit.attributes || {};
+        const curAttr = unit.currentAttributes || unit.attributes || {};
+
+        // Calcular modificadores de buffs para cada atributo
+        const buffModifiers = {};
+        ['str', 'agi', 'vit', 'int', 'dex', 'luk'].forEach(attr => {
+            buffModifiers[attr] = 0;
+        });
+
+        if (unit.activeBuffs && Array.isArray(unit.activeBuffs)) {
+            unit.activeBuffs.forEach(buff => {
+                const data = buff.data || {};
+                if (data.stats) {
+                    Object.keys(data.stats).forEach(stat => {
+                        const statLower = stat.toLowerCase();
+                        if (['str', 'agi', 'vit', 'int', 'dex', 'luk'].includes(statLower)) {
+                            buffModifiers[statLower] = (buffModifiers[statLower] || 0) + (data.stats[stat] || 0);
+                        }
+                    });
+                }
+            });
+        }
+
+        if (unit.activeDebuffs && Array.isArray(unit.activeDebuffs)) {
+            unit.activeDebuffs.forEach(debuff => {
+                const data = debuff.data || {};
+                if (data.stats) {
+                    Object.keys(data.stats).forEach(stat => {
+                        const statLower = stat.toLowerCase();
+                        if (['str', 'agi', 'vit', 'int', 'dex', 'luk'].includes(statLower)) {
+                            buffModifiers[statLower] = (buffModifiers[statLower] || 0) + (data.stats[stat] || 0);
+                        }
+                    });
+                }
+            });
+        }
+
+        ['str', 'agi', 'vit', 'int', 'dex', 'luk'].forEach(k => {
+            const base = baseAttr[k] || 0;
+            const total = curAttr[k] || 0;
+            const buff = buffModifiers[k] || 0;
+
+            attrTable[k.toUpperCase()] = {
+                Base: base,
+                Buff: (buff >= 0 ? '+' : '') + buff,
+                TOTAL: total
+            };
+        });
+        console.table(attrTable);
+        console.groupEnd();
+
+        // 3. Combat Derived Stats
+        console.group("⚔️ Combat Stats");
+        const combatStats = {
+            atk: unit.stats?.atk || 0,
+            matk: unit.stats?.matk || 0,
+            def: unit.stats?.def || 0,
+            mdef: unit.stats?.mdef || 0,
+            hit: unit.stats?.hit || 0,
+            flee: unit.stats?.flee || 0,
+            crit: unit.stats?.crit || 0,
+            aspd: unit.stats?.aspd || 0,
+            maxHp: unit.maxHp || 0,
+            maxMana: unit.maxMana || unit.maxSp || 0,
+            hp: unit.hp || 0,
+            mana: unit.mana || unit.sp || 0
+        };
+        console.table(combatStats);
+        console.groupEnd();
+
+        // 4. Active Effects (Buffs/Debuffs/Status)
+        if (window.TacticalSkillEngine) {
+            const effects = window.TacticalSkillEngine.getActiveBuffsForDisplay(unit);
+            if (effects.length > 0) {
+                console.group("🔮 Active Effects");
+                effects.forEach(effect => {
+                    const effectData = window.effectsData?.[effect.data?.id];
+                    if (effectData) {
+                        const color = effect.type === 'buff' ? '#22c55e' : effect.type === 'debuff' ? '#ef4444' : '#fbbf24';
+                        console.log(`%c ${effectData.name} (${effect.duration} turn${effect.duration !== 1 ? 's' : ''})`,
+                            `color: ${color}; font-weight: bold;`);
+                        console.log(`   ${effectData.desc || 'No description'}`);
+
+                        // Mostrar modificadores específicos se houver
+                        const data = effect.data || {};
+                        const modifiers = [];
+                        if (data.atkBonus !== undefined) {
+                            modifiers.push(`ATK ${data.atkBonus >= 0 ? '+' : ''}${Math.round(data.atkBonus * 100)}%`);
+                        }
+                        if (data.defPenalty !== undefined) {
+                            modifiers.push(`DEF ${data.defPenalty >= 0 ? '+' : ''}${Math.round(data.defPenalty * 100)}%`);
+                        }
+                        if (data.damageDealt !== undefined && data.damageDealt !== 1) {
+                            modifiers.push(`Dano Causado ${data.damageDealt >= 1 ? '+' : ''}${Math.round((data.damageDealt - 1) * 100)}%`);
+                        }
+                        if (data.damageTaken !== undefined && data.damageTaken !== 1) {
+                            modifiers.push(`Dano Recebido ${data.damageTaken >= 1 ? '+' : ''}${Math.round((data.damageTaken - 1) * 100)}%`);
+                        }
+                        if (modifiers.length > 0) {
+                            console.log(`   Modificadores: ${modifiers.join(', ')}`);
+                        }
+                    } else {
+                        // Fallback se não encontrar em effectsData
+                        console.log(`%c ${effect.data?.id || 'Unknown'} (${effect.duration} turn${effect.duration !== 1 ? 's' : ''})`,
+                            `color: #888; font-weight: bold;`);
+                    }
+                });
+                console.groupEnd();
+            } else {
+                console.log("No active effects.");
+            }
+        } else {
+            console.log("TacticalSkillEngine not available.");
+        }
+
+        console.groupEnd(); // Label
+        console.groupEnd(); // Título principal
+    }
+
     // ==========================================
     // EXPORTAR API GLOBAL
     // ==========================================
@@ -1239,7 +2336,8 @@
         isEditingWalls,
         getWallChanges,
         isBlockingGameClicks,
-        isEnabled: isDebugEnabled
+        isEnabled: isDebugEnabled,
+        inspectStatus
     };
 
     console.log('[MAP-DEBUG] Módulo carregado');

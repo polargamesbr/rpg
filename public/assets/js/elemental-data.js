@@ -217,7 +217,7 @@ window.elementalData = {
         if (multiplier < 0) return 'absorb';
         if (multiplier >= 1.5) return 'super';
         if (multiplier > 1.0) return 'effective';
-        if (multiplier < 0.75) return 'weak';
-        return 'normal';
+        if (multiplier === 1.0) return 'normal';
+        return 'weak';
     }
 };

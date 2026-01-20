@@ -34,6 +34,47 @@
         },
         "forceAnimation": "auto"
     },
+    "allies": [
+        {
+            "id": "ally_archer_1",
+            "type": "player",
+            "name": "Archer",
+            "x": 11,
+            "y": 9,
+            "combat_key": "hero_archer",
+            "class": "archer",
+            "hp": 80,
+            "maxHp": 80,
+            "sp": 60,
+            "maxSp": 60,
+            "attack": 12,
+            "defense": 4,
+            "moveRange": 4,
+            "attackRange": 4,
+            "scale": 1.7,
+            "animations": {
+                "idle": {
+                    "animationFPS": 7,
+                    "animationScale": 1.9,
+                    "animationOffsetX": 0,
+                    "animationOffsetY": 39
+                },
+                "walk": {
+                    "animationFPS": 7,
+                    "animationScale": 2,
+                    "animationOffsetX": 0,
+                    "animationOffsetY": 43
+                },
+                "atack": {
+                    "animationFPS": 7,
+                    "animationScale": 3.0,
+                    "animationOffsetX": 0,
+                    "animationOffsetY": 60
+                }
+            },
+            "forceAnimation": "auto"
+        }
+    ],
     "enemies": [
         {
             "id": "slime_1",

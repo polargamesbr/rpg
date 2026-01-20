@@ -41,6 +41,11 @@ window.audioRegistry = {
             '/public/assets/mp3/buff_apply2.mp3',
             '/public/assets/mp3/buff_apply3.mp3'
         ],
+        buff: [
+            '/public/assets/mp3/buff_apply1.mp3',
+            '/public/assets/mp3/buff_apply2.mp3',
+            '/public/assets/mp3/buff_apply3.mp3'
+        ],
         debuff_apply: ['/public/assets/mp3/debuff_apply.mp3'],
         attack_prepare: ['/public/assets/mp3/impact.mp3'],
         parry: [
@@ -110,18 +115,68 @@ window.audioRegistry = {
     class: {
         hero_swordman: {
             skill_start: [
-                '/public/assets/mp3/swordman_skill_start1.mp3',
-                '/public/assets/mp3/swordman_skill_start2.mp3',
-                '/public/assets/mp3/swordman_skill_start3.mp3'
+                '/public/assets/entities/swordsman/sounds/swordman_skill_start1.mp3',
+                '/public/assets/entities/swordsman/sounds/swordman_skill_start2.mp3',
+                '/public/assets/entities/swordsman/sounds/swordman_skill_start3.mp3'
             ],
+            hit: [
+                '/public/assets/entities/swordsman/sounds/sword1.mp3',
+                '/public/assets/entities/swordsman/sounds/sword2.mp3',
+                '/public/assets/entities/swordsman/sounds/sword3.mp3',
+                '/public/assets/entities/swordsman/sounds/sword4.mp3'
+            ],
+            attack_prepare: [
+                '/public/assets/entities/swordsman/sounds/sword1.mp3',
+                '/public/assets/entities/swordsman/sounds/sword2.mp3',
+                '/public/assets/entities/swordsman/sounds/sword3.mp3'
+            ],
+            death: ['/public/assets/entities/swordsman/sounds/hero_death.mp3'],
+            damage_taken: [
+                '/public/assets/mp3/damage_taken1.mp3',
+                '/public/assets/mp3/damage_taken2.mp3',
+                '/public/assets/mp3/damage_taken3.mp3',
+                '/public/assets/mp3/damage_taken4.mp3'
+            ],
+            crit: ['/public/assets/mp3/critical.mp3'],
+            buff_apply: [
+                '/public/assets/mp3/buff_apply1.mp3',
+                '/public/assets/mp3/buff_apply2.mp3',
+                '/public/assets/mp3/buff_apply3.mp3'
+            ],
+            debuff_apply: ['/public/assets/mp3/debuff_apply.mp3'],
+            parry: ['/public/assets/mp3/parry1.mp3', '/public/assets/mp3/parry2.mp3'],
             skill_voice: []
         },
         hero_archer: {
             skill_start: [
-                '/public/assets/mp3/archer_skill_start1.mp3',
-                '/public/assets/mp3/archer_skill_start2.mp3',
-                '/public/assets/mp3/archer_skill_start3.mp3'
+                '/public/assets/entities/archer/sounds/archer_skill_start1.mp3',
+                '/public/assets/entities/archer/sounds/archer_skill_start2.mp3',
+                '/public/assets/entities/archer/sounds/archer_skill_start3.mp3'
             ],
+            hit: [
+                '/public/assets/entities/archer/sounds/bow1.mp3',
+                '/public/assets/entities/archer/sounds/bow2.mp3',
+                '/public/assets/entities/archer/sounds/bow3.mp3'
+            ],
+            attack_prepare: [
+                '/public/assets/entities/archer/sounds/bow1.mp3',
+                '/public/assets/entities/archer/sounds/bow2.mp3',
+                '/public/assets/entities/archer/sounds/bow3.mp3'
+            ],
+            death: ['/public/assets/entities/archer/sounds/hero_death.mp3'],
+            damage_taken: [
+                '/public/assets/mp3/damage_taken1.mp3',
+                '/public/assets/mp3/damage_taken2.mp3',
+                '/public/assets/mp3/damage_taken3.mp3',
+                '/public/assets/mp3/damage_taken4.mp3'
+            ],
+            crit: ['/public/assets/mp3/critical.mp3'],
+            buff_apply: [
+                '/public/assets/mp3/buff_apply1.mp3',
+                '/public/assets/mp3/buff_apply2.mp3',
+                '/public/assets/mp3/buff_apply3.mp3'
+            ],
+            debuff_apply: ['/public/assets/mp3/debuff_apply.mp3'],
             skill_voice: []
         },
         hero_mage: {

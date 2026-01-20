@@ -884,10 +884,17 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            max-height: calc(100vh - 100px);
+            max-height: calc(100vh - 120px);
             overflow-y: auto;
-            overflow-x: hidden;
-            padding-right: 4px;
+            overflow-x: visible;
+            padding-right: 8px;
+            /* Hide scrollbar completely */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .turn-timeline::-webkit-scrollbar {
+            display: none;
         }
         
         /* Label "Ordem" no topo - Premium Style */
@@ -934,8 +941,8 @@
         .timeline-unit-card {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1rem;
+            gap: 0.85rem;
+            padding: 0.85rem 1.15rem;
             background: linear-gradient(180deg, 
                 rgba(15, 23, 42, 0.97) 0%, 
                 rgba(10, 15, 30, 0.99) 50%,
@@ -953,9 +960,10 @@
                 inset 0 -1px 0 rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
             cursor: pointer;
-            min-width: 200px;
+            min-width: 220px;
             position: relative;
-            overflow: hidden;
+            /* overflow: visible para permitir tooltips escaparem */
+            overflow: visible;
         }
         
         /* Animated border glow */
@@ -1039,8 +1047,11 @@
         }
         
         .timeline-unit-card.acted {
-            opacity: 0.5;
-            filter: grayscale(0.7);
+            opacity: 0.85;
+        }
+        
+        .timeline-unit-card.acted .unit-portrait-frame img {
+            filter: grayscale(0.85) brightness(0.7);
         }
         
         /* Portrait no card */
@@ -1122,17 +1133,17 @@
             text-overflow: ellipsis;
         }
         
-        /* Barras HP/MP menores */
+        /* Barras HP/MP - melhor legibilidade */
         .timeline-unit-card .hud-bars-container {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
         
         .timeline-unit-card .hud-bar-row {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
         
         .timeline-unit-card .hud-bar-icon {
@@ -1147,12 +1158,13 @@
         
         .timeline-unit-card .hud-bar {
             flex: 1;
-            height: 14px;
+            height: 16px;
             background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(20, 20, 30, 0.8) 100%);
-            border-radius: 7px;
+            border-radius: 8px;
             overflow: hidden;
             position: relative;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
         }
         
         .timeline-unit-card .hud-bar-fill {
@@ -1179,12 +1191,12 @@
             transform: translateY(-50%);
             text-align: center;
             font-family: 'Inter', sans-serif;
-            font-size: 8px;
+            font-size: 9px;
             font-weight: 900;
             color: #fff;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
-            letter-spacing: 0.3px;
-            z-index: 2;
+            text-shadow: 0 1px 2px rgba(0,0,0,1), 0 0 4px rgba(0,0,0,0.6);
+            letter-spacing: 0.4px;
+            z-index: 1; /* Reduzido de 2 para 1 para não sobrepor o tooltip */
         }
         
         /* Separador visual */
@@ -1195,20 +1207,300 @@
             margin: 4px 0;
         }
         
-        /* Scrollbar customizada */
+        /* Scrollbar customizada - Mais discreta */
         .turn-timeline::-webkit-scrollbar {
-            width: 4px;
+            width: 4px; /* Mais fina */
         }
         .turn-timeline::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 2px;
+            background: transparent;
         }
         .turn-timeline::-webkit-scrollbar-thumb {
-            background: rgba(251, 191, 36, 0.5);
-            border-radius: 2px;
+            background: rgba(251, 191, 36, 0.2);
+            border-radius: 4px;
         }
         .turn-timeline::-webkit-scrollbar-thumb:hover {
-            background: rgba(251, 191, 36, 0.7);
+            background: rgba(251, 191, 36, 0.5);
+        }
+        
+        /* === TIMELINE STATUS ICONS (BUFFS/DEBUFFS) === */
+        .timeline-status-icons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+            align-items: center;
+            justify-content: flex-start;
+            position: relative;
+            z-index: 10; /* Aumentado de 1 para 10 para criar contexto de camada sobre as barras */
+        }
+        
+        .timeline-status-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border: 2px solid;
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(0, 0, 0, 0.3) inset,
+                0 1px 0 rgba(255, 255, 255, 0.2) inset;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: help;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);
+        }
+        
+        .timeline-status-icon:hover {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+        
+        .timeline-status-icon.buff {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.9) 0%, rgba(22, 163, 74, 0.9) 100%);
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+        
+        .timeline-status-icon.debuff {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+        
+        .timeline-status-icon.status {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.9) 0%, rgba(245, 158, 11, 0.9) 100%);
+            border-color: rgba(251, 191, 36, 0.5);
+        }
+        
+        .timeline-status-icon img {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+        }
+        
+        .timeline-status-icon i {
+            width: 20px;
+            height: 20px;
+            color: rgba(255, 255, 255, 0.95);
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-duration-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(20, 20, 30, 0.98) 100%);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 3px 6px;
+            border-radius: 8px;
+            line-height: 1.2;
+            min-width: 18px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 
+                0 3px 8px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(0, 0, 0, 0.5) inset,
+                0 1px 0 rgba(255, 255, 255, 0.3) inset;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+            z-index: 2;
+        }
+        
+        .timeline-status-icon[data-tooltip] {
+            position: relative;
+        }
+        
+        /* O tooltip antigo via CSS foi removido em favor do sistema Global JS */
+        
+        /* Global Status Tooltip Panel */
+        .status-tooltip-panel {
+            position: fixed;
+            z-index: 10000;
+            background: linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(5, 5, 15, 0.98) 100%);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            max-width: 300px;
+            min-width: 200px;
+            pointer-events: none;
+            display: none;
+            backdrop-filter: blur(10px);
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            transition: opacity 0.2s ease;
+            opacity: 0;
+        }
+        
+        .status-tooltip-panel.visible {
+            display: block;
+            opacity: 1;
+        }
+        
+        /* Arrow pointing down */
+        .timeline-status-icon[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+        }
+        
+        .timeline-status-icon[data-tooltip]:hover::after::before {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid rgba(15, 15, 25, 0.98);
+        }
+        
+        /* Posicionar tooltip dinamicamente via JavaScript */
+        .timeline-status-icon[data-tooltip] {
+            position: relative;
+        }
+        
+        /* === HUD BUFFS PANEL === */
+        .hud-buffs-panel {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .hud-buffs-panel-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .hud-buffs-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .hud-buff-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            border-left: 3px solid;
+            font-size: 11px;
+        }
+        
+        .hud-buff-item.buff {
+            border-left-color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .hud-buff-item.debuff {
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .hud-buff-item.status {
+            border-left-color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+        
+        .hud-buff-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+        }
+        
+        .hud-buff-icon img {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+        }
+        
+        .hud-buff-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .hud-buff-name {
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+        
+        .hud-buff-desc {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.3;
+        }
+        
+        .hud-buff-duration {
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 6px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        
+        .hud-stats-modifiers {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .hud-stats-modifiers-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .hud-stat-modifier {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 11px;
+        }
+        
+        .hud-stat-modifier-label {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .hud-stat-modifier-value {
+            font-weight: 700;
+        }
+        
+        .hud-stat-modifier-value.positive {
+            color: #22c55e;
+        }
+        
+        .hud-stat-modifier-value.negative {
+            color: #ef4444;
+        }
+        
+        .hud-stats-modifiers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
         
         /* === RESPONSIVE ADJUSTMENTS === */
@@ -1837,7 +2129,7 @@
         .turn-banner.active .banner-central-text {
             animation: none;
         }
-        
+
         /* Não precisamos mais dessas animações antigas */
         @keyframes bannerIn {
             0% { opacity: 0; }
@@ -2268,7 +2560,7 @@
 
     <!-- Turn Order Timeline -->
     <div id="turn-timeline" class="turn-timeline">
-        <div class="timeline-label">Ordem</div>
+        <div class="timeline-label">Turn: <span id="timeline-turn-number">1</span></div>
         <!-- Timeline units will be added dynamically -->
     </div>
 
@@ -2341,6 +2633,8 @@
     <!-- HUD Tática Premium - Centro Inferior -->
     <div id="tactical-hud" class="tactical-hud hidden">
         <div class="tactical-hud-inner">
+            <!-- Unit Info (for buffs panel) -->
+            <div class="unit-info-compact" style="display: none;"></div>
             <!-- Tactical Actions -->
             <div class="tactical-actions">
                 <button id="tactical-move" class="tactical-btn move" title="Mover unidade (M)">
@@ -2888,12 +3182,9 @@
         .skill-icon-btn.buff { border-color: rgba(245, 158, 11, 0.3); }
         .skill-icon-btn.buff:hover:not(.disabled) { border-color: rgba(245, 158, 11, 0.6); box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4); }
         
-        /* Skill Tooltip - Panel que aparece ao clicar */
-        .skill-tooltip {
-            position: absolute;
-            bottom: calc(100% + 12px);
-            left: 50%;
-            transform: translateX(-50%) translateY(8px);
+        /* Skill Tooltip Panel - Global tooltip único */
+        .skill-tooltip-panel {
+            position: fixed;
             width: 280px;
             background: linear-gradient(180deg, 
                 rgba(15, 23, 42, 0.98) 0%, 
@@ -2901,8 +3192,8 @@
             );
             backdrop-filter: blur(40px) saturate(200%);
             -webkit-backdrop-filter: blur(40px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
             box-shadow: 
                 0 0 0 1px rgba(0,0,0,0.5),
                 0 20px 60px rgba(0, 0, 0, 0.9),
@@ -2910,16 +3201,50 @@
             padding: 16px;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
             pointer-events: none;
-            z-index: 3000;
+            z-index: 4000;
+            transform: translateY(10px);
         }
         
-        .skill-tooltip.visible {
+        .skill-tooltip-panel.visible {
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
-            transform: translateX(-50%) translateY(0);
+            transform: translateY(0);
+        }
+        
+        /* Botão fechar */
+        .skill-tooltip-panel .skill-tooltip-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .skill-tooltip-panel .skill-tooltip-close:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.5);
+            color: #f87171;
+        }
+        
+        /* Selected state for skill buttons */
+        .skill-icon-btn.selected {
+            border-color: rgba(59, 130, 246, 0.8) !important;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), inset 0 0 10px rgba(59, 130, 246, 0.2) !important;
         }
         
         .skill-tooltip-header {
@@ -3073,14 +3398,11 @@
         }
         
         .skill-banner-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, var(--icon-bg, #a855f7) 0%, var(--icon-bg2, #7c3aed) 100%);
-            border-radius: 16px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 30px var(--banner-color, rgba(168, 85, 247, 0.5));
             animation: skill-icon-pulse 0.5s ease-out;
         }
         
@@ -3093,6 +3415,12 @@
             width: 36px;
             height: 36px;
             color: #fff;
+        }
+        .skill-banner-icon img.skill-banner-icon-img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 6px rgba(255,255,255,0.5));
         }
         
         .skill-banner-text {
@@ -3485,32 +3813,12 @@
         }
         
         .ultimate-icon {
-            width: 90px;
-            height: 90px;
-            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 50%, #fbbf24 100%);
-            border-radius: 20px;
+            width: 56px;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 
-                0 0 50px rgba(239, 68, 68, 0.8),
-                0 0 100px rgba(239, 68, 68, 0.4);
             animation: ultimate-icon-pulse 0.8s ease-out;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .ultimate-icon::before {
-            content: '';
-            position: absolute;
-            inset: -50%;
-            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%);
-            animation: ultimate-icon-shine 0.8s ease-out;
-        }
-        
-        @keyframes ultimate-icon-shine {
-            0% { transform: translateX(-100%) rotate(45deg); }
-            100% { transform: translateX(200%) rotate(45deg); }
         }
         
         @keyframes ultimate-icon-pulse {
@@ -3521,9 +3829,15 @@
         }
         
         .ultimate-icon i {
-            width: 50px;
-            height: 50px;
+            width: 48px;
+            height: 48px;
             color: #fff;
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
+        }
+        .ultimate-icon img.ultimate-icon-img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
             filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
         }
         
@@ -3588,7 +3902,11 @@
         </div>
     </div>
 
-    <script src="<?= asset('js/combat-data.js') ?>"></script>
+    <!-- Tactical Data Loader (new system) -->
+    <script src="<?= asset('js/tactical-data-loader.js') ?>"></script>
+    <script src="<?= asset('js/effects-data.js') ?>"></script>
+    <script src="<?= asset('js/elemental-data.js') ?>"></script>
+    <script src="<?= asset('js/tactical-skill-engine.js') ?>"></script>
     <script src="<?= asset('js/skills-data.js') ?>"></script>
     <script src="<?= asset('js/skill-engine.js') ?>"></script>
     <script src="<?= asset('js/map-entity-bridge.js') ?>"></script>

@@ -4,7 +4,9 @@ namespace App\Services;
 
 /**
  * Loads data-only "entity sheets" from disk.
- * Characters and monsters share the same schema; the main difference is `is_player`.
+ * Characters and monsters share the same schema. The field `is_player` is used only for
+ * schema defaults (e.g. combat_key, attacks); battle side (ally/enemy) is defined by the
+ * mission (allies[] vs enemies[]), not by this flag.
  */
 class EntitySheetService
 {
@@ -43,6 +45,55 @@ class EntitySheetService
                 return $sheet;
             }
         }
+        return null;
+    }
+
+    /**
+     * Find multiple entities by IDs or combat_keys (batch)
+     * 
+     * @param array<string> $ids - Can be entity IDs or combat_keys
+     * @return array<string, array<string, mixed>>
+     */
+    public static function findBatch(array $ids): array
+    {
+        $result = [];
+        $normalizedIds = array_map(fn($id) => trim(strtolower($id)), $ids);
+        
+        foreach (self::all() as $sheet) {
+            if (isset($sheet['id'])) {
+                $sheetId = strtolower(trim((string)$sheet['id']));
+                $combatKey = isset($sheet['combat_key']) ? strtolower(trim((string)$sheet['combat_key'])) : null;
+                
+                // Match by ID or combat_key
+                if (in_array($sheetId, $normalizedIds, true)) {
+                    $result[$sheetId] = $sheet;
+                } elseif ($combatKey && in_array($combatKey, $normalizedIds, true)) {
+                    // If matched by combat_key, use combat_key as key for result
+                    $result[$combatKey] = $sheet;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Find entity by combat_key (legacy compatibility)
+     * 
+     * @param string $combatKey
+     * @return array<string, mixed>|null
+     */
+    public static function findByCombatKey(string $combatKey): ?array
+    {
+        $combatKey = trim(strtolower($combatKey));
+        
+        foreach (self::all() as $sheet) {
+            $sheetCombatKey = isset($sheet['combat_key']) ? strtolower(trim((string)$sheet['combat_key'])) : null;
+            if ($sheetCombatKey === $combatKey) {
+                return $sheet;
+            }
+        }
+        
         return null;
     }
 
@@ -98,6 +149,15 @@ class EntitySheetService
         $data['attributes'] = is_array($data['attributes'] ?? null) ? $data['attributes'] : [];
         $data['skills'] = is_array($data['skills'] ?? null) ? $data['skills'] : [];
         $data['images'] = is_array($data['images'] ?? null) ? $data['images'] : [];
+        $data['animations'] = is_array($data['animations'] ?? null) ? $data['animations'] : [];
+        $data['sounds'] = is_array($data['sounds'] ?? null) ? $data['sounds'] : [];
+
+        // Element field (defaults to 'neutral' if not specified)
+        if (!isset($data['element'])) {
+            $data['element'] = 'neutral';
+        } else {
+            $data['element'] = (string)$data['element'];
+        }
 
         // Optional fields
         if (!isset($data['attacks'])) {
@@ -107,7 +167,68 @@ class EntitySheetService
             $data['loot_table'] = null;
         }
 
+        // Generate combat_key if not set (for legacy compatibility)
+        if (!isset($data['combat_key'])) {
+            if ($data['is_player']) {
+                // Player classes: map class names to legacy combat_keys
+                $classCombatKeyMap = [
+                    'swordsman' => 'hero_swordman',  // Note: 'swordsman' -> 'hero_swordman' (without 's')
+                    'archer' => 'hero_archer',
+                    'mage' => 'hero_mage',
+                    'thief' => 'hero_thief',
+                    'acolyte' => 'hero_acolyte',
+                    'blacksmith' => 'hero_blacksmith',
+                ];
+                $classId = strtolower($data['id']);
+                $data['combat_key'] = $classCombatKeyMap[$classId] ?? ('hero_' . $data['id']);
+            } else {
+                // Monsters: use id as combat_key
+                $data['combat_key'] = $data['id'];
+            }
+        }
+
+        // Combat stats (repassar quando existirem no sheet; getCombatStats() trata ausentes)
+        if (array_key_exists('maxHp', $data)) $data['maxHp'] = (int)$data['maxHp'];
+        if (array_key_exists('maxSp', $data)) $data['maxSp'] = (int)$data['maxSp'];
+        if (array_key_exists('attack', $data)) $data['attack'] = (int)$data['attack'];
+        if (array_key_exists('defense', $data)) $data['defense'] = (int)$data['defense'];
+        if (array_key_exists('moveRange', $data)) $data['moveRange'] = (int)$data['moveRange'];
+        if (array_key_exists('attackRange', $data)) $data['attackRange'] = (int)$data['attackRange'];
+        if (array_key_exists('behavior', $data)) $data['behavior'] = (string)$data['behavior'];
+        if (array_key_exists('scale', $data)) $data['scale'] = (float)$data['scale'];
+
         return $data;
+    }
+
+    /**
+     * Extrai stats de combate do sheet (maxHp, maxSp, attack, defense, moveRange, attackRange, behavior, scale).
+     * Usa valores do sheet quando existem; senão deriva attack/defense de attributes; defaults para o resto.
+     *
+     * @param array<string, mixed> $sheet Sheet normalizado
+     * @return array{maxHp: int, maxSp: int, attack: int, defense: int, moveRange: int, attackRange: int, behavior: string, scale: float}
+     */
+    public static function getCombatStats(array $sheet): array
+    {
+        $attrs = $sheet['attributes'] ?? [];
+        $attack = array_key_exists('attack', $sheet)
+            ? (int)$sheet['attack']
+            : (int)round((($attrs['str'] ?? 10) + ($attrs['dex'] ?? 10)) / 2);
+        $defense = array_key_exists('defense', $sheet)
+            ? (int)$sheet['defense']
+            : (int)round((($attrs['vit'] ?? 10) + ($attrs['agi'] ?? 10)) / 2);
+
+        $isMonster = ($sheet['type'] ?? '') === 'monster';
+
+        return [
+            'maxHp' => (int)($sheet['maxHp'] ?? 100),
+            'maxSp' => (int)($sheet['maxSp'] ?? 50),
+            'attack' => $attack,
+            'defense' => $defense,
+            'moveRange' => (int)($sheet['moveRange'] ?? 4),
+            'attackRange' => (int)($sheet['attackRange'] ?? 1),
+            'behavior' => $isMonster ? (string)($sheet['behavior'] ?? 'aggressive') : 'aggressive',
+            'scale' => (float)($sheet['scale'] ?? 1.0),
+        ];
     }
 
     /**

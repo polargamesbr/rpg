@@ -2,7 +2,7 @@
 
 ## Quest Sessions (novo fluxo)
 - `/game/explore` exige `?session=UID`. Sem `session`, redireciona para `/game/tavern`.
-- `quest_sessions` guarda snapshot completo do personagem e o estado atual da quest.
+- `quest_sessions` guarda `character_id`, `state_json` (estado mínimo: posições, hp/sp, turno; o resto é derivado de sheets e config) e metadados. Sem `snapshot_json`.
 - `quest_definitions` guarda o JSON fixo da quest (mapa, spawns, objetivos).
 
 ## Battle Persistence (antifraude + F5)

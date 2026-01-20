@@ -9,61 +9,105 @@ namespace App\Services;
 class QuestConfigService
 {
     /**
-     * Load quest configuration from JSON file.
-     * 
+     * Load quest/mission configuration from JSON file.
+     * Tries missions/ first, then quests/. If the config has map_id, loads the map
+     * from maps/ and merges map + walls into the config.
+     *
      * @param string $questId Quest identifier (e.g., 'first-steps')
      * @return array<string, mixed>|null Configuration array or null if not found
      */
     public static function loadConfig(string $questId): ?array
     {
         $questId = trim(strtolower($questId));
-        $filePath = self::getConfigPath($questId);
-        
-        if (!file_exists($filePath)) {
-            error_log("[QuestConfigService] Config file not found: {$filePath}");
+        $filePath = self::getMissionPath($questId) ?? self::getQuestPath($questId);
+
+        if ($filePath === null || !file_exists($filePath)) {
+            error_log("[QuestConfigService] Config file not found for: {$questId}");
             return null;
         }
-        
+
         $jsonContent = file_get_contents($filePath);
         if ($jsonContent === false) {
             error_log("[QuestConfigService] Failed to read config file: {$filePath}");
             return null;
         }
-        
+
         $config = json_decode($jsonContent, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             error_log("[QuestConfigService] Invalid JSON in config file: {$filePath} - " . json_last_error_msg());
             return null;
         }
-        
+
         if (!is_array($config)) {
             error_log("[QuestConfigService] Config file does not contain an array: {$filePath}");
             return null;
         }
-        
-        // Normalize and inject mapImage based on quest ID
+
+        $mapId = isset($config['map_id']) ? trim((string)$config['map_id']) : null;
+        if ($mapId !== null && $mapId !== '') {
+            $mapData = self::loadMap($mapId);
+            if ($mapData !== null) {
+                $config['map'] = [
+                    'gridCols' => (int)($mapData['gridCols'] ?? 20),
+                    'gridRows' => (int)($mapData['gridRows'] ?? 15),
+                    'cellSize' => (int)($mapData['cellSize'] ?? 64),
+                    'mapImage' => $mapData['mapImage'] ?? ('/public/assets/img/maps/' . $mapId . '.png'),
+                ];
+                $config['walls'] = is_array($mapData['walls'] ?? null) ? $mapData['walls'] : [];
+            }
+        }
+
         $config = self::normalize($config, $questId);
-        
+
         return $config;
     }
-    
+
     /**
-     * Get the file path for a quest configuration.
-     * 
-     * @param string $questId Quest identifier
-     * @return string Full file path
+     * Load a map definition from maps/.
+     *
+     * @param string $mapId Map identifier (e.g., 'castle-dungeon')
+     * @return array<string, mixed>|null Map data or null if not found
      */
-    private static function getConfigPath(string $questId): string
+    public static function loadMap(string $mapId): ?array
     {
-        // app/Services -> app/GameData/quests/
-        $basePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'GameData' . DIRECTORY_SEPARATOR . 'quests';
-        
-        // Ensure directory exists
-        if (!is_dir($basePath)) {
-            @mkdir($basePath, 0755, true);
+        $mapId = trim(strtolower($mapId));
+        $basePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'GameData' . DIRECTORY_SEPARATOR . 'maps';
+        $filePath = $basePath . DIRECTORY_SEPARATOR . $mapId . '.json';
+
+        if (!file_exists($filePath)) {
+            error_log("[QuestConfigService] Map file not found: {$filePath}");
+            return null;
         }
-        
-        return $basePath . DIRECTORY_SEPARATOR . $questId . '.json';
+
+        $json = file_get_contents($filePath);
+        if ($json === false) {
+            return null;
+        }
+
+        $data = json_decode($json, true);
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * Get the file path for a mission (missions/). Returns null if not found.
+     */
+    private static function getMissionPath(string $questId): ?string
+    {
+        $base = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'GameData' . DIRECTORY_SEPARATOR . 'missions';
+        $path = $base . DIRECTORY_SEPARATOR . $questId . '.json';
+        return file_exists($path) ? $path : null;
+    }
+
+    /**
+     * Get the file path for a quest (quests/). Does not check existence.
+     */
+    private static function getQuestPath(string $questId): string
+    {
+        $base = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'GameData' . DIRECTORY_SEPARATOR . 'quests';
+        if (!is_dir($base)) {
+            @mkdir($base, 0755, true);
+        }
+        return $base . DIRECTORY_SEPARATOR . $questId . '.json';
     }
     
     /**
@@ -76,17 +120,14 @@ class QuestConfigService
      */
     private static function normalize(array $config, string $questId): array
     {
-        // Ensure map config exists
         if (!isset($config['map']) || !is_array($config['map'])) {
             $config['map'] = [];
         }
-        
-        // Inject mapImage based on quest ID
-        // Format: /public/assets/img/maps/{questId}.png
-        $mapImagePath = '/public/assets/img/maps/' . $questId . '.png';
-        $config['map']['mapImage'] = $mapImagePath;
-        
-        // Set defaults for map if missing
+
+        if (!isset($config['map']['mapImage']) || $config['map']['mapImage'] === '') {
+            $config['map']['mapImage'] = '/public/assets/img/maps/' . $questId . '.png';
+        }
+
         $config['map']['gridCols'] = (int)($config['map']['gridCols'] ?? 20);
         $config['map']['gridRows'] = (int)($config['map']['gridRows'] ?? 15);
         $config['map']['cellSize'] = (int)($config['map']['cellSize'] ?? 64);
@@ -121,26 +162,29 @@ class QuestConfigService
     }
     
     /**
-     * List all available quest configurations.
-     * 
+     * List all available quest/mission configurations.
+     * Looks in missions/ first, then quests/; missions take precedence (no duplicates).
+     *
      * @return array<string> Array of quest IDs
      */
     public static function listAvailable(): array
     {
-        $basePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'GameData' . DIRECTORY_SEPARATOR . 'quests';
-        
-        if (!is_dir($basePath)) {
-            return [];
+        $ids = [];
+        $missionsPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'GameData' . DIRECTORY_SEPARATOR . 'missions';
+        if (is_dir($missionsPath)) {
+            $files = glob($missionsPath . DIRECTORY_SEPARATOR . '*.json') ?: [];
+            foreach ($files as $f) {
+                $ids[basename($f, '.json')] = true;
+            }
         }
-        
-        $files = glob($basePath . DIRECTORY_SEPARATOR . '*.json') ?: [];
-        $questIds = [];
-        
-        foreach ($files as $file) {
-            $filename = basename($file, '.json');
-            $questIds[] = $filename;
+        $questsPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'GameData' . DIRECTORY_SEPARATOR . 'quests';
+        if (is_dir($questsPath)) {
+            $files = glob($questsPath . DIRECTORY_SEPARATOR . '*.json') ?: [];
+            foreach ($files as $f) {
+                $ids[basename($f, '.json')] = true;
+            }
         }
-        
+        $questIds = array_keys($ids);
         sort($questIds);
         return $questIds;
     }

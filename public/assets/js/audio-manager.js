@@ -2,7 +2,7 @@
  * AudioManager - Sistema de Áudio de Combate com Fallback
  * 
  * Gerencia reprodução de áudio com fallback automático em camadas:
- * 1. Skill específica → 2. Classe/Arma → 3. Tipo de entidade → 4. Som global
+ * 1. Skill → 2. Entity (entities/{id}/sounds) → 3. Classe/Arma → 4. Tipo entidade → 5. Global
  */
 
 class AudioManager {
@@ -31,9 +31,26 @@ class AudioManager {
             }
         }
 
-        // 2. Tentar classe do atacante (hero ou attacker)
+        // 2. Entity-specific: entities/{entity_id}/sounds/ (sheet.sounds[event] como array de basenames)
+        const entityForEvent = ['death', 'damage_taken'].includes(event) ? (target || hero || attacker) : (hero || attacker);
+        if (entityForEvent) {
+            const cache = window.TacticalDataLoader?.entityCache;
+            const entityDef = (cache && (entityForEvent.entity_id || entityForEvent.combatKey || entityForEvent.combat_key))
+                ? (cache[entityForEvent.entity_id] || cache[entityForEvent.combatKey] || cache[entityForEvent.combat_key])
+                : null;
+            const entityId = entityForEvent.entity_id || (entityDef && entityDef.id) || null;
+            const soundsArr = entityDef?.sounds?.[event];
+            if (entityId && Array.isArray(soundsArr) && soundsArr.length > 0) {
+                const bases = soundsArr.filter(b => typeof b === 'string');
+                if (bases.length > 0) {
+                    const chosen = bases.length === 1 ? bases[0] : bases[Math.floor(Math.random() * bases.length)];
+                    return '/public/assets/entities/' + entityId + '/sounds/' + chosen + '.mp3';
+                }
+            }
+        }
+
+        // 3. Tentar classe do atacante (hero ou attacker)
         // NOTA: Para eventos de hit/attack_prepare, priorizamos arma sobre classe
-        // Classe só é usada para skill_start e outros eventos específicos
         const entity = hero || attacker;
         const shouldPrioritizeWeapon = ['hit', 'attack_prepare'].includes(event);
 
@@ -47,7 +64,7 @@ class AudioManager {
             }
         }
 
-        // 3. Tentar arma baseada na classe (prioridade para hit/attack_prepare)
+        // 4. Tentar arma baseada na classe (prioridade para hit/attack_prepare)
         if (entity) {
             const weaponType = this.getWeaponType(entity);
             if (weaponType && this.registry.weapon?.[weaponType]?.[event]) {
@@ -58,7 +75,7 @@ class AudioManager {
             }
         }
 
-        // 3b. Se não encontrou na arma e é hit/attack_prepare, tentar classe
+        // 4b. Se não encontrou na arma e é hit/attack_prepare, tentar classe
         if (entity && shouldPrioritizeWeapon) {
             const classKey = this.getEntityClassKey(entity);
             if (classKey && this.registry.class?.[classKey]?.[event]) {
@@ -69,7 +86,7 @@ class AudioManager {
             }
         }
 
-        // 4. Tentar tipo de entidade (monster ou class)
+        // 5. Tentar tipo de entidade (monster ou class)
         const targetEntity = target || entity;
         if (targetEntity) {
             const entityType = targetEntity.type || (targetEntity.isPlayer ? 'class' : 'monster');
@@ -81,7 +98,7 @@ class AudioManager {
             }
         }
 
-        // 5. Fallback para som global
+        // 6. Fallback para som global
         if (this.registry.global?.[event]) {
             const files = this.registry.global[event];
             if (files && files.length > 0) {

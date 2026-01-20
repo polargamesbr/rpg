@@ -13,7 +13,7 @@ class Character
     {
         $character = Database::fetchOne(
             "SELECT c.*, cl.name as class_name, cl.display_name as class_display_name, cl.uuid as class_uuid,
-                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix
+                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix, cl.entity_id as class_entity_id
              FROM characters c
              INNER JOIN classes cl ON c.class_id = cl.id
              WHERE c.id = :id",
@@ -32,7 +32,7 @@ class Character
     {
         $character = Database::fetchOne(
             "SELECT c.*, cl.name as class_name, cl.display_name as class_display_name, cl.uuid as class_uuid,
-                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix
+                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix, cl.entity_id as class_entity_id
              FROM characters c
              INNER JOIN classes cl ON c.class_id = cl.id
              WHERE c.uuid = :uuid",
@@ -51,7 +51,7 @@ class Character
     {
         $character = Database::fetchOne(
             "SELECT c.*, cl.name as class_name, cl.display_name as class_display_name, cl.uuid as class_uuid,
-                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix
+                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix, cl.entity_id as class_entity_id
              FROM characters c
              INNER JOIN classes cl ON c.class_id = cl.id
              WHERE c.user_id = :user_id ORDER BY c.created_at DESC LIMIT 1",
@@ -70,7 +70,7 @@ class Character
     {
         $characters = Database::fetchAll(
             "SELECT c.*, cl.name as class_name, cl.display_name as class_display_name, cl.uuid as class_uuid,
-                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix
+                    cl.starting_city, cl.icon_name, cl.color_hex, cl.color_glow, cl.image_prefix, cl.entity_id as class_entity_id
              FROM characters c
              INNER JOIN classes cl ON c.class_id = cl.id
              WHERE c.user_id = :user_id ORDER BY c.created_at DESC",

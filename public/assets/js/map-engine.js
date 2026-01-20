@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tactical Map Engine - Fire Emblem / FFT Style
  * Features: Multi-unit control, selection system, premium visuals
  */
@@ -47,6 +47,9 @@
         freeExplore: false,
         battleStarted: false // Flag para banner de batalha na primeira ação hostil
     };
+
+    // Expose gameState globally for TacticalSkillEngine to access turn count
+    window.gameState = gameState;
 
     let sessionUid = null;
     let sessionData = null;
@@ -118,27 +121,162 @@
      * @param {Object} unit - Unidade do mapa
      * @returns {Array} Array de objetos de skill com range calculado
      */
-    function getUnitSkills(unit) {
-        if (!unit || !window.combatData) return [];
+    async function getUnitSkillsAsync(unit) {
+        if (!unit) return [];
 
         // Obter definição da entidade
         const combatKey = unit.combatKey || unit.combat_key || unit.class;
-        const entityDef = window.combatData.entities?.[combatKey];
-        if (!entityDef || !entityDef.skills) return [];
+        if (!combatKey) return [];
 
-        // Mapear skills IDs para objetos completos
-        const skills = entityDef.skills.map(skillId => {
-            const skillDef = window.combatData.skills?.[skillId] || window.skillsData?.[skillId];
-            if (!skillDef) return null;
+        // Try to load entity from API first, fallback to combatData
+        let entityDef = null;
+        if (window.TacticalDataLoader) {
+            try {
+                entityDef = await window.TacticalDataLoader.getEntity(combatKey);
+            } catch (error) {
+                console.warn('[MAP-ENGINE] Failed to load entity from API:', error);
+            }
+        }
 
-            return {
-                ...skillDef,
-                id: skillId,
-                range: getSkillRange(skillDef),
-                rangeType: getSkillRangeType(skillDef),
-                aoe: skillDef.aoe || 0
-            };
-        }).filter(Boolean);
+        // Legacy fallback removed - combatData no longer exists
+        // If entity not found, return empty array
+
+        if (!entityDef) return [];
+
+        // Extract skill IDs from entity
+        let skillIds = [];
+        if (Array.isArray(entityDef.skills) && entityDef.skills.length > 0) {
+            if (typeof entityDef.skills[0] === 'object') {
+                // If skills is array of skill objects (new PHP format)
+                skillIds = entityDef.skills.map(s => {
+                    // Handle both 'id' field and direct object with id property
+                    if (s && typeof s === 'object') {
+                        return s.id || s;
+                    }
+                    return s;
+                }).filter(id => id && typeof id === 'string'); // Ensure we only get string IDs
+            } else {
+                // If skills is array of IDs (legacy format)
+                skillIds = entityDef.skills.filter(id => typeof id === 'string');
+            }
+        }
+
+        if (skillIds.length === 0) return [];
+
+        // Load skills from API or fallback to skillsData
+        const skills = [];
+        if (window.TacticalDataLoader) {
+            try {
+                const loadedSkills = await window.TacticalDataLoader.loadSkills(skillIds);
+                for (const skillId of skillIds) {
+                    const skillDef = loadedSkills[skillId];
+                    if (skillDef) {
+                        skills.push({
+                            ...skillDef,
+                            id: skillId,
+                            range: getSkillRange(skillDef),
+                            rangeType: getSkillRangeType(skillDef),
+                            aoe: skillDef.aoe || 0
+                        });
+                    }
+                }
+            } catch (error) {
+                console.warn('[MAP-ENGINE] Failed to load skills from API:', error);
+            }
+        }
+
+        // Fallback to skillsData if API failed or skills not fully loaded
+        if (skills.length < skillIds.length) {
+            for (const skillId of skillIds) {
+                if (!skills.find(s => s.id === skillId)) {
+                    const skillDef = window.skillsData?.[skillId];
+                    if (skillDef) {
+                        skills.push({
+                            ...skillDef,
+                            id: skillId,
+                            range: getSkillRange(skillDef),
+                            rangeType: getSkillRangeType(skillDef),
+                            aoe: skillDef.aoe || 0
+                        });
+                    }
+                }
+            }
+        }
+
+        return skills;
+    }
+
+    /**
+     * Skills da unidade (síncrono; usa entityCache do TacticalDataLoader).
+     * entityCache é preenchido no init com collectCombatKeysFromSession() + loadEntities().
+     * Se combatKey da unidade não estiver nessa coleta, entityDef fica null e retorna [].
+     */
+    function getUnitSkills(unit) {
+        if (!unit) return [];
+
+        const combatKey = unit.combatKey || unit.combat_key || unit.class;
+        if (!combatKey) return [];
+
+        let entityDef = null;
+        if (window.TacticalDataLoader && window.TacticalDataLoader.entityCache) {
+            entityDef = window.TacticalDataLoader.entityCache[combatKey];
+        }
+
+        if (!entityDef) return [];
+
+        // Extract skill IDs
+        let skillIds = [];
+        if (Array.isArray(entityDef.skills) && entityDef.skills.length > 0) {
+            if (typeof entityDef.skills[0] === 'object') {
+                // If skills is array of skill objects (PHP format)
+                skillIds = entityDef.skills.map(s => {
+                    if (s && typeof s === 'object') {
+                        return s.id || s;
+                    }
+                    return s;
+                }).filter(id => id && typeof id === 'string'); // Ensure we only get string IDs
+            } else {
+                // If skills is array of IDs (legacy format)
+                skillIds = entityDef.skills.filter(id => typeof id === 'string');
+            }
+        }
+
+        if (skillIds.length === 0) return [];
+
+        // Use cached skills if available
+        const skills = [];
+        if (window.TacticalDataLoader && window.TacticalDataLoader.skillCache) {
+            for (const skillId of skillIds) {
+                const skillDef = window.TacticalDataLoader.skillCache[skillId];
+                if (skillDef) {
+                    skills.push({
+                        ...skillDef,
+                        id: skillId,
+                        range: getSkillRange(skillDef),
+                        rangeType: getSkillRangeType(skillDef),
+                        aoe: skillDef.aoe || 0
+                    });
+                }
+            }
+        }
+
+        // Fallback to skillsData
+        if (skills.length < skillIds.length) {
+            for (const skillId of skillIds) {
+                if (!skills.find(s => s.id === skillId)) {
+                    const skillDef = window.skillsData?.[skillId];
+                    if (skillDef) {
+                        skills.push({
+                            ...skillDef,
+                            id: skillId,
+                            range: getSkillRange(skillDef),
+                            rangeType: getSkillRangeType(skillDef),
+                            aoe: skillDef.aoe || 0
+                        });
+                    }
+                }
+            }
+        }
 
         return skills;
     }
@@ -167,15 +305,36 @@
             }
         }
 
-        // Calcular células no alcance (Manhattan distance)
-        for (let dx = -range; dx <= range; dx++) {
-            for (let dy = -range; dy <= range; dy++) {
-                const dist = Math.abs(dx) + Math.abs(dy); // Manhattan
-                if (dist <= range && dist > 0) { // > 0 para excluir própria célula
-                    const x = unit.x + dx;
-                    const y = unit.y + dy;
-                    if (isValidCell(x, y)) {
-                        reachable.push({ x, y, dist });
+        // Para skills self/ally, incluir própria célula
+        if (rangeType === 'self' || rangeType === 'ally') {
+            reachable.push({ x: unit.x, y: unit.y, dist: 0 });
+        }
+
+        // Para skills ally, também incluir células com aliados no range
+        if (rangeType === 'ally') {
+            const allyUnits = playerUnits.filter(u => u.hp > 0 && u.id !== unit.id);
+            allyUnits.forEach(ally => {
+                const dist = Math.max(Math.abs(unit.x - ally.x), Math.abs(unit.y - ally.y)); // Chebyshev
+                if (dist <= range) {
+                    const existing = reachable.find(c => c.x === ally.x && c.y === ally.y);
+                    if (!existing) {
+                        reachable.push({ x: ally.x, y: ally.y, dist });
+                    }
+                }
+            });
+        }
+
+        // Calcular células no alcance (Manhattan distance) - apenas para skills que não são self/ally
+        if (rangeType !== 'self' && rangeType !== 'ally') {
+            for (let dx = -range; dx <= range; dx++) {
+                for (let dy = -range; dy <= range; dy++) {
+                    const dist = Math.abs(dx) + Math.abs(dy); // Manhattan
+                    if (dist <= range && dist > 0) { // > 0 para excluir própria célula
+                        const x = unit.x + dx;
+                        const y = unit.y + dy;
+                        if (isValidCell(x, y)) {
+                            reachable.push({ x, y, dist });
+                        }
                     }
                 }
             }
@@ -250,57 +409,40 @@
     }
 
     /**
-     * Mapeia unit.class ou combatKey para nome da pasta de sprite
+     * Obtém entity_id da unidade para paths de assets (convenção: public/assets/entities/<entity_id>/).
+     * Usa unit.entity_id quando disponível; senão faz fallback de combatKey/class para entity_id.
      */
-    function getSpriteNameForUnit(unit) {
+    function getEntityIdForUnit(unit) {
         if (!unit) return null;
-
-        // Primeiro tentar combatKey (mais específico)
+        if (unit.entity_id) return unit.entity_id;
         const combatKey = (unit.combatKey || unit.combat_key || '').toLowerCase();
-        if (combatKey === 'hero_swordman' || combatKey === 'swordman') {
-            return 'swordman';
-        }
-        if (combatKey === 'toxic_slime' || combatKey === 'slime') {
-            return 'slime';
-        }
-        if (combatKey === 'wolf') {
-            return 'wolf';
-        }
-
-        // Depois tentar class
-        const className = (unit.class || '').toLowerCase();
-        const classMap = {
-            'swordsman': 'swordman',
-            'swordman': 'swordman',
-            'warrior': 'swordman',
-            'hero': 'swordman', // Fallback genérico para hero
-            'slime': 'slime',
-            'toxic_slime': 'slime',
+        const combatMap = {
+            'hero_swordman': 'swordsman', 'swordman': 'swordsman',
+            'hero_archer': 'archer', 'archer': 'archer',
+            'toxic_slime': 'toxic_slime', 'slime': 'toxic_slime',
             'wolf': 'wolf'
         };
-
-        return classMap[className] || null;
+        if (combatMap[combatKey]) return combatMap[combatKey];
+        const className = (unit.class || '').toLowerCase();
+        const classMap = {
+            'swordsman': 'swordsman', 'swordman': 'swordsman', 'warrior': 'swordsman',
+            'archer': 'archer', 'ranged': 'archer', 'hero': 'swordsman',
+            'slime': 'toxic_slime', 'toxic_slime': 'toxic_slime', 'wolf': 'wolf'
+        };
+        return classMap[className] || combatKey || null;
     }
 
     /**
-     * Carrega uma animação específica (idle ou walk) de um sprite
-     * Formato esperado: {spriteName}/{animationType}/{num}.png (1.png, 2.png, 3.png, ...)
-     * - Idle: {spriteName}/idle/1.png, 2.png, 3.png, ... 60.png
-     * - Walk: {spriteName}/walk/1.png, 2.png, 3.png, ... 40.png
+     * Carrega uma animação específica (idle, walk, atack) de uma entidade.
+     * Formato: public/assets/entities/<entityId>/animations/<animationType>/1.png, 2.png, ...
      */
-    async function loadSpriteAnimation(spriteName, animationType) {
+    async function loadSpriteAnimation(entityId, animationType) {
         const frames = [];
         const maxFrames = 200; // Limite máximo para evitar loop infinito
 
-        // Determinar caminho base baseado no tipo de animação (formato simples: 1.png, 2.png, etc.)
-        let basePath;
-        if (animationType === 'idle') {
-            basePath = `/public/assets/img/animations/${spriteName}/idle/`;
-        } else if (animationType === 'walk') {
-            basePath = `/public/assets/img/animations/${spriteName}/walk/`;
-        } else if (animationType === 'atack') {
-            basePath = `/public/assets/img/animations/${spriteName}/atack/`;
-        } else {
+        if (!entityId) return null;
+        const basePath = `/public/assets/entities/${entityId}/animations/${animationType}/`;
+        if (animationType !== 'idle' && animationType !== 'walk' && animationType !== 'atack') {
             console.warn(`[SpriteAnimation] Tipo de animação inválido: ${animationType}`);
             return null;
         }
@@ -359,7 +501,7 @@
         const actualFrameCount = frames.length;
 
         if (actualFrameCount === 0) {
-            console.warn(`[SpriteAnimation] Nenhum frame encontrado para ${spriteName}/${animationType}`);
+            console.warn(`[SpriteAnimation] Nenhum frame encontrado para ${entityId}/${animationType}`);
             animation.state = 'error';
             return null;
         }
@@ -369,51 +511,46 @@
         animation.loaded = true;
         animation.state = 'loaded';
 
-        console.log(`[SpriteAnimation] Carregado ${spriteName}/${animationType}: ${actualFrameCount} frames (${animation.width}x${animation.height})`);
+        console.log(`[SpriteAnimation] Carregado ${entityId}/${animationType}: ${actualFrameCount} frames (${animation.width}x${animation.height})`);
 
         return animation;
     }
 
     /**
-     * Carrega todas as animações (idle e walk) de um sprite
-     * Retorna objeto com todas as animações carregadas
+     * Carrega todas as animações (idle, walk, atack) de uma entidade.
+     * Retorna objeto com todas as animações carregadas. Cache keyado por entityId.
      */
-    async function loadSpriteAnimations(spriteName) {
-        // Verificar se já está no cache
-        if (spriteCache.has(spriteName)) {
-            return spriteCache.get(spriteName);
+    async function loadSpriteAnimations(entityId) {
+        if (!entityId) return null;
+        if (spriteCache.has(entityId)) {
+            return spriteCache.get(entityId);
         }
 
-        // Criar objeto para armazenar todas as animações deste sprite
         const spriteAnimations = {
-            name: spriteName,
+            name: entityId,
             idle: null,
             walk: null,
             atack: null,
             loaded: false
         };
 
-        // Armazenar no cache imediatamente para evitar carregamentos duplicados
-        spriteCache.set(spriteName, spriteAnimations);
+        spriteCache.set(entityId, spriteAnimations);
 
-        // Carregar animações em paralelo
         const [idleAnimation, walkAnimation, atackAnimation] = await Promise.all([
-            loadSpriteAnimation(spriteName, 'idle'),
-            loadSpriteAnimation(spriteName, 'walk'),
-            loadSpriteAnimation(spriteName, 'atack')
+            loadSpriteAnimation(entityId, 'idle'),
+            loadSpriteAnimation(entityId, 'walk'),
+            loadSpriteAnimation(entityId, 'atack')
         ]);
 
         spriteAnimations.idle = idleAnimation;
         spriteAnimations.walk = walkAnimation;
         spriteAnimations.atack = atackAnimation;
-
-        // Considerar carregado se pelo menos uma animação foi carregada
         spriteAnimations.loaded = (idleAnimation !== null || walkAnimation !== null || atackAnimation !== null);
 
         if (!spriteAnimations.loaded) {
-            console.warn(`[SpriteAnimations] Nenhuma animação carregada para ${spriteName}`);
+            console.warn(`[SpriteAnimations] Nenhuma animação carregada para ${entityId}`);
         } else {
-            console.log(`[SpriteAnimations] Carregado ${spriteName}: idle=${idleAnimation !== null}, walk=${walkAnimation !== null}, atack=${atackAnimation !== null}`);
+            console.log(`[SpriteAnimations] Carregado ${entityId}: idle=${idleAnimation !== null}, walk=${walkAnimation !== null}, atack=${atackAnimation !== null}`);
         }
 
         return spriteAnimations;
@@ -456,8 +593,9 @@
             } else {
                 fps = baseFPS;
             }
-            const frameDuration = 60 / fps;
-            return Math.floor((animationFrame / frameDuration) % fallback.frameCount);
+            if (typeof fps !== 'number' || fps <= 0 || !isFinite(fps)) fps = 12;
+            const frameDurationFallback = 60 / fps;
+            return Math.floor((animationFrame / frameDurationFallback) % fallback.frameCount);
         }
 
         // Usar animationFrame global para sincronizar animação ou local se não for loop
@@ -482,6 +620,7 @@
             fps = baseFPS;
         }
 
+        if (typeof fps !== 'number' || fps <= 0 || !isFinite(fps)) fps = 12;
         const frameDuration = 60 / fps; // Frames do game loop por frame de animação
 
         // Se a animação não for em loop (ex: atack), calcular baseada no início
@@ -507,7 +646,7 @@
                     }, 50);
                 }
             }
-            return frameIndex;
+            return Math.max(0, Math.min(frameIndex, animation.frameCount - 1));
         }
 
         // Loop padrão sincronizado
@@ -519,18 +658,16 @@
      * Carrega todas as animações (idle + walk) para cada sprite
      */
     async function loadRequiredSprites() {
-        const spriteNames = new Set();
+        const entityIds = new Set();
 
-        // Detectar quais sprites são necessários
         [...playerUnits, ...enemyUnits].forEach(unit => {
-            const spriteName = getSpriteNameForUnit(unit);
-            if (spriteName) {
-                spriteNames.add(spriteName);
+            const entityId = getEntityIdForUnit(unit);
+            if (entityId) {
+                entityIds.add(entityId);
             }
         });
 
-        // Carregar todas as animações (idle + walk) para cada sprite em paralelo
-        const loadPromises = Array.from(spriteNames).map(name => loadSpriteAnimations(name));
+        const loadPromises = Array.from(entityIds).map(id => loadSpriteAnimations(id));
         await Promise.all(loadPromises);
 
         needsRender = true;
@@ -569,7 +706,15 @@
     // =====================================================
     const sfxCache = {};
     function playSfx(fileName, volume = 0.45, rate = 1.0) {
-        if (!fileName || !audioSettings.sfxEnabled) return null;
+        console.log('[AUDIO DEBUG] playSfx called:', fileName, 'sfxEnabled:', audioSettings.sfxEnabled);
+        if (!fileName) {
+            console.log('[AUDIO DEBUG] playSfx: no fileName');
+            return null;
+        }
+        if (!audioSettings.sfxEnabled) {
+            console.log('[AUDIO DEBUG] playSfx: SFX DISABLED - enabling now');
+            audioSettings.sfxEnabled = true; // Auto-enable if disabled
+        }
         const src = `/public/assets/mp3/${fileName}`;
         if (!sfxCache[src]) {
             const audio = new Audio(src);
@@ -579,7 +724,10 @@
         const audio = sfxCache[src].cloneNode();
         audio.volume = volume;
         audio.playbackRate = rate;
-        audio.play().catch(() => { });
+        audio.play().catch(err => {
+            console.log('[AUDIO DEBUG] playSfx FAILED:', fileName, err.message);
+        });
+        console.log('[AUDIO DEBUG] playSfx playing:', fileName);
         return audio;
     }
 
@@ -587,17 +735,90 @@
         return arr[Math.floor(Math.random() * arr.length)];
     }
 
-    function playSwordSfx(isCrit = false) {
-        const swing = pickRandom(['sword1.mp3', 'sword2.mp3', 'sword3.mp3', 'sword4.mp3']);
-        const hit = pickRandom(['hit1.mp3', 'hit2.mp3', 'hit3.mp3', 'impact.mp3']);
-        playSfx(swing, 0.5, 1.0);
-        setTimeout(() => playSfx(hit, 0.55, 1.0), 80);
-        if (isCrit) setTimeout(() => playSfx('critical.mp3', 0.6, 1.0), 60);
+    /** Toca SFX da entidade (entities/ID/sounds/) ou fallback em mp3/ */
+    function playSfxEntity(entityId, fileName, volume = 0.45, rate = 1.0) {
+        const base = (fileName || '').endsWith('.mp3') ? fileName : fileName + '.mp3';
+        if (!entityId) { playSfx(base, volume, rate); return; }
+        const entityPath = `/public/assets/entities/${entityId}/sounds/${base}`;
+        const audio = new Audio(entityPath);
+        audio.volume = volume;
+        audio.playbackRate = rate;
+        audio.onerror = () => { playSfx(base, volume, rate); };
+        audio.play().catch(() => {});
     }
 
-    function playClawSfx() {
-        const hit = pickRandom(['wolf_claw_hit1.mp3', 'wolf_claw_hit2.mp3', 'wolf_claw_hit3.mp3', 'wolf_claw_hit4.mp3']);
+    /** Hit/impacto GERAL (mp3): toda vez que atacar ou receber ataque */
+    function playHitImpactSfx(isCrit = false) {
+        const hit = pickRandom(['hit1.mp3', 'hit2.mp3', 'hit3.mp3', 'impact.mp3']);
         playSfx(hit, 0.55, 1.0);
+        if (isCrit) setTimeout(() => playSfx('critical.mp3', 0.6, 1.0), 50);
+    }
+
+    /** Buff aplicado – GERAL (mp3) */
+    function playBuffApplySfx() {
+        const s = pickRandom(['buff_apply1.mp3', 'buff_apply2.mp3', 'buff_apply3.mp3']);
+        playSfx(s, 0.5, 1.0);
+    }
+
+    /** Debuff aplicado – GERAL (mp3) */
+    function playDebuffApplySfx() {
+        playSfx('debuff_apply.mp3', 0.5, 1.0);
+    }
+
+    function playSwordSfx(entityId, isCrit = false) {
+        const swing = pickRandom(['sword1.mp3', 'sword2.mp3', 'sword3.mp3', 'sword4.mp3']);
+        playSfxEntity(entityId, swing, 0.5, 1.0);
+        setTimeout(() => playHitImpactSfx(isCrit), 80);
+    }
+
+    function playClawSfx(entityId) {
+        const claw = pickRandom(['wolf_claw_hit1.mp3', 'wolf_claw_hit2.mp3', 'wolf_claw_hit3.mp3', 'wolf_claw_hit4.mp3']);
+        playSfxEntity(entityId, claw, 0.55, 1.0);
+        setTimeout(() => playHitImpactSfx(false), 40);
+    }
+
+    function playBowSfx(entityId, isCrit = false) {
+        const bow = pickRandom(['bow1.mp3', 'bow2.mp3', 'bow3.mp3']);
+        playSfxEntity(entityId, bow, 0.5, 1.0);
+        setTimeout(() => playHitImpactSfx(isCrit), 100);
+    }
+
+    function playSlimeSfx(entityId) {
+        playSfxEntity(entityId, 'slime.mp3', 0.5, 1.0);
+        setTimeout(() => playHitImpactSfx(false), 60);
+    }
+
+    function playMagicSfx(isCrit = false) {
+        const start = pickRandom(['skill_start1.mp3', 'skill_start2.mp3', 'skill_start3.mp3']);
+        playSfx(start, 0.45, 1.0);
+        if (isCrit) setTimeout(() => playSfx('critical.mp3', 0.6, 1.0), 150);
+    }
+
+    function playSkillVoice(skillId, entityId = null) {
+        // Som de voz específico para certas skills (ultimate etc)
+        // Usa paths de entidades quando disponível
+        console.log('[AUDIO DEBUG] playSkillVoice called:', skillId);
+        if (skillId === 'deadly_aim') {
+            // Archer ultimate
+            const src = '/public/assets/entities/archer/sounds/deadly_aim.mp3';
+            console.log('[AUDIO DEBUG] Playing deadly_aim from:', src);
+            const audio = new Audio(src);
+            audio.volume = 0.7;
+            audio.play().catch(err => {
+                console.log('[AUDIO DEBUG] deadly_aim FAILED:', err.message);
+            });
+        } else if (skillId === 'champions_slash') {
+            // Swordsman ultimate
+            const src = '/public/assets/entities/swordsman/sounds/champions_slash.mp3';
+            console.log('[AUDIO DEBUG] Playing champions_slash from:', src);
+            const audio = new Audio(src);
+            audio.volume = 0.7;
+            audio.play().catch(err => {
+                console.log('[AUDIO DEBUG] champions_slash FAILED:', err.message);
+            });
+        } else if (skillId === 'berserk_mode') {
+            playSfx('swordman_skill_start1.mp3', 0.6, 1.0);
+        }
     }
 
     function getAudioContext() {
@@ -730,220 +951,54 @@
     // Fallback padrão se não houver no config
     // =====================================================
     // WALLS - Carregado do config do mapa (config_json.walls)
-    // Fallback padr�o se n�o houver no config
+    // Fallback padro se no houver no config
     // =====================================================
     let WALLS = [
-        { x: 8, y: 12 },
-        { x: 9, y: 13 },
-        { x: 10, y: 13 },
-        { x: 8, y: 11 },
-        { x: 8, y: 13 },
-        { x: 11, y: 13 },
-        { x: 11, y: 14 },
-        { x: 12, y: 14 },
-        { x: 12, y: 15 },
-        { x: 13, y: 15 },
-        { x: 13, y: 16 },
-        { x: 14, y: 16 },
-        { x: 15, y: 16 },
-        { x: 16, y: 16 },
-        { x: 17, y: 16 },
-        { x: 18, y: 16 },
-        { x: 19, y: 16 },
-        { x: 20, y: 16 },
-        { x: 21, y: 16 },
-        { x: 22, y: 16 },
-        { x: 23, y: 16 },
-        { x: 24, y: 16 },
-        { x: 25, y: 16 },
-        { x: 26, y: 16 },
-        { x: 26, y: 15 },
-        { x: 27, y: 15 },
-        { x: 27, y: 14 },
-        { x: 28, y: 14 },
-        { x: 28, y: 13 },
-        { x: 28, y: 12 },
-        { x: 28, y: 11 },
-        { x: 29, y: 11 },
-        { x: 30, y: 11 },
-        { x: 32, y: 11 },
-        { x: 31, y: 11 },
-        { x: 34, y: 11 },
-        { x: 33, y: 11 },
-        { x: 36, y: 11 },
-        { x: 35, y: 11 },
-        { x: 33, y: 10 },
-        { x: 34, y: 10 },
-        { x: 35, y: 10 },
-        { x: 36, y: 10 },
-        { x: 37, y: 10 },
-        { x: 37, y: 11 },
-        { x: 38, y: 11 },
-        { x: 38, y: 10 },
-        { x: 39, y: 10 },
-        { x: 39, y: 11 },
-        { x: 40, y: 11 },
-        { x: 40, y: 10 },
-        { x: 41, y: 10 },
-        { x: 41, y: 11 },
-        { x: 42, y: 11 },
-        { x: 42, y: 10 },
-        { x: 43, y: 11 },
-        { x: 43, y: 10 },
-        { x: 43, y: 12 },
-        { x: 44, y: 12 },
-        { x: 44, y: 13 },
-        { x: 45, y: 13 },
-        { x: 45, y: 14 },
-        { x: 46, y: 14 },
-        { x: 47, y: 14 },
-        { x: 50, y: 14 },
-        { x: 48, y: 14 },
-        { x: 49, y: 14 },
-        { x: 51, y: 14 },
-        { x: 53, y: 14 },
-        { x: 52, y: 14 },
-        { x: 54, y: 14 },
-        { x: 55, y: 14 },
-        { x: 54, y: 13 },
-        { x: 54, y: 12 },
-        { x: 54, y: 11 },
-        { x: 54, y: 10 },
-        { x: 54, y: 9 },
-        { x: 53, y: 13 },
-        { x: 52, y: 13 },
-        { x: 51, y: 13 },
-        { x: 50, y: 13 },
-        { x: 52, y: 11 },
-        { x: 52, y: 10 },
-        { x: 51, y: 11 },
-        { x: 51, y: 10 },
-        { x: 51, y: 12 },
-        { x: 52, y: 12 },
-        { x: 53, y: 12 },
-        { x: 53, y: 11 },
-        { x: 53, y: 10 },
-        { x: 54, y: 8 },
-        { x: 54, y: 7 },
-        { x: 54, y: 6 },
-        { x: 54, y: 5 },
-        { x: 54, y: 4 },
-        { x: 54, y: 3 },
-        { x: 53, y: 3 },
-        { x: 52, y: 3 },
-        { x: 51, y: 3 },
-        { x: 51, y: 4 },
-        { x: 51, y: 5 },
-        { x: 51, y: 6 },
-        { x: 50, y: 6 },
-        { x: 49, y: 6 },
-        { x: 48, y: 6 },
-        { x: 47, y: 5 },
-        { x: 48, y: 5 },
-        { x: 43, y: 5 },
-        { x: 42, y: 5 },
-        { x: 40, y: 5 },
-        { x: 41, y: 5 },
-        { x: 40, y: 6 },
-        { x: 41, y: 6 },
-        { x: 42, y: 6 },
-        { x: 38, y: 6 },
-        { x: 39, y: 6 },
-        { x: 42, y: 7 },
-        { x: 41, y: 7 },
-        { x: 39, y: 7 },
-        { x: 40, y: 7 },
-        { x: 38, y: 7 },
-        { x: 37, y: 7 },
-        { x: 37, y: 6 },
-        { x: 35, y: 6 },
-        { x: 36, y: 7 },
-        { x: 36, y: 6 },
-        { x: 35, y: 7 },
-        { x: 34, y: 6 },
-        { x: 34, y: 7 },
-        { x: 33, y: 7 },
-        { x: 33, y: 6 },
-        { x: 44, y: 4 },
-        { x: 45, y: 4 },
-        { x: 46, y: 4 },
-        { x: 43, y: 4 },
-        { x: 48, y: 4 },
-        { x: 47, y: 4 },
-        { x: 38, y: 3 },
-        { x: 32, y: 6 },
-        { x: 32, y: 7 },
-        { x: 31, y: 7 },
-        { x: 31, y: 6 },
-        { x: 30, y: 7 },
-        { x: 30, y: 6 },
-        { x: 29, y: 6 },
-        { x: 29, y: 7 },
-        { x: 29, y: 5 },
-        { x: 29, y: 4 },
-        { x: 29, y: 3 },
-        { x: 29, y: 2 },
-        { x: 29, y: 1 },
-        { x: 27, y: 3 },
-        { x: 28, y: 5 },
-        { x: 28, y: 4 },
-        { x: 28, y: 3 },
-        { x: 28, y: 2 },
-        { x: 27, y: 2 },
-        { x: 27, y: 1 },
-        { x: 28, y: 1 },
-        { x: 26, y: 1 },
-        { x: 25, y: 1 },
-        { x: 24, y: 1 },
-        { x: 23, y: 3 },
-        { x: 23, y: 4 },
-        { x: 24, y: 4 },
-        { x: 24, y: 3 },
-        { x: 24, y: 2 },
-        { x: 23, y: 2 },
-        { x: 23, y: 1 },
-        { x: 22, y: 1 },
-        { x: 22, y: 3 },
-        { x: 22, y: 2 },
-        { x: 26, y: 4 },
-        { x: 25, y: 2 },
-        { x: 27, y: 5 },
-        { x: 27, y: 4 },
-        { x: 26, y: 3 },
-        { x: 26, y: 2 },
-        { x: 25, y: 3 },
-        { x: 25, y: 4 },
-        { x: 22, y: 4 },
-        { x: 21, y: 1 },
-        { x: 20, y: 1 },
-        { x: 19, y: 1 },
-        { x: 19, y: 2 },
-        { x: 19, y: 3 },
-        { x: 18, y: 3 },
-        { x: 18, y: 4 },
-        { x: 17, y: 4 },
-        { x: 16, y: 4 },
-        { x: 16, y: 5 },
-        { x: 15, y: 5 },
-        { x: 14, y: 5 },
-        { x: 15, y: 4 },
-        { x: 14, y: 4 },
-        { x: 13, y: 4 },
-        { x: 13, y: 3 },
-        { x: 13, y: 2 },
-        { x: 13, y: 1 },
-        { x: 13, y: 5 },
-        { x: 12, y: 5 },
-        { x: 12, y: 6 },
-        { x: 12, y: 7 },
-        { x: 11, y: 7 },
-        { x: 8, y: 7 },
-        { x: 9, y: 7 },
-        { x: 10, y: 7 },
-        { x: 8, y: 8 },
-        { x: 8, y: 9 },
-        { x: 8, y: 10 },
-        { x: 7, y: 4 }
+        { "x": 8, "y": 12 }, { "x": 9, "y": 13 }, { "x": 10, "y": 13 }, { "x": 8, "y": 11 }, { "x": 8, "y": 13 },
+        { "x": 11, "y": 13 }, { "x": 11, "y": 14 }, { "x": 12, "y": 14 }, { "x": 12, "y": 15 }, { "x": 13, "y": 15 },
+        { "x": 13, "y": 16 }, { "x": 14, "y": 16 }, { "x": 15, "y": 16 }, { "x": 16, "y": 16 }, { "x": 17, "y": 16 },
+        { "x": 18, "y": 16 }, { "x": 19, "y": 16 }, { "x": 20, "y": 16 }, { "x": 21, "y": 16 }, { "x": 22, "y": 16 },
+        { "x": 23, "y": 16 }, { "x": 24, "y": 16 }, { "x": 25, "y": 16 }, { "x": 26, "y": 16 }, { "x": 26, "y": 15 },
+        { "x": 27, "y": 15 }, { "x": 27, "y": 14 }, { "x": 28, "y": 14 }, { "x": 28, "y": 13 }, { "x": 28, "y": 12 },
+        { "x": 28, "y": 11 }, { "x": 29, "y": 11 }, { "x": 30, "y": 11 }, { "x": 32, "y": 11 }, { "x": 31, "y": 11 },
+        { "x": 34, "y": 11 }, { "x": 33, "y": 11 }, { "x": 36, "y": 11 }, { "x": 35, "y": 11 }, { "x": 33, "y": 10 },
+        { "x": 34, "y": 10 }, { "x": 35, "y": 10 }, { "x": 36, "y": 10 }, { "x": 37, "y": 10 }, { "x": 37, "y": 11 },
+        { "x": 38, "y": 11 }, { "x": 38, "y": 10 }, { "x": 39, "y": 10 }, { "x": 39, "y": 11 }, { "x": 40, "y": 11 },
+        { "x": 40, "y": 10 }, { "x": 41, "y": 10 }, { "x": 41, "y": 11 }, { "x": 42, "y": 11 }, { "x": 42, "y": 10 },
+        { "x": 43, "y": 11 }, { "x": 43, "y": 10 }, { "x": 43, "y": 12 }, { "x": 44, "y": 12 }, { "x": 44, "y": 13 },
+        { "x": 45, "y": 13 }, { "x": 45, "y": 14 }, { "x": 46, "y": 14 }, { "x": 47, "y": 14 }, { "x": 50, "y": 14 },
+        { "x": 48, "y": 14 }, { "x": 49, "y": 14 }, { "x": 51, "y": 14 }, { "x": 53, "y": 14 }, { "x": 52, "y": 14 },
+        { "x": 54, "y": 14 }, { "x": 55, "y": 14 }, { "x": 54, "y": 13 }, { "x": 54, "y": 12 }, { "x": 54, "y": 11 },
+        { "x": 54, "y": 10 }, { "x": 54, "y": 9 }, { "x": 53, "y": 13 }, { "x": 52, "y": 13 }, { "x": 51, "y": 13 },
+        { "x": 50, "y": 13 }, { "x": 52, "y": 11 }, { "x": 52, "y": 10 }, { "x": 51, "y": 11 }, { "x": 51, "y": 10 },
+        { "x": 51, "y": 12 }, { "x": 52, "y": 12 }, { "x": 53, "y": 12 }, { "x": 53, "y": 11 }, { "x": 53, "y": 10 },
+        { "x": 54, "y": 8 }, { "x": 54, "y": 7 }, { "x": 54, "y": 6 }, { "x": 54, "y": 5 }, { "x": 54, "y": 4 },
+        { "x": 54, "y": 3 }, { "x": 53, "y": 3 }, { "x": 52, "y": 3 }, { "x": 51, "y": 3 }, { "x": 51, "y": 4 },
+        { "x": 51, "y": 5 }, { "x": 51, "y": 6 }, { "x": 50, "y": 6 }, { "x": 49, "y": 6 }, { "x": 48, "y": 6 },
+        { "x": 47, "y": 5 }, { "x": 48, "y": 5 }, { "x": 43, "y": 5 }, { "x": 42, "y": 5 }, { "x": 40, "y": 5 },
+        { "x": 41, "y": 5 }, { "x": 40, "y": 6 }, { "x": 41, "y": 6 }, { "x": 42, "y": 6 }, { "x": 38, "y": 6 },
+        { "x": 39, "y": 6 }, { "x": 42, "y": 7 }, { "x": 41, "y": 7 }, { "x": 39, "y": 7 }, { "x": 40, "y": 7 },
+        { "x": 38, "y": 7 }, { "x": 37, "y": 7 }, { "x": 37, "y": 6 }, { "x": 35, "y": 6 }, { "x": 36, "y": 7 },
+        { "x": 36, "y": 6 }, { "x": 35, "y": 7 }, { "x": 34, "y": 6 }, { "x": 34, "y": 7 }, { "x": 33, "y": 7 },
+        { "x": 33, "y": 6 }, { "x": 44, "y": 4 }, { "x": 45, "y": 4 }, { "x": 46, "y": 4 }, { "x": 43, "y": 4 },
+        { "x": 48, "y": 4 }, { "x": 47, "y": 4 }, { "x": 38, "y": 3 }, { "x": 32, "y": 6 }, { "x": 32, "y": 7 },
+        { "x": 31, "y": 7 }, { "x": 31, "y": 6 }, { "x": 30, "y": 7 }, { "x": 30, "y": 6 }, { "x": 29, "y": 6 },
+        { "x": 29, "y": 7 }, { "x": 29, "y": 5 }, { "x": 29, "y": 4 }, { "x": 29, "y": 3 }, { "x": 29, "y": 2 },
+        { "x": 29, "y": 1 }, { "x": 27, "y": 3 }, { "x": 28, "y": 5 }, { "x": 28, "y": 4 }, { "x": 28, "y": 3 },
+        { "x": 28, "y": 2 }, { "x": 27, "y": 2 }, { "x": 27, "y": 1 }, { "x": 28, "y": 1 }, { "x": 26, "y": 1 },
+        { "x": 25, "y": 1 }, { "x": 24, "y": 1 }, { "x": 23, "y": 3 }, { "x": 23, "y": 4 }, { "x": 24, "y": 4 },
+        { "x": 24, "y": 3 }, { "x": 24, "y": 2 }, { "x": 23, "y": 2 }, { "x": 23, "y": 1 }, { "x": 22, "y": 1 },
+        { "x": 22, "y": 3 }, { "x": 22, "y": 2 }, { "x": 26, "y": 4 }, { "x": 25, "y": 2 }, { "x": 27, "y": 5 },
+        { "x": 27, "y": 4 }, { "x": 26, "y": 3 }, { "x": 26, "y": 2 }, { "x": 25, "y": 3 }, { "x": 25, "y": 4 },
+        { "x": 22, "y": 4 }, { "x": 21, "y": 1 }, { "x": 20, "y": 1 }, { "x": 19, "y": 1 }, { "x": 19, "y": 2 },
+        { "x": 19, "y": 3 }, { "x": 18, "y": 3 }, { "x": 18, "y": 4 }, { "x": 17, "y": 4 }, { "x": 16, "y": 4 },
+        { "x": 16, "y": 5 }, { "x": 15, "y": 5 }, { "x": 14, "y": 5 }, { "x": 15, "y": 4 }, { "x": 14, "y": 4 },
+        { "x": 13, "y": 4 }, { "x": 13, "y": 3 }, { "x": 13, "y": 2 }, { "x": 13, "y": 1 }, { "x": 13, "y": 5 },
+        { "x": 12, "y": 5 }, { "x": 12, "y": 6 }, { "x": 12, "y": 7 }, { "x": 11, "y": 7 }, { "x": 8, "y": 7 },
+        { "x": 9, "y": 7 }, { "x": 10, "y": 7 }, { "x": 8, "y": 8 }, { "x": 8, "y": 9 }, { "x": 8, "y": 10 },
+        { "x": 7, "y": 4 }, { "x": 12, "y": 8 }, { "x": 26, "y": 8 }, { "x": 27, "y": 8 }, { "x": 26, "y": 11 },
+        { "x": 23, "y": 12 }, { "x": 26, "y": 12 }, { "x": 27, "y": 12 }, { "x": 23, "y": 8 }, { "x": 20, "y": 6 },
+        { "x": 23, "y": 7 }, { "x": 25, "y": 5 }, { "x": 26, "y": 5 }
     ];
 
     // =====================================================
@@ -951,10 +1006,10 @@
     // =====================================================
     async function init() {
         console.log('[MAP-ENGINE] init() iniciado');
-        
+
         // Dependências já foram verificadas em waitForDependencies()
         console.log('[MAP-ENGINE] Dependências verificadas. combatData disponível.');
-        
+
         try {
             canvas = document.getElementById('map-canvas');
             minimapCanvas = document.getElementById('minimap-canvas');
@@ -1016,6 +1071,68 @@
                 console.log('[MAP-ENGINE] Carregando sessão UID:', sessionUid);
                 await loadSessionStateFromServer(sessionUid);
                 console.log('[MAP-ENGINE] Sessão carregada');
+
+                // Load entities from API if TacticalDataLoader is available
+                if (window.TacticalDataLoader && sessionData) {
+                    console.log('[MAP-ENGINE] Carregando entities via API...');
+                    try {
+                        // player + allies + entities (inimigos); ver collectCombatKeysFromSession()
+                        const combatKeys = collectCombatKeysFromSession(sessionData);
+
+                        if (combatKeys.size > 0) {
+                            const keysArray = Array.from(combatKeys);
+                            console.log('[MAP-ENGINE] Carregando entities:', keysArray);
+                            await window.TacticalDataLoader.loadEntities(keysArray);
+                            console.log('[MAP-ENGINE] Entities carregadas com sucesso');
+
+                            // Atualizar atributos das unidades com dados das entity sheets
+                            updateUnitsAttributesFromEntitySheets();
+
+                            // Now load ALL skills from all loaded entities BEFORE game starts
+                            console.log('[MAP-ENGINE] Extraindo e carregando todas as skills...');
+                            try {
+                                const allSkillIds = new Set();
+
+                                // Extract skill IDs from all loaded entities
+                                keysArray.forEach(combatKey => {
+                                    const entity = window.TacticalDataLoader.entityCache[combatKey];
+                                    if (entity && Array.isArray(entity.skills)) {
+                                        entity.skills.forEach(skill => {
+                                            if (typeof skill === 'object' && skill !== null) {
+                                                // New format: skill object with 'id' property
+                                                if (skill.id && typeof skill.id === 'string') {
+                                                    allSkillIds.add(skill.id);
+                                                }
+                                            } else if (typeof skill === 'string') {
+                                                // Legacy format: skill is just an ID string
+                                                allSkillIds.add(skill);
+                                            }
+                                        });
+                                    }
+                                });
+
+                                // Load all skills in one batch request
+                                if (allSkillIds.size > 0) {
+                                    const skillIdsArray = Array.from(allSkillIds);
+                                    console.log('[MAP-ENGINE] Carregando', skillIdsArray.length, 'skills:', skillIdsArray);
+                                    await window.TacticalDataLoader.loadSkills(skillIdsArray);
+                                    console.log('[MAP-ENGINE] Todas as skills carregadas com sucesso');
+
+                                    // Preload all skill images to avoid reloading on every click
+                                    console.log('[MAP-ENGINE] Pré-carregando imagens de skills...');
+                                    preloadSkillImages(skillIdsArray);
+                                } else {
+                                    console.warn('[MAP-ENGINE] Nenhuma skill encontrada nas entities');
+                                }
+                            } catch (skillErr) {
+                                console.error('[MAP-ENGINE] Erro ao carregar skills:', skillErr);
+                                // Continue anyway - skills will be loaded on-demand if needed
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('[MAP-ENGINE] Erro ao carregar entities via API, usando fallback:', err);
+                    }
+                }
             } else {
                 console.log('[MAP-ENGINE] Nenhuma sessão UID encontrada na URL');
             }
@@ -1127,6 +1244,41 @@
         return params.get('session');
     }
 
+    /**
+     * Coleta combatKey de todas as unidades que precisam de ficha (skills, sprites, sons).
+     * Usado antes de loadEntities() para que entityCache tenha entradas para player, aliados e
+     * inimigos — caso contrário getUnitSkills() retorna [] e o botão Skills fica desabilitado.
+     *
+     * Contrato do /game/explore/state (ExploreController::getState):
+     *   - player: objeto único { combatKey|combat_key, ... }
+     *   - allies: array de aliados { combatKey|combat_key, ... }
+     *   - entities: array de inimigos (chave "entities" no JSON, não "enemies")
+     *
+     * Ao adicionar um novo tipo de unidade à API (ex.: summons, NPCs), incluir aqui.
+     *
+     * @param {Object} data - Resposta de /game/explore/state (sessionData)
+     * @returns {Set<string>} combatKeys para loadEntities(Array.from(set))
+     */
+    function collectCombatKeysFromSession(data) {
+        const combatKeys = new Set();
+        if (!data) return combatKeys;
+
+        function add(u) {
+            const k = u && (u.combatKey || u.combat_key);
+            if (k) combatKeys.add(k);
+        }
+
+        if (data.player) add(data.player);
+
+        const allies = Array.isArray(data.allies) ? data.allies : [];
+        allies.forEach(add);
+
+        // Inimigos: chave no JSON é "entities" (ExploreController::getState)
+        const entities = Array.isArray(data.entities) ? data.entities : [];
+        entities.forEach(add);
+
+        return combatKeys;
+    }
 
     async function loadSessionStateFromServer(uid) {
         try {
@@ -1222,16 +1374,17 @@
     }
 
     function initializeEntities() {
-        // Get entity data from combatData if available
-        const entities = window.combatData?.entities || {};
-
-        // Helper to get entity name from combatData
+        // Helper to get entity name (now loaded via API)
         const getEntityName = (key, fallback) => {
-            return entities[key]?.name || fallback;
+            // Try cache first, otherwise use fallback
+            const entity = window.TacticalDataLoader?.entityCache?.[key];
+            return entity?.name || fallback;
         };
 
         // Player Units (your team) - Using dynamic names from combatData
         // Agora com sistema de atributos integrado ao SkillEngine
+        // REMOVIDO: hero2 (Mage) e hero3 (Archer) - eram apenas para debug
+        // O sistema real usa initializeEntitiesFromSession() que carrega units da sessão
         playerUnits = [
             {
                 id: 'hero1', name: getEntityName('hero_swordman', 'Swordman'), type: 'player',
@@ -1242,26 +1395,6 @@
                 hp: 100, maxHp: 100, sp: 1000, maxSp: 1000, attack: 18, defense: 12,
                 moveRange: 4, attackRange: 1, avatar: '/public/assets/img/characters/swordman.png',
                 class: 'warrior', scale: 1.0
-            },
-            {
-                id: 'hero2', name: getEntityName('hero_mage', 'Mage'), type: 'player',
-                combatKey: 'hero_mage',
-                x: 15, y: 10,
-                level: 8,
-                attributes: { str: 4, agi: 6, vit: 6, int: 18, dex: 12, luk: 5 },
-                hp: 60, maxHp: 60, sp: 100, maxSp: 100, attack: 25, defense: 5,
-                moveRange: 3, attackRange: 3, avatar: '/public/assets/img/mage-male.png',
-                class: 'mage', scale: 1.0
-            },
-            {
-                id: 'hero3', name: getEntityName('hero_archer', 'Archer'), type: 'player',
-                combatKey: 'hero_archer',
-                x: 14, y: 9,
-                level: 9,
-                attributes: { str: 8, agi: 16, vit: 7, int: 6, dex: 18, luk: 8 },
-                hp: 70, maxHp: 70, sp: 60, maxSp: 60, attack: 20, defense: 8,
-                moveRange: 5, attackRange: 3, avatar: '/public/assets/img/archer-female.png',
-                class: 'archer', scale: 1.0
             }
         ];
 
@@ -1344,21 +1477,49 @@
     }
 
     /**
-     * Aplica stats calculados pelo SkillEngine às unidades
+     * Aplica stats calculados pelo TacticalSkillEngine às unidades
      * Usa o sistema de atributos (str, agi, vit, int, dex, luk) + level
+     * @param {Array} units - Array de unidades
+     * @param {Boolean} isNewBattle - Se true, força HP/SP = maxHp/maxSp
      */
-    function applySkillEngineStats(units) {
-        if (!window.SkillEngine) {
-            console.warn('[MAP] SkillEngine não disponível. Stats fixos serão usados.');
+    function applySkillEngineStats(units, isNewBattle = false) {
+        if (!window.TacticalSkillEngine) {
+            console.warn('[MAP] TacticalSkillEngine não disponível. Stats fixos serão usados.');
             return;
         }
 
         units.forEach(unit => {
-            if (!unit.attributes || !unit.level) return;
+            // Garantir baseAttributes existe
+            if (!unit.baseAttributes && unit.attributes) {
+                unit.baseAttributes = { ...unit.attributes };
+            }
 
-            const stats = window.SkillEngine.calculateStatsFromAttributes(unit.level, unit.attributes);
+            // Verificar se temos atributos e level
+            const attributes = unit.attributes || unit.baseAttributes || {};
+            const level = unit.level || 1;
 
-            // Aplicar stats calculados
+            if (!attributes || Object.keys(attributes).length === 0) {
+                console.warn(`[MAP] Unidade ${unit.name} não tem atributos definidos.`);
+                return;
+            }
+
+            // Calcular stats base usando TacticalSkillEngine
+            const stats = window.TacticalSkillEngine.calculateStatsFromAttributes(level, attributes);
+
+            // Salvar em unit.stats (objeto completo)
+            unit.stats = {
+                atk: stats.atk,
+                matk: stats.matk,
+                def: stats.softDef,
+                hardDef: stats.hardDef,
+                mdef: stats.mdef,
+                hit: stats.hit,
+                flee: stats.flee,
+                crit: stats.crit,
+                aspd: stats.aspd
+            };
+
+            // Manter compatibilidade com propriedades individuais
             unit.attack = stats.atk;
             unit.matk = stats.matk;
             unit.defense = stats.softDef;
@@ -1370,12 +1531,49 @@
 
             // HP e MP - usar calculado ou manter original se maior (para bosses etc)
             unit.maxHp = Math.max(unit.maxHp || 0, stats.maxHp);
-            unit.hp = Math.min(unit.hp || unit.maxHp, unit.maxHp);
             unit.maxSp = Math.max(unit.maxSp || 0, stats.maxMana);
-            unit.sp = Math.min(unit.sp || unit.maxSp, unit.maxSp);
+            unit.maxMana = stats.maxMana;
 
-            console.log(`[MAP] Stats calculados para ${unit.name} (Lv${unit.level}):`, {
-                atk: unit.attack, matk: unit.matk, def: unit.defense,
+            // Forçar HP/SP cheios se for nova batalha
+            if (isNewBattle) {
+                unit.hp = unit.maxHp;
+                unit.sp = unit.maxSp;
+                console.log(`[MAP] Nova batalha - ${unit.name}: HP forçado para ${unit.hp}/${unit.maxHp}`);
+            } else if (unit.hp === undefined || unit.hp === null || isNaN(unit.hp)) {
+                // Se hp é undefined/null/NaN, usar maxHp
+                unit.hp = unit.maxHp;
+            } else {
+                // Se hp existe mas é maior que maxHp, limitar ao maxHp
+                unit.hp = Math.min(unit.hp, unit.maxHp);
+            }
+
+            if (!isNewBattle && (unit.sp === undefined || unit.sp === null || isNaN(unit.sp))) {
+                unit.sp = unit.maxSp;
+            } else if (!isNewBattle) {
+                // Se sp existe mas é maior que maxSp, limitar ao maxSp
+                unit.sp = Math.min(unit.sp, unit.maxSp);
+            }
+
+            // Recalcular stats com buffs/debuffs (se houver)
+            if (window.TacticalSkillEngine.recalculateStats) {
+                window.TacticalSkillEngine.recalculateStats(unit);
+
+                // Atualizar propriedades individuais após recalculateStats (para compatibilidade)
+                if (unit.stats) {
+                    unit.attack = unit.stats.atk || unit.attack;
+                    unit.matk = unit.stats.matk || unit.matk;
+                    unit.defense = unit.stats.def || unit.defense;
+                    unit.mdef = unit.stats.mdef || unit.mdef;
+                    unit.hit = unit.stats.hit || unit.hit;
+                    unit.flee = unit.stats.flee || unit.flee;
+                    unit.crit = unit.stats.crit || unit.crit;
+                    unit.aspd = unit.stats.aspd || unit.aspd;
+                }
+            }
+
+            console.log(`[MAP] Stats calculados para ${unit.name} (Lv${level}):`, {
+                atk: unit.stats?.atk || unit.attack, matk: unit.stats?.matk || unit.matk,
+                def: unit.stats?.def || unit.defense,
                 hp: unit.maxHp, mp: unit.maxSp
             });
         });
@@ -1407,6 +1605,12 @@
             gameState.unitsActedThisTurn = new Set(data.unitsActed);
         }
         gameState.isAnimating = false;
+
+        // Detectar se é uma nova batalha (para forçar HP/SP cheios)
+        // Uma batalha é nova se: turn é 1, phase é player, e nenhuma unidade agiu ainda
+        const isNewBattle = (gameState.turn === 1 && gameState.phase === 'player' && gameState.unitsActedThisTurn.size === 0);
+        console.log('[DEBUG][initEntities] isNewBattle:', isNewBattle, { turn: gameState.turn, phase: gameState.phase, unitsActed: gameState.unitsActedThisTurn.size });
+
         console.log('[DEBUG][initEntities] Turno restaurado:', {
             turn: gameState.turn,
             phase: gameState.phase,
@@ -1414,27 +1618,48 @@
         });
 
         if (player) {
+            // Carregar atributos da entity sheet se disponível
+            const combatKey = player.combatKey || player.combat_key || null;
+            let entityDef = null;
+            if (combatKey && window.TacticalDataLoader?.entityCache) {
+                entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            }
+
             const playerUnit = {
                 id: player.id || 'player',
-                name: player.name || 'Hero',
+                name: player.name || entityDef?.name || 'Hero',
                 type: 'player',
+                element: player.element || entityDef?.element || 'neutral',
                 x: player.x || 5,
                 y: player.y || 5,
-                hp: player.hp || 100,
+                level: player.level || entityDef?.level || 1,
+                // Copiar atributos: primeiro de player (salvo), depois entity sheet, depois padrão
+                attributes: player.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
+                baseAttributes: player.baseAttributes || player.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
+                // HP/SP: usar maxHp/maxSp se for nova batalha, senão usar valores salvos
+                hp: isNewBattle ? (player.maxHp || 100) : (player.hp || player.maxHp || 100),
                 maxHp: player.maxHp || 100,
-                sp: player.sp || 50,
+                sp: isNewBattle ? (player.maxSp || 50) : (player.sp || player.maxSp || 50),
                 maxSp: player.maxSp || 50,
+                mana: isNewBattle ? (player.maxMana || player.maxSp || 50) : (player.mana || player.sp || 50),
+                maxMana: player.maxMana || player.maxSp || 50,
                 attack: player.attack || 10,
                 defense: player.defense || 5,
                 moveRange: player.moveRange || 4,
                 attackRange: player.attackRange || 1,
-                avatar: player.avatar || '/public/assets/img/characters/swordman.png',
-                class: player.class || 'hero',
+                // Avatar é imutável e sempre vem do entity sheet/config, não do state salvo
+                avatar: entityDef?.images ? '/public/' + (entityDef.images.default || entityDef.images.male || entityDef.images.female || Object.values(entityDef.images || {})[0] || 'assets/img/characters/swordman.png') : (player.avatar || '/public/assets/img/characters/swordman.png'),
+                class: player.class || entityDef?.class || 'hero',
                 scale: player.scale || 1.0,
-                combatKey: player.combatKey || player.combat_key || null,
+                combatKey: combatKey,
+                entity_id: player.entity_id || entityDef?.id,
                 animationState: 'idle', // Estado inicial da animação
                 hasMoved: !!player.hasMoved,
-                facingRight: player.facingRight ?? false // Usar valor salvo ou false como padrão
+                facingRight: player.facingRight ?? false, // Usar valor salvo ou false como padrão
+                // Inicializar arrays de buffs/debuffs se não existirem
+                activeBuffs: player.activeBuffs || [],
+                activeDebuffs: player.activeDebuffs || [],
+                statusEffects: player.statusEffects || []
             };
 
             // Carregar configurações de animação do JSON (se presentes)
@@ -1465,6 +1690,89 @@
             playerUnits.push(playerUnit);
         }
 
+        // Process allies from session data
+        const allies = Array.isArray(data.allies) ? data.allies : [];
+        allies.forEach((ally, index) => {
+            console.log(`[DEBUG][initEntities] Processando aliado ${index + 1}:`, ally);
+
+            // Carregar atributos da entity sheet se disponível
+            // O combat_key padrão é 'hero_archer' (não 'archer')
+            let combatKey = ally.combatKey || ally.combat_key || 'hero_archer';
+            // Se for 'archer', tentar 'hero_archer'
+            if (combatKey === 'archer') {
+                combatKey = 'hero_archer';
+            }
+            let entityDef = null;
+            if (combatKey && window.TacticalDataLoader?.entityCache) {
+                entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            }
+
+            const allyUnit = {
+                id: ally.id || `ally_${index + 1}`,
+                name: ally.name || entityDef?.name || 'Ally',
+                type: 'player', // Allies are player units
+                element: ally.element || entityDef?.element || 'neutral',
+                x: ally.x || (playerUnits[0]?.x || 5) + 1,
+                y: ally.y || playerUnits[0]?.y || 5,
+                level: ally.level || entityDef?.level || 1,
+                // Copiar atributos: primeiro de ally (salvo), depois entity sheet, depois padrão
+                attributes: ally.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
+                baseAttributes: ally.baseAttributes || ally.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
+                // HP/SP: usar maxHp/maxSp se for nova batalha, senão usar valores salvos
+                hp: isNewBattle ? (ally.maxHp || 100) : (ally.hp || ally.maxHp || 100),
+                maxHp: ally.maxHp || 100,
+                sp: isNewBattle ? (ally.maxSp || 50) : (ally.sp || ally.maxSp || 50),
+                maxSp: ally.maxSp || 50,
+                mana: isNewBattle ? (ally.maxMana || ally.maxSp || 50) : (ally.mana || ally.sp || 50),
+                maxMana: ally.maxMana || ally.maxSp || 50,
+                attack: ally.attack || 10,
+                defense: ally.defense || 5,
+                moveRange: ally.moveRange || 5,
+                attackRange: ally.attackRange || 4, // Ranged units have longer range
+                // Avatar é imutável e sempre vem do entity sheet/config, não do state salvo
+                avatar: entityDef?.images ? '/public/' + (entityDef.images.default || entityDef.images.male || entityDef.images.female || Object.values(entityDef.images || {})[0] || 'assets/img/archer-male.png') : (ally.avatar || '/public/assets/img/archer-male.png'),
+                class: ally.class || entityDef?.class || 'archer',
+                scale: ally.scale || 1.0,
+                combatKey: combatKey,
+                entity_id: ally.entity_id || entityDef?.id,
+                animationState: 'idle', // Estado inicial da animação
+                hasMoved: !!ally.hasMoved,
+                facingRight: ally.facingRight ?? false, // Usar valor salvo ou false como padrão
+                // Inicializar arrays de buffs/debuffs se não existirem
+                activeBuffs: ally.activeBuffs || [],
+                activeDebuffs: ally.activeDebuffs || [],
+                statusEffects: ally.statusEffects || []
+            };
+
+            // Carregar configurações de animação do JSON (se presentes)
+            // Suporte para objeto 'animations' (idle/walk) ou propriedades globais (retrocompatibilidade)
+            if (ally.animations && typeof ally.animations === 'object') {
+                // Copiar objeto animations completo
+                allyUnit.animations = JSON.parse(JSON.stringify(ally.animations)); // Deep copy
+                console.log(`[DEBUG][initEntities] Aliado ${index + 1} - Animations carregado:`, allyUnit.animations);
+            } else {
+                // Retrocompatibilidade: propriedades globais
+                if (ally.animationFPS !== undefined) {
+                    allyUnit.animationFPS = ally.animationFPS;
+                }
+                if (ally.animationScale !== undefined) {
+                    allyUnit.animationScale = ally.animationScale;
+                }
+                if (ally.animationOffsetX !== undefined) {
+                    allyUnit.animationOffsetX = ally.animationOffsetX;
+                }
+                if (ally.animationOffsetY !== undefined) {
+                    allyUnit.animationOffsetY = ally.animationOffsetY;
+                }
+            }
+            if (ally.forceAnimation !== undefined) {
+                allyUnit.forceAnimation = ally.forceAnimation;
+            }
+
+            console.log(`[DEBUG][initEntities] Aliado criado:`, allyUnit);
+            playerUnits.push(allyUnit);
+        });
+
         enemies.forEach((enemy, index) => {
             console.log(`[DEBUG][initEntities] Processando inimigo ${index + 1}:`, enemy);
 
@@ -1473,24 +1781,46 @@
 
             console.log(`[DEBUG][initEntities] Inimigo ${index + 1} - combatKey: ${unitCombatKey}, isSlime: ${isSlime}, x: ${enemy.x}, y: ${enemy.y}`);
 
+            // Carregar atributos da entity sheet se disponível
+            const combatKey = enemy.combatKey || enemy.combat_key || null;
+            let entityDef = null;
+            if (combatKey && window.TacticalDataLoader?.entityCache) {
+                entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            }
+
             const unit = {
                 id: enemy.id || `enemy_${Math.random().toString(36).slice(2, 8)}`,
-                name: enemy.name || 'Enemy',
+                name: enemy.name || entityDef?.name || 'Enemy',
                 type: 'enemy',
+                level: enemy.level || entityDef?.level || 1,
+                // Copiar atributos: primeiro de enemy (salvo), depois entity sheet, depois padrão
+                attributes: enemy.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
+                baseAttributes: enemy.baseAttributes || enemy.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
                 x: enemy.x || 1,
                 y: enemy.y || 1,
-                hp: enemy.hp || 20,
+                // HP/SP: usar maxHp/maxSp se for nova batalha, senão usar valores salvos
+                hp: isNewBattle ? (enemy.maxHp || enemy.hp || 20) : (enemy.hp || enemy.maxHp || 20),
                 maxHp: enemy.maxHp || enemy.hp || 20,
+                sp: isNewBattle ? (enemy.maxSp || 50) : (enemy.sp || enemy.maxSp || 50),
+                maxSp: enemy.maxSp || 50,
+                mana: isNewBattle ? (enemy.maxMana || enemy.maxSp || 50) : (enemy.mana || enemy.sp || 50),
+                maxMana: enemy.maxMana || enemy.maxSp || 50,
                 attack: enemy.attack || 5,
                 defense: enemy.defense || 2,
                 moveRange: enemy.moveRange || 2,
                 attackRange: enemy.attackRange || 1,
-                avatar: enemy.avatar || '/public/assets/img/enemy.png',
+                // Avatar é imutável e sempre vem do entity sheet/config, não do state salvo
+                avatar: entityDef?.images ? '/public/' + (entityDef.images.default || entityDef.images.male || entityDef.images.female || Object.values(entityDef.images || {})[0] || 'assets/img/enemy.png') : (enemy.avatar || '/public/assets/img/enemy.png'),
                 behavior: enemy.behavior || 'aggressive',
                 scale: enemy.scale || 1.0,
-                combatKey: enemy.combatKey || enemy.combat_key || null,
+                combatKey: combatKey,
+                entity_id: enemy.entity_id || entityDef?.id,
                 animationState: 'idle', // Estado inicial da animação
-                facingRight: false // false = esquerda (<-), true = direita (->)
+                facingRight: false, // false = esquerda (<-), true = direita (->)
+                // Inicializar arrays de buffs/debuffs se não existirem
+                activeBuffs: enemy.activeBuffs || [],
+                activeDebuffs: enemy.activeDebuffs || [],
+                statusEffects: enemy.statusEffects || []
             };
 
             // Carregar configurações de animação do JSON (se presentes)
@@ -1533,13 +1863,138 @@
         console.log('[DEBUG][initEntities] Total de enemyUnits após processamento:', enemyUnits.length);
         console.log('[DEBUG][initEntities] EnemyUnits final:', enemyUnits);
 
+        // Atualizar atributos das unidades com dados das entity sheets (se já carregadas)
+        updateUnitsAttributesFromEntitySheets();
+
         // Recalcular stats baseados em level/atributos se SkillEngine disponível
-        applySkillEngineStats(playerUnits);
-        applySkillEngineStats(enemyUnits);
+        // Passar isNewBattle para forçar HP/SP = maxHp/maxSp em novas batalhas
+        applySkillEngineStats(playerUnits, isNewBattle);
+        applySkillEngineStats(enemyUnits, isNewBattle);
+
+        // Inicializar baseAttributes para TacticalSkillEngine se ainda não existir
+        // E garantir HP/MP cheios após calcular stats (se não foram explicitamente salvos)
+        [...playerUnits, ...enemyUnits].forEach(unit => {
+            if (!unit.baseAttributes && unit.attributes) {
+                unit.baseAttributes = { ...unit.attributes };
+            }
+            // Garantir arrays de buffs/debuffs
+            if (!unit.activeBuffs) unit.activeBuffs = [];
+            if (!unit.activeDebuffs) unit.activeDebuffs = [];
+            if (!unit.statusEffects) unit.statusEffects = [];
+
+            // Garantir HP/MP cheios após calcular stats (se não foram explicitamente salvos)
+            // Se hp/sp são undefined/null ou 0 (mas maxHp/maxSp foram calculados), usar máximos
+            // Isso garante que na primeira inicialização, unidades começam com HP/MP cheios
+            if ((unit.hp === undefined || unit.hp === null || unit.hp === 0) && unit.maxHp > 0) {
+                unit.hp = unit.maxHp;
+            }
+            if ((unit.sp === undefined || unit.sp === null || unit.sp === 0) && unit.maxSp > 0) {
+                unit.sp = unit.maxSp;
+            }
+            // Garantir que não excedam máximos
+            if (unit.hp > unit.maxHp) unit.hp = unit.maxHp;
+            if (unit.sp > unit.maxSp) unit.sp = unit.maxSp;
+        });
 
         loadImages();
         loadRequiredSprites(); // Carregar sprites necessários
         updateFreeExploreState();
+    }
+
+    /**
+     * Atualiza atributos das unidades com dados das entity sheets (se disponíveis)
+     */
+    function updateUnitsAttributesFromEntitySheets() {
+        if (!window.TacticalDataLoader?.entityCache) {
+            console.log('[MAP-ENGINE] updateUnitsAttributesFromEntitySheets: entityCache não disponível ainda');
+            return;
+        }
+
+        // Atualizar player units
+        playerUnits.forEach(unit => {
+            const combatKey = unit.combatKey || unit.combat_key;
+            if (!combatKey) {
+                console.log(`[MAP-ENGINE] Unidade ${unit.id} não tem combatKey`);
+                return;
+            }
+
+            const entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            if (!entityDef) {
+                console.log(`[MAP-ENGINE] Entity sheet não encontrada para combatKey: ${combatKey}`);
+                return;
+            }
+
+            console.log(`[MAP-ENGINE] Atualizando atributos de ${unit.name} com dados de ${entityDef.name}:`, {
+                entityAttributes: entityDef.attributes,
+                currentAttributes: unit.attributes,
+                entityLevel: entityDef.level,
+                currentLevel: unit.level
+            });
+
+            // SEMPRE atualizar atributos das entity sheets se disponíveis (sobrescrever salvos)
+            if (entityDef.attributes) {
+                unit.attributes = { ...entityDef.attributes };
+            }
+            // Sempre atualizar baseAttributes
+            unit.baseAttributes = entityDef.attributes ? { ...entityDef.attributes } : (unit.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 });
+            // Atualizar level se entity sheet tiver
+            if (entityDef.level) {
+                unit.level = entityDef.level;
+            }
+            // Atualizar nome se entity sheet tiver nome
+            if (entityDef.name) {
+                unit.name = entityDef.name;
+            }
+            // Atualizar elemento se entity sheet tiver
+            if (entityDef.element) {
+                unit.element = entityDef.element;
+            }
+        });
+
+        // Atualizar enemy units
+        enemyUnits.forEach(unit => {
+            const combatKey = unit.combatKey || unit.combat_key;
+            if (!combatKey) {
+                console.log(`[MAP-ENGINE] Unidade ${unit.id} não tem combatKey`);
+                return;
+            }
+
+            const entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            if (!entityDef) {
+                console.log(`[MAP-ENGINE] Entity sheet não encontrada para combatKey: ${combatKey}`);
+                return;
+            }
+
+            console.log(`[MAP-ENGINE] Atualizando atributos de ${unit.name} com dados de ${entityDef.name}:`, {
+                entityAttributes: entityDef.attributes,
+                currentAttributes: unit.attributes,
+                entityLevel: entityDef.level,
+                currentLevel: unit.level
+            });
+
+            // SEMPRE atualizar atributos das entity sheets se disponíveis (sobrescrever salvos)
+            if (entityDef.attributes) {
+                unit.attributes = { ...entityDef.attributes };
+            }
+            // Sempre atualizar baseAttributes
+            unit.baseAttributes = entityDef.attributes ? { ...entityDef.attributes } : (unit.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 });
+            // Atualizar level se entity sheet tiver
+            if (entityDef.level) {
+                unit.level = entityDef.level;
+            }
+            // Atualizar nome se entity sheet tiver nome
+            if (entityDef.name) {
+                unit.name = entityDef.name;
+            }
+            // Atualizar elemento se entity sheet tiver
+            if (entityDef.element) {
+                unit.element = entityDef.element;
+            }
+        });
+
+        // Código duplicado removido - já atualizado acima
+
+        console.log('[MAP-ENGINE] Atributos atualizados das entity sheets');
     }
 
     function loadImages() {
@@ -1822,6 +2277,53 @@
         gameState.phase = 'player';
         gameState.unitsActedThisTurn.clear();
 
+        // Process buffs/debuffs/status effects for all units at turn start (after turn increment)
+        // This ensures durations are decremented at the start of the new turn
+        if (window.TacticalSkillEngine) {
+            [...playerUnits, ...enemyUnits].forEach(unit => {
+                if (unit && unit.hp > 0) {
+                    // Process DOT damage at turn_start for immediate visual feedback
+                    // This happens BEFORE decrementing duration, so damage happens when unit is about to act
+                    if (unit.activeDebuffs && unit.activeDebuffs.length > 0) {
+                        unit.activeDebuffs.forEach(d => {
+                            const debuffData = d.data || {};
+                            if (debuffData.dotDamage && debuffData.dotDamage > 0 && unit.hp > 0) {
+                                // Skip DOT on the turn it was applied
+                                const currentTurn = gameState.turn;
+                                if (d.appliedTurn !== undefined && d.appliedTurn === currentTurn) {
+                                    return; // Don't apply DOT on the same turn it was applied
+                                }
+
+                                const dmg = Math.max(1, Math.floor((unit.maxHp || 100) * debuffData.dotDamage));
+                                const oldHp = unit.hp;
+                                unit.hp = Math.max(0, unit.hp - dmg);
+                                console.log(`[TACTICAL SKILL ENGINE] ${unit.name} takes ${debuffData.name || debuffData.id} DoT damage: -${dmg} HP (${oldHp} → ${unit.hp}/${unit.maxHp})`);
+
+                                // Visual feedback (floating damage number)
+                                if (window.MapEngine && typeof window.MapEngine.showDamageNumber === 'function') {
+                                    const worldX = (unit.x - 0.5) * (window.CONFIG?.CELL_SIZE || 64);
+                                    const worldY = (unit.y - 1.0) * (window.CONFIG?.CELL_SIZE || 64);
+                                    // Use poison damage style for visual feedback
+                                    window.MapEngine.showDamageNumber(worldX, worldY, dmg, false, 0, 0, unit);
+                                }
+                            }
+                        });
+                    }
+
+                    // Process buff/debuff duration decrements at turn_end (after DOT damage)
+                    window.TacticalSkillEngine.processBuffs(unit, 'turn_end');
+                    window.TacticalSkillEngine.processStatusEffects(unit, 'turn_start');
+                    window.TacticalSkillEngine.recalculateStats(unit);
+                }
+            });
+            // Update timeline to reflect duration changes
+            if (typeof updateTurnTimeline === 'function') {
+                updateTurnTimeline();
+            }
+            // Update UI to reflect HP changes from DOT
+            updateUI();
+        }
+
         // Limpar intenções dos inimigos ao iniciar turno do player
         enemyUnits.forEach(e => { delete e.intent; });
 
@@ -1870,20 +2372,39 @@
     // SELECTION & ACTIONS
     // =====================================================
     function selectUnit(unit) {
-        if (!unit || unit.type !== 'player' || !canUnitAct(unit)) {
+        if (!unit || unit.type !== 'player') {
             deselectUnit();
+            return;
+        }
+        // Unidade que já agiu: manter selecionada (não desselecionar no turno do jogador)
+        if (!canUnitAct(unit)) {
+            gameState.selectedUnit = unit;
+            gameState.currentAction = null;
+            attackRangeCells = [];
+            cancelSkillSelection();
+            hideSkillMenu();
+            clearHighlights();
+            hideActionMenu();
+            showTacticalHUD(unit);
+            updateUI();
+            if (typeof updateTurnTimeline === 'function') updateTurnTimeline();
+            needsRender = true;
             return;
         }
 
         gameState.selectedUnit = unit;
         gameState.currentAction = null;
 
-        // Undo desativado
-
+        attackRangeCells = [];
+        cancelSkillSelection();
+        hideSkillMenu();
         clearHighlights();
-        // showActionMenu(unit); // DEPRECATED: usar HUD tática
         showTacticalHUD(unit); // Nova HUD tática fixa
         updateUI();
+        // Atualizar timeline para mostrar buffs/debuffs da unidade selecionada
+        if (typeof updateTurnTimeline === 'function') {
+            updateTurnTimeline();
+        }
         needsRender = true;
 
         // Notificar debug panel se estiver ativo
@@ -1892,22 +2413,37 @@
         }
     }
 
-    function deselectUnit(force = false) {
-        // Se há apenas 1 personagem vivo, não permitir desseleção (exceto force)
-        const alivePlayers = playerUnits.filter(u => u.hp > 0);
-        if (!force && alivePlayers.length === 1 && gameState.selectedUnit) {
-            return; // Não desselecionar único personagem
-        }
-
-        if (!force && gameState.selectedUnit && gameState.selectedUnit.hasMoved) {
-            // Não permitir desselecionar unidade que já se moveu
+    /**
+     * Volta à "seleção normal": sai de modo movimento/ataque/skill, mantém a unidade
+     * selecionada e mostra a tactical-hud. Usado quando: ativa movimento/skill e cancela,
+     * ou clica fora. Durante o turno do jogador não se desseleciona.
+     */
+    function returnToNormalSelection() {
+        attackRangeCells = [];
+        cancelSkillSelection();
+        clearHighlights();
+        hideActionMenu();
+        if (gameState.selectedUnit) {
             showTacticalHUD(gameState.selectedUnit);
+        }
+        updateUI();
+        needsRender = true;
+    }
+
+    function deselectUnit(force = false) {
+        // Durante turno do jogador: não desselecionar; apenas voltar ao modo normal (HUD)
+        if (!force && gameState.phase === 'player' && !gameState.freeExplore) {
+            returnToNormalSelection();
             return;
         }
         gameState.selectedUnit = null;
         gameState.currentAction = null;
-        attackRangeCells = []; // Limpar área de ataque
-        cancelSkillSelection(); // Limpar preview de skill
+        gameState.selectedSkill = null;
+        // Limpar TODOS os estados de ação
+        attackRangeCells = [];
+        skillRangeCells = [];
+        skillAreaCells = [];
+        selectedSkillForPreview = null;
         clearHighlights();
         hideActionMenu();
         hideTacticalHUD(); // Esconder HUD tática
@@ -2316,8 +2852,8 @@
         const cy = (unit.y - 0.5) * cellSize;
 
         // Buscar altura do sprite para calcular topo
-        const spriteName = getSpriteNameForUnit(unit);
-        const spriteAnimations = spriteName ? spriteCache.get(spriteName) : null;
+        const entityId = getEntityIdForUnit(unit);
+        const spriteAnimations = entityId ? spriteCache.get(entityId) : null;
         const spriteSheet = spriteAnimations ? spriteAnimations['idle'] : null;
 
         let topY = cy - 60; // Fallback
@@ -2626,8 +3162,8 @@
         gameState.isAnimating = true;
 
         // 1. ANIMAÇÃO DE ATAQUE
-        const attackerSprite = getSpriteNameForUnit(attacker);
-        const spriteAnimations = attackerSprite ? spriteCache.get(attackerSprite) : null;
+        const attackerEntityId = getEntityIdForUnit(attacker);
+        const spriteAnimations = attackerEntityId ? spriteCache.get(attackerEntityId) : null;
 
         // Trigger attack animation if available
         if (spriteAnimations && spriteAnimations.atack && spriteAnimations.atack.loaded) {
@@ -2665,6 +3201,23 @@
         let damage = Math.max(1, Math.floor((baseDamage - defense * 0.5) * variance));
         if (isCrit) damage = Math.floor(damage * 1.5);
 
+        // Aplicar multiplicadores de dano de buffs/debuffs
+        if (attacker.buffedDamageDealt) damage = Math.floor(damage * attacker.buffedDamageDealt);
+        if (target.buffedDamageTaken) damage = Math.floor(damage * target.buffedDamageTaken);
+
+        // Aplicar multiplicador de elemento
+        const attackerElement = attacker.element || (window.TacticalDataLoader?.entityCache?.[attacker.combatKey || attacker.combat_key]?.element) || 'neutral';
+        const targetElement = target.element || (window.TacticalDataLoader?.entityCache?.[target.combatKey || target.combat_key]?.element) || 'neutral';
+        if (window.elementalData) {
+            const elementMult = window.elementalData.getMultiplier(attackerElement, targetElement);
+            damage = Math.floor(damage * elementMult);
+            // Log de efetividade para debug
+            if (elementMult !== 1.0) {
+                const category = window.elementalData.getEffectivenessCategory(elementMult);
+                console.log(`[MAP-ENGINE] ${attacker.name} (${attackerElement}) vs ${target.name} (${targetElement}): ${category} (${elementMult}x)`);
+            }
+        }
+
         target.hp = Math.max(0, target.hp - damage);
 
         // Atualizar HUD se o alvo for a unidade selecionada
@@ -2686,6 +3239,10 @@
         const targetPxX = (target.x - 0.5) * CONFIG.CELL_SIZE;
         const targetPxY = (target.y - 0.5) * CONFIG.CELL_SIZE;
 
+        // Deriva tipo de atacante (entity_id/combatKey/class) para efeitos e sons
+        const _aid = (attackerEntityId || attacker.entity_id || attacker.combatKey || attacker.combat_key || attacker.class || '').toLowerCase();
+        const attackerSprite = _aid.includes('slime') ? 'slime' : _aid.includes('wolf') ? 'wolf' : _aid.includes('sword') || _aid === 'hero_swordman' ? 'swordman' : _aid.includes('archer') || _aid === 'hero_archer' ? 'archer' : _aid.includes('mage') || _aid === 'hero_mage' ? 'mage' : null;
+
         // Determinar tipo de unidade atacante para efeito apropriado
         const isWarrior = attacker.class === 'warrior' || attacker.class === 'swordman' || attackerSprite === 'swordman';
         const isArcher = attacker.class === 'archer' || attackerSprite === 'archer';
@@ -2694,6 +3251,11 @@
         if (isWarrior || (!isArcher && !isMage)) {
             // Slash effect para warriors/melee
             spawnSwordSlashEffect(targetPxX, targetPxY);
+        } else if (isArcher) {
+            // Efeito de impacto de flecha para archer (QuickShot impact)
+            if (window.MapSFX?.archerQuickShotImpact) {
+                window.MapSFX.archerQuickShotImpact(targetPxX, targetPxY);
+            }
         } else if (isMage) {
             // Efeito mágico para magos
             spawnMagicEffect(targetPxX, targetPxY, '#a855f7');
@@ -2706,17 +3268,17 @@
         triggerScreenShake(isCrit ? 10 : 6);
         hitFlash = Math.max(hitFlash, isCrit ? 0.4 : 0.25);
 
-        // Som de impacto
-        if (typeof playStepSound === 'function') {
-            playStepSound({ type: isCrit ? 'crit' : 'hit' });
-        }
-        // Som de espada/claw/slime
+        // Som: arma (entity ou mp3) + impacto GERAL (hit/impact) – ataque ou recebe ataque
         if (attackerSprite === 'swordman') {
-            playSwordSfx(isCrit);
+            playSwordSfx(attackerEntityId, isCrit);
+        } else if (attackerSprite === 'archer') {
+            playBowSfx(attackerEntityId, isCrit);
         } else if (attackerSprite === 'wolf') {
-            playClawSfx();
+            playClawSfx(attackerEntityId);
         } else if (attackerSprite === 'slime') {
-            playSfx('slime.mp3', 0.5, 1.0);
+            playSlimeSfx(attackerEntityId);
+        } else {
+            playHitImpactSfx(isCrit);
         }
 
         await Promise.all(effectPromises);
@@ -2809,14 +3371,59 @@
         // Determinar tipo de skill para cor do banner
         const skillType = isHeal ? 'heal' : isBuff ? 'buff' : isMagic ? 'magic' : 'physical';
 
-        // BANNER DE SKILL ANIMADO
-        // Usar o mesmo banner para skills normais e ultimates (padronizado)
-        const bannerSkillType = skill.ultimate ? 'ultimate' : skillType;
-        await showSkillBanner(skill.name, skill.icon || 'zap', bannerSkillType);
+        // BANNER + EFEITO DE SKILL (icone: PNG da skill se skill.img ou /public/assets/icons/skills/{id}.png, senao Lucide)
+        // Ultimate: showUltimateCutIn (linhas vermelhas no fundo, vignette, flash, banner ULTIMATE)
+        // Demais: showSkillBanner (banner simples)
+        const skillImg = skill.img || (skill.id ? `/public/assets/icons/skills/${skill.id}.png` : null);
+        if (skill.ultimate) {
+            await showUltimateCutIn(skill.name, skill.icon || 'zap', skillImg);
+        } else {
+            await showSkillBanner(skill.name, skill.icon || 'zap', skillType, skillImg);
+        }
 
         // Trigger attack animation for caster (igual ao executeAttack)
-        const casterSprite = getSpriteNameForUnit(caster);
-        const casterSpriteAnims = casterSprite ? spriteCache.get(casterSprite) : null;
+        const casterEntityId = getEntityIdForUnit(caster);
+        const casterSpriteAnims = casterEntityId ? spriteCache.get(casterEntityId) : null;
+
+        // Lobos: uivo (howling_wolf) no início de toda skill (lunar_rampage, pack_howl, savage_bite, etc.)
+        if (casterEntityId === 'wolf') {
+            playSfxEntity('wolf', 'howling_wolf.mp3', 0.55, 1.0);
+        }
+
+        // Posição do caster em pixels
+        const casterPxX = (caster.x - 0.5) * CONFIG.CELL_SIZE;
+        const casterPxY = (caster.y - 0.5) * CONFIG.CELL_SIZE;
+
+        // Som de voz para skills especiais (ultimates)
+        if (skill.ultimate) {
+            playSkillVoice(skill.id);
+        }
+
+        // SKILL CAST EFFECTS - Dispara efeito de cast baseado no skill.id (independente da classe)
+        if (window.MapSFX) {
+            const sId = skill.id;
+            if (sId === 'quick_shot' && window.MapSFX.archerQuickShotCast) {
+                window.MapSFX.archerQuickShotCast(casterPxX, casterPxY);
+            } else if (sId === 'poison_arrow' && window.MapSFX.archerPoisonArrowCast) {
+                window.MapSFX.archerPoisonArrowCast(casterPxX, casterPxY);
+            } else if (sId === 'focused_shot' && window.MapSFX.archerFocusedShotCast) {
+                window.MapSFX.archerFocusedShotCast(casterPxX, casterPxY);
+            } else if (sId === 'piercing_arrow' && window.MapSFX.archerPiercingArrowCast) {
+                window.MapSFX.archerPiercingArrowCast(casterPxX, casterPxY);
+            } else if (sId === 'multishot' && window.MapSFX.archerMultishotCast) {
+                window.MapSFX.archerMultishotCast(casterPxX, casterPxY);
+            } else if (sId === 'hunters_focus' && window.MapSFX.archerHuntersFocusCast) {
+                window.MapSFX.archerHuntersFocusCast(casterPxX, casterPxY);
+            } else if (sId === 'tactical_retreat' && window.MapSFX.archerTacticalRetreatCast) {
+                window.MapSFX.archerTacticalRetreatCast(casterPxX, casterPxY);
+            } else if (sId === 'rain_of_arrows' && window.MapSFX.archerRainOfArrowsCast) {
+                window.MapSFX.archerRainOfArrowsCast(casterPxX, casterPxY);
+            } else if (sId === 'crippling_shot' && window.MapSFX.archerCripplingShotCast) {
+                window.MapSFX.archerCripplingShotCast(casterPxX, casterPxY);
+            } else if (sId === 'deadly_aim' && window.MapSFX.archerDeadlyAimCast) {
+                window.MapSFX.archerDeadlyAimCast(casterPxX, casterPxY);
+            }
+        }
 
         if (casterSpriteAnims && casterSpriteAnims.atack && casterSpriteAnims.atack.loaded) {
             caster.animationState = 'atack';
@@ -2859,9 +3466,26 @@
             for (let hit = 0; hit < numHits; hit++) {
                 if (hit > 0) await sleep(hitDelay);
 
-                // Som de espada para cada hit (randomizado)
-                if (isPhysical) {
-                    playSwordSfx(false);
+                // Impacto GERAL em todo hit; no 1º hit também arma por entidade do caster
+                playHitImpactSfx(false);
+                if (hit === 0) {
+                    const archerSkills = ['quick_shot', 'poison_arrow', 'focused_shot', 'piercing_arrow',
+                        'multishot', 'tactical_retreat', 'rain_of_arrows', 'crippling_shot', 'deadly_aim'];
+                    const swordsmanSkills = ['quick_slash', 'shield_bash', 'berserk_mode', 'power_thrust',
+                        'provoke', 'double_attack', 'sword_mastery', 'war_cry', 'bash', 'heavy_slash',
+                        'champions_slash', 'relentless_strike', 'life_steal', 'crushing_blow', 'guarded_strike', 'cleave'];
+
+                    if (casterEntityId === 'wolf') {
+                        playClawSfx(casterEntityId);
+                    } else if (casterEntityId === 'toxic_slime') {
+                        playSlimeSfx(casterEntityId);
+                    } else if (archerSkills.includes(skill.id)) {
+                        playBowSfx(casterEntityId, false);
+                    } else if (swordsmanSkills.includes(skill.id) || isPhysical) {
+                        playSwordSfx(casterEntityId, false);
+                    } else if (isMagic) {
+                        playMagicSfx(false);
+                    }
                 }
 
                 // Mostrar combo indicator para multi-hit
@@ -2876,7 +3500,25 @@
                     const isCrit = Math.random() < 0.1;
                     // Dano dividido pelos hits para balanceamento
                     const hitDmgMult = dmgMult / numHits;
-                    const damage = Math.max(1, Math.floor(baseDamage * hitDmgMult * variance * (isCrit ? 1.5 : 1)));
+                    let damage = Math.max(1, Math.floor(baseDamage * hitDmgMult * variance * (isCrit ? 1.5 : 1)));
+
+                    // Aplicar multiplicadores de dano de buffs/debuffs
+                    if (caster.buffedDamageDealt) damage = Math.floor(damage * caster.buffedDamageDealt);
+                    if (t.buffedDamageTaken) damage = Math.floor(damage * t.buffedDamageTaken);
+
+                    // Aplicar multiplicador de elemento (skill element ou caster element)
+                    const skillElement = skill.element || null;
+                    const attackerElement = skillElement || caster.element || (window.TacticalDataLoader?.entityCache?.[caster.combatKey || caster.combat_key]?.element) || 'neutral';
+                    const targetElement = t.element || (window.TacticalDataLoader?.entityCache?.[t.combatKey || t.combat_key]?.element) || 'neutral';
+                    if (window.elementalData) {
+                        const elementMult = window.elementalData.getMultiplier(attackerElement, targetElement);
+                        damage = Math.floor(damage * elementMult);
+                        // Log de efetividade para debug (apenas primeiro hit para evitar spam)
+                        if (hit === 0 && elementMult !== 1.0) {
+                            const category = window.elementalData.getEffectivenessCategory(elementMult);
+                            console.log(`[MAP-ENGINE] ${skill.name} (${attackerElement}) vs ${t.name} (${targetElement}): ${category} (${elementMult}x)`);
+                        }
+                    }
 
                     t.hp = Math.max(0, t.hp - damage);
 
@@ -2894,18 +3536,61 @@
                     const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE;
                     const targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
 
-                    // Efeitos visuais premium baseados no tipo de skill
-                    if (isPhysical || skill.id === 'bash' || skill.id === 'sword_mastery' || skill.id === 'heavy_slash') {
-                        spawnSwordSlashEffect(targetX, targetY);
-                    } else if (isMagic) {
-                        const magicColor = skill.element === 'fire' ? '#ef4444' :
-                            skill.element === 'ice' ? '#60a5fa' :
-                                skill.element === 'lightning' ? '#fbbf24' :
-                                    skill.element === 'holy' ? '#fef3c7' :
-                                        skill.element === 'dark' ? '#6b21a8' : '#a855f7';
-                        spawnMagicEffect(targetX, targetY, magicColor);
-                    } else {
-                        spawnImpactBurst(targetX, targetY, '#ef4444', isCrit ? 1.5 : 1);
+                    // SKILL IMPACT EFFECTS - Efeitos específicos por skill.id com cálculo de ângulo
+                    let skillEffectHandled = false;
+                    if (window.MapSFX) {
+                        const sId = skill.id;
+                        // Calcular ângulo do caster para o target
+                        const dx = t.x - caster.x;
+                        const dy = t.y - caster.y;
+                        const angle = Math.atan2(dy, dx); // Ângulo em radianos
+
+                        if (sId === 'quick_shot' && window.MapSFX.archerQuickShotImpact) {
+                            window.MapSFX.archerQuickShotImpact(targetX, targetY);
+                            skillEffectHandled = true;
+                        } else if (sId === 'poison_arrow' && window.MapSFX.archerPoisonArrowImpact) {
+                            window.MapSFX.archerPoisonArrowImpact(targetX, targetY);
+                            skillEffectHandled = true;
+                        } else if (sId === 'focused_shot' && window.MapSFX.archerFocusedShotImpact) {
+                            window.MapSFX.archerFocusedShotImpact(targetX, targetY);
+                            skillEffectHandled = true;
+                        } else if (sId === 'piercing_arrow' && window.MapSFX.archerPiercingArrowImpact) {
+                            // Piercing usa o ângulo calculado para efeito direcional!
+                            window.MapSFX.archerPiercingArrowImpact(targetX, targetY, angle);
+                            skillEffectHandled = true;
+                        } else if (sId === 'multishot' && window.MapSFX.archerMultishotImpact) {
+                            window.MapSFX.archerMultishotImpact(targetX, targetY);
+                            skillEffectHandled = true;
+                        } else if (sId === 'tactical_retreat' && window.MapSFX.archerTacticalRetreatImpact) {
+                            window.MapSFX.archerTacticalRetreatImpact(targetX, targetY);
+                            skillEffectHandled = true;
+                        } else if (sId === 'rain_of_arrows' && window.MapSFX.archerRainOfArrowsImpact) {
+                            window.MapSFX.archerRainOfArrowsImpact(targetX, targetY);
+                            skillEffectHandled = true;
+                        } else if (sId === 'crippling_shot' && window.MapSFX.archerCripplingShotImpact) {
+                            window.MapSFX.archerCripplingShotImpact(targetX, targetY);
+                            skillEffectHandled = true;
+                        } else if (sId === 'deadly_aim' && window.MapSFX.archerDeadlyAimImpact) {
+                            window.MapSFX.archerDeadlyAimImpact(targetX, targetY);
+                            triggerScreenShake(15); // Extra shake para ultimate
+                            skillEffectHandled = true;
+                        }
+                    }
+
+                    // Efeitos visuais fallback se skill não teve efeito específico
+                    if (!skillEffectHandled) {
+                        if (isPhysical || skill.id === 'bash' || skill.id === 'sword_mastery' || skill.id === 'heavy_slash') {
+                            spawnSwordSlashEffect(targetX, targetY);
+                        } else if (isMagic) {
+                            const magicColor = skill.element === 'fire' ? '#ef4444' :
+                                skill.element === 'ice' ? '#60a5fa' :
+                                    skill.element === 'lightning' ? '#fbbf24' :
+                                        skill.element === 'holy' ? '#fef3c7' :
+                                            skill.element === 'dark' ? '#6b21a8' : '#a855f7';
+                            spawnMagicEffect(targetX, targetY, magicColor);
+                        } else {
+                            spawnImpactBurst(targetX, targetY, '#ef4444', isCrit ? 1.5 : 1);
+                        }
                     }
 
                     // Efeito visual de tremor para skills fortes
@@ -2937,17 +3622,50 @@
             // Efeitos de Buff/Debuff com visual premium
             for (const t of targetsToHit) {
                 if (!t || t.hp <= 0) continue;
+
+                // Aplicar buff se a skill tiver propriedade buff
+                if (skill.buff && window.TacticalSkillEngine) {
+                    window.TacticalSkillEngine.applyBuff(t, skill.buff, caster, skill.id);
+                    console.log(`[MAP-ENGINE] Buff aplicado: ${skill.name} em ${t.name}`, skill.buff);
+                    playBuffApplySfx();
+
+                    // Efeito visual especial para berserk_mode
+                    if (skill.id === 'berserk_mode' && window.MapSFX && window.MapSFX.spawnBerserkAura) {
+                        const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE;
+                        const targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
+                        window.MapSFX.spawnBerserkAura(targetX, targetY, 1);
+                    }
+
+                    if (skill.id === 'berserk_mode') playSfx('swordman_skill_start1.mp3', 0.6, 1.0);
+                }
+
+                if (skill.debuff && window.TacticalSkillEngine) {
+                    window.TacticalSkillEngine.applyDebuff(t, skill.debuff, caster, skill.id);
+                    console.log(`[MAP-ENGINE] Debuff aplicado: ${skill.name} em ${t.name}`, skill.debuff);
+                    playDebuffApplySfx();
+                }
+
                 showFloatingText(skill.name, (t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#a855f7');
                 spawnMagicEffect((t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#fbbf24');
 
-                // Aplicar efeito de stun se a skill tiver chance
                 if (skill.effect && skill.effect.id === 'stun') {
                     if (Math.random() < (skill.effect.chance || 0)) {
                         t.isStunned = true;
                         t.stunDuration = skill.effect.duration || 1;
                         showFloatingText('STUN!', (t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#eab308');
+                        playDebuffApplySfx();
                     }
                 }
+
+                // Atualizar HUD se o alvo for a unidade selecionada
+                if (gameState.selectedUnit && (gameState.selectedUnit.id === t.id || gameState.selectedUnit === t)) {
+                    showTacticalHUD(t);
+                }
+            }
+
+            // Atualizar timeline para mostrar buffs/debuffs aplicados
+            if (typeof updateTurnTimeline === 'function') {
+                updateTurnTimeline();
             }
         }
 
@@ -2960,11 +3678,42 @@
 
     // Função buildCombatEntityFromMap mantida para possível uso futuro
     function buildCombatEntityFromMap(mapUnit, combatKey, isPlayer) {
-        const def = window.combatData?.entities?.[combatKey];
+        // Try to use cached entity from TacticalDataLoader first
+        let def = null;
+        if (window.TacticalDataLoader && window.TacticalDataLoader.entityCache) {
+            def = window.TacticalDataLoader.entityCache[combatKey];
+        }
+
+        // Legacy fallback removed - combatData no longer exists
+
         if (!def) return null;
         const base = JSON.parse(JSON.stringify(def));
-        const skills = (base.skills || []).map(sid => {
-            const skillDef = window.combatData?.skills?.[sid];
+
+        // Extract skill IDs from entity
+        let skillIds = [];
+        if (Array.isArray(base.skills)) {
+            if (base.skills.length > 0 && typeof base.skills[0] === 'object') {
+                // If skills is array of skill objects (PHP format)
+                skillIds = base.skills.map(s => s.id || s);
+            } else {
+                // If skills is array of IDs (legacy format)
+                skillIds = base.skills;
+            }
+        }
+
+        // Load skills from cache or fallback
+        const skills = skillIds.map(sid => {
+            // Try cached skills first
+            let skillDef = null;
+            if (window.TacticalDataLoader && window.TacticalDataLoader.skillCache) {
+                skillDef = window.TacticalDataLoader.skillCache[sid];
+            }
+
+            // Fallback to combatData or skillsData
+            if (!skillDef) {
+                skillDef = window.skillsData?.[sid]; // combatData removed
+            }
+
             return skillDef ? { ...skillDef, id: sid } : null;
         }).filter(Boolean);
 
@@ -2997,71 +3746,7 @@
     }
 
     // Funções syncMapUnitsFromCombat e endMapCombat removidas (sistema mapCombat descontinuado)
-
-    async function createBattleSession(battleData) {
-        if (!sessionUid) {
-            return null;
-        }
-
-        try {
-            const response = await fetch(`/game/battle/start?session=${encodeURIComponent(sessionUid)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ battle: battleData })
-            });
-            const data = await response.json();
-            if (data && data.success && data.battle_uid) {
-                return data.battle_uid;
-            }
-        } catch (error) {
-            console.warn('[MapEngine] Falha ao iniciar battle session:', error);
-        }
-
-        return null;
-    }
-
-    /**
-     * Show cinematic battle confirmation overlay
-     */
-    function showBattleConfirmation(heroes, enemies) {
-        return new Promise(resolve => {
-            const overlay = document.getElementById('battle-overlay');
-            if (!overlay) {
-                console.warn('Battle overlay not found');
-                setTimeout(resolve, 100);
-                return;
-            }
-
-            // Populate hero portraits (using the new VS card format)
-            const heroesContainer = overlay.querySelector('.battle-heroes');
-            if (heroesContainer) {
-                heroesContainer.innerHTML = heroes.map(h =>
-                    `<div class="vs-card hero">
-                        <img src="${h.avatar}" alt="${h.name}">
-                        <div class="vs-card-name">${h.name}</div>
-                    </div>`
-                ).join('');
-            }
-
-            // Populate enemy portraits
-            const enemiesContainer = overlay.querySelector('.battle-enemies');
-            if (enemiesContainer) {
-                enemiesContainer.innerHTML = enemies.map(e =>
-                    `<div class="vs-card enemy">
-                        <img src="${e.avatar}" alt="${e.name}">
-                        <div class="vs-card-name">${e.name}</div>
-                    </div>`
-                ).join('');
-            }
-
-            // Show overlay
-            overlay.classList.remove('hidden');
-            overlay.classList.add('active');
-
-            // Wait for dramatic effect
-            setTimeout(resolve, 2500);
-        });
-    }
+    // Funções createBattleSession e showBattleConfirmation removidas (sistema antigo de cartas removido)
 
     /**
      * Reset game to initial state
@@ -3298,37 +3983,41 @@
     function persistSessionState() {
         if (!sessionUid) return;
 
+        const p0 = playerUnits[0];
+        const allies = playerUnits.slice(1);
         const payload = {
             state: {
-                player: playerUnits[0] ? {
-                    id: playerUnits[0].id,
-                    name: playerUnits[0].name,
-                    type: playerUnits[0].type,
-                    x: playerUnits[0].x,
-                    y: playerUnits[0].y,
-                    hp: playerUnits[0].hp,
-                    maxHp: playerUnits[0].maxHp,
-                    sp: playerUnits[0].sp,
-                    maxSp: playerUnits[0].maxSp,
-                    attack: playerUnits[0].attack,
-                    defense: playerUnits[0].defense,
-                    moveRange: playerUnits[0].moveRange,
-                    attackRange: playerUnits[0].attackRange,
-                    hasMoved: playerUnits[0].hasMoved,
-                    facingRight: playerUnits[0].facingRight,
-                    avatar: playerUnits[0].avatar,
-                    class: playerUnits[0].class,
-                    combatKey: playerUnits[0].combatKey,
-                    animations: playerUnits[0].animations
+                player: p0 ? {
+                    id: p0.id,
+                    entity_id: p0.entity_id,
+                    x: p0.x,
+                    y: p0.y,
+                    hp: p0.hp,
+                    sp: p0.sp,
+                    hasMoved: !!p0.hasMoved,
+                    facingRight: !!p0.facingRight
                 } : null,
+                allies: allies.map(a => ({
+                    id: a.id,
+                    entity_id: a.entity_id,
+                    x: a.x,
+                    y: a.y,
+                    hp: a.hp,
+                    sp: a.sp,
+                    hasMoved: !!a.hasMoved,
+                    facingRight: !!a.facingRight,
+                    activeBuffs: a.activeBuffs || [],
+                    activeDebuffs: a.activeDebuffs || [],
+                    statusEffects: a.statusEffects || []
+                })),
                 enemies: enemyUnits.map(e => ({
-                    id: e.id, name: e.name, type: e.type,
-                    x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHp,
-                    attack: e.attack, defense: e.defense,
-                    moveRange: e.moveRange, attackRange: e.attackRange,
-                    facingRight: e.facingRight, avatar: e.avatar,
-                    behavior: e.behavior, combatKey: e.combatKey,
-                    animations: e.animations
+                    id: e.id,
+                    entity_id: e.entity_id,
+                    x: e.x,
+                    y: e.y,
+                    hp: e.hp,
+                    hasMoved: !!e.hasMoved,
+                    facingRight: !!e.facingRight
                 })),
                 chests: chests.map(c => ({ id: c.id, x: c.x, y: c.y, opened: c.opened, loot: c.loot })),
                 portal: portal ? { id: portal.id, x: portal.x, y: portal.y, name: portal.name } : null,
@@ -3410,7 +4099,7 @@
 
 
     /**
-     * Simple camera animation
+     * Simple camera animation – foco rápido no personagem
      */
     function animateCameraToUnit(unit) {
         return new Promise(resolve => {
@@ -3418,9 +4107,10 @@
             const targetY = -(unit.y - 0.5) * CONFIG.CELL_SIZE * viewState.scale + canvas.height / 2;
 
             cameraTarget = { x: targetX, y: targetY, scale: viewState.scale };
+            cameraFollowEase = 0.3; // mais rápido que o padrão 0.1
 
-            // Wait for camera to settle (roughly)
-            setTimeout(resolve, 600);
+            // Tempo menor para a câmera assentar
+            setTimeout(resolve, 280);
         });
     }
 
@@ -3801,9 +4491,218 @@
             endTurnBtn.disabled = false;
         }
 
+        // Renderizar painel de buffs/debuffs
+        renderBuffsPanel(unit);
+
         // IMPORTANTE: Remover 'hidden' e adicionar 'visible'
         hud.classList.remove('hidden');
         hud.classList.add('visible');
+    }
+
+    /**
+     * Renderiza o painel de buffs/debuffs na HUD tática
+     */
+    function renderBuffsPanel(unit) {
+        if (!unit || !window.TacticalSkillEngine) return;
+
+        // Encontrar ou criar container de buffs
+        let buffsPanel = document.getElementById('hud-buffs-panel');
+        if (!buffsPanel) {
+            // Tentar encontrar unit-info-compact primeiro
+            let unitInfo = document.querySelector('.unit-info-compact');
+            if (!unitInfo) {
+                // Criar unit-info-compact se não existir
+                const hudInner = document.querySelector('.tactical-hud-inner');
+                if (!hudInner) return;
+
+                unitInfo = document.createElement('div');
+                unitInfo.className = 'unit-info-compact';
+                hudInner.insertBefore(unitInfo, hudInner.firstChild);
+            }
+
+            buffsPanel = document.createElement('div');
+            buffsPanel.id = 'hud-buffs-panel';
+            buffsPanel.className = 'hud-buffs-panel';
+            unitInfo.appendChild(buffsPanel);
+        }
+
+        const activeEffects = window.TacticalSkillEngine.getActiveBuffsForDisplay(unit);
+
+        if (activeEffects.length === 0) {
+            buffsPanel.style.display = 'none';
+            return;
+        }
+
+        buffsPanel.style.display = 'block';
+
+        // HUD Active Effects Panel Title
+        let title = buffsPanel.querySelector('.hud-buffs-panel-title');
+        if (!title) {
+            title = document.createElement('div');
+            title.className = 'hud-buffs-panel-title';
+            title.textContent = 'Active Effects';
+            buffsPanel.appendChild(title);
+        }
+
+        // Lista de buffs
+        let buffsList = buffsPanel.querySelector('.hud-buffs-list');
+        if (!buffsList) {
+            buffsList = document.createElement('div');
+            buffsList.className = 'hud-buffs-list';
+            buffsPanel.appendChild(buffsList);
+        }
+
+        buffsList.innerHTML = '';
+
+        activeEffects.forEach(effect => {
+            // Use effectsData if available, otherwise fallback to buff's own data
+            const effectData = window.effectsData?.[effect.data?.id];
+            const buffData = effect.data || {};
+
+            // Get display info from effectsData or fallback to buff's own data
+            const displayName = effectData?.name || buffData.name || buffData.id || 'Unknown';
+            const displayIcon = effectData?.lucide || buffData.icon || 'sparkles';
+            const displayPng = effectData?.png || null;
+            const displayDesc = effectData?.desc || buffData.desc || '';
+
+            const item = document.createElement('div');
+            item.className = `hud-buff-item ${effect.type}`;
+
+            const icon = document.createElement('div');
+            icon.className = 'hud-buff-icon';
+
+            // Try PNG first, then skill-based path, then Lucide
+            const tryLucide = () => {
+                const i = document.createElement('i');
+                i.setAttribute('data-lucide', displayIcon);
+                icon.innerHTML = '';
+                icon.appendChild(i);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            };
+
+            if (displayPng) {
+                const img = document.createElement('img');
+                img.src = displayPng;
+                img.alt = displayName;
+                img.onerror = tryLucide;
+                icon.appendChild(img);
+            } else {
+                const skillImg = `/public/assets/icons/skills/${effect.data?.id}.png`;
+                const img = document.createElement('img');
+                img.src = skillImg;
+                img.alt = displayName;
+                img.onerror = tryLucide;
+                icon.appendChild(img);
+            }
+
+            item.appendChild(icon);
+
+            const info = document.createElement('div');
+            info.className = 'hud-buff-info';
+
+            const name = document.createElement('div');
+            name.className = 'hud-buff-name';
+            name.textContent = displayName;
+            info.appendChild(name);
+
+            const descText = document.createElement('div');
+            descText.className = 'hud-buff-desc';
+            descText.textContent = displayDesc;
+            info.appendChild(descText);
+
+            item.appendChild(info);
+
+            const duration = document.createElement('div');
+            duration.className = 'hud-buff-duration';
+            duration.textContent = `${effect.duration}`;
+            item.appendChild(duration);
+
+            buffsList.appendChild(item);
+        });
+
+        // Inicializar ícones lucide se necessário
+        if (typeof lucide !== 'undefined') {
+            setTimeout(() => lucide.createIcons(), 10);
+        }
+
+        // Renderizar modificadores de stats
+        renderStatsModifiers(unit, buffsPanel);
+    }
+
+    /**
+     * Renderiza modificadores de stats na HUD
+     */
+    function renderStatsModifiers(unit, container) {
+        if (!unit || !window.TacticalSkillEngine) return;
+
+        let modifiersPanel = container.querySelector('.hud-stats-modifiers');
+        if (!modifiersPanel) {
+            modifiersPanel = document.createElement('div');
+            modifiersPanel.className = 'hud-stats-modifiers';
+            container.appendChild(modifiersPanel);
+        }
+
+        const modifiers = [];
+
+        // Verificar buffs que modificam stats
+        if (unit.activeBuffs) {
+            unit.activeBuffs.forEach(buff => {
+                const data = buff.data;
+                if (data.atkBonus !== undefined && data.atkBonus > 0) {
+                    modifiers.push({ label: 'ATK', value: `+${Math.round(data.atkBonus * 100)}%`, positive: true });
+                }
+                if (data.defPenalty !== undefined && data.defPenalty < 0) {
+                    modifiers.push({ label: 'DEF', value: `${Math.round(data.defPenalty * 100)}%`, positive: false });
+                }
+                if (data.damageDealt !== undefined && data.damageDealt > 1) {
+                    modifiers.push({ label: 'Dano Causado', value: `+${Math.round((data.damageDealt - 1) * 100)}%`, positive: true });
+                }
+                if (data.damageTaken !== undefined && data.damageTaken < 1) {
+                    modifiers.push({ label: 'Dano Recebido', value: `${Math.round((data.damageTaken - 1) * 100)}%`, positive: false });
+                }
+            });
+        }
+
+        if (modifiers.length === 0) {
+            modifiersPanel.style.display = 'none';
+            return;
+        }
+
+        modifiersPanel.style.display = 'block';
+
+        let title = modifiersPanel.querySelector('.hud-stats-modifiers-title');
+        if (!title) {
+            title = document.createElement('div');
+            title.className = 'hud-stats-modifiers-title';
+            title.textContent = 'Modificadores';
+            modifiersPanel.appendChild(title);
+        }
+
+        let list = modifiersPanel.querySelector('.hud-stats-modifiers-list');
+        if (!list) {
+            list = document.createElement('div');
+            list.className = 'hud-stats-modifiers-list';
+            modifiersPanel.appendChild(list);
+        }
+
+        list.innerHTML = '';
+
+        modifiers.forEach(mod => {
+            const modEl = document.createElement('div');
+            modEl.className = 'hud-stat-modifier';
+
+            const label = document.createElement('div');
+            label.className = 'hud-stat-modifier-label';
+            label.textContent = mod.label;
+            modEl.appendChild(label);
+
+            const value = document.createElement('div');
+            value.className = `hud-stat-modifier-value ${mod.positive ? 'positive' : 'negative'}`;
+            value.textContent = mod.value;
+            modEl.appendChild(value);
+
+            list.appendChild(modEl);
+        });
     }
 
     /**
@@ -3835,6 +4734,9 @@
      * Mostra área vermelha no grid quando o jogador clicar em "Atacar"
      */
     function showAttackRange(unit) {
+        // Limpar estado de skill antes de mostrar attack range
+        cancelSkillSelection();
+        gameState.currentAction = 'attacking';
         attackRangeCells = [];
         skillRangeCells = [];
         skillAreaCells = [];
@@ -3928,14 +4830,57 @@
         needsRender = true;
     }
 
+    // Cache de imagens pré-carregadas para evitar recarregamento
+    const preloadedSkillImages = new Map();
+
+    /**
+     * Pré-carrega imagens de skills para evitar recarregamento
+     * @param {string[]} skillIds - Array de IDs de skills
+     */
+    function preloadSkillImages(skillIds) {
+        if (!skillIds || skillIds.length === 0) return;
+
+        skillIds.forEach(skillId => {
+            if (preloadedSkillImages.has(skillId)) {
+                return; // Já pré-carregada
+            }
+
+            const skill = window.TacticalDataLoader?.skillCache?.[skillId];
+            if (!skill) return;
+
+            const skillImg = skill.img || `/public/assets/icons/skills/${skillId}.png`;
+
+            // Criar imagem e pré-carregar
+            const img = new Image();
+            img.src = skillImg;
+            preloadedSkillImages.set(skillId, img);
+        });
+
+        console.log(`[MAP-ENGINE] ${preloadedSkillImages.size} imagens de skills pré-carregadas`);
+    }
+
     /**
      * Mostra menu de skills tático (REDESENHADO - Lateral Esquerda)
      * @param {Object} unit - Unidade que vai usar a skill
      */
-    function showSkillMenu(unit) {
+    async function showSkillMenu(unit) {
         if (!unit) return;
 
-        const skills = getUnitSkills(unit);
+        // Try async loading first
+        let skills = [];
+        if (window.TacticalDataLoader) {
+            try {
+                skills = await getUnitSkillsAsync(unit);
+            } catch (error) {
+                console.warn('[MAP-ENGINE] Error loading skills asynchronously:', error);
+            }
+        }
+
+        // Fallback to sync if async didn't work
+        if (skills.length === 0) {
+            skills = getUnitSkills(unit);
+        }
+
         if (skills.length === 0) {
             showNotification('Esta unidade não possui skills!', 'warning');
             return;
@@ -3960,54 +4905,85 @@
             return 'physical';
         };
 
-        // Criar ícones de skills
-        skillBar.innerHTML = skills.map(skill => {
-            const mpCost = skill.mana || skill.cost || 0;
-            const canAfford = unit.sp >= mpCost;
-            const typeClass = getSkillTypeClass(skill);
-            const skillImg = skill.img || `/public/assets/icons/skills/${skill.id}.png`;
+        // Verificar se já temos HTML cached para esta unidade com estas skills
+        const unitId = unit.id || unit.name || 'unknown';
+        const skillsKey = skills.map(s => `${s.id}-${s.mana || 0}`).join(',');
+        const cacheKey = `${unitId}-${skillsKey}`;
 
-            return `
+        // Verificar se podemos reutilizar elementos existentes (mesmas skills)
+        const existingButtons = skillBar.querySelectorAll('.skill-icon-btn');
+        const existingSkillIds = Array.from(existingButtons).map(btn => btn.dataset.skillId).sort();
+        const newSkillIds = skills.map(s => s.id).sort();
+        const skillsChanged = JSON.stringify(existingSkillIds) !== JSON.stringify(newSkillIds);
+
+        // Se as skills mudaram ou é a primeira vez, recriar HTML
+        // Caso contrário, apenas atualizar estados (disabled/enabled)
+        if (skillsChanged || existingButtons.length === 0) {
+            // Criar ícones de skills (sem tooltip inline - será global)
+            skillBar.innerHTML = skills.map(skill => {
+                const mpCost = skill.mana || skill.cost || 0;
+                const canAfford = unit.sp >= mpCost;
+                const typeClass = getSkillTypeClass(skill);
+                const skillImg = skill.img || `/public/assets/icons/skills/${skill.id}.png`;
+
+                return `
                 <div class="skill-icon-btn ${typeClass} ${!canAfford ? 'disabled' : ''}" 
                      data-skill-id="${skill.id}"
                      data-skill-name="${skill.name}"
                      data-skill-cost="${mpCost}"
                      data-skill-desc="${skill.desc || 'No description available.'}"
-                     title="${skill.name} (${mpCost} MP)">
+                     data-skill-type="${typeClass}"
+                     data-skill-img="${skillImg}">
                     <img src="${skillImg}" alt="${skill.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <i data-lucide="${skill.icon || 'zap'}" style="display: none;"></i>
-                    <div class="skill-tooltip">
-                        <div class="skill-tooltip-header">
-                            <div class="skill-tooltip-icon ${typeClass}">
-                                <img src="${skillImg}" alt="${skill.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <i data-lucide="${skill.icon || 'zap'}" style="display: none;"></i>
-                            </div>
-                            <div>
-                                <div class="skill-tooltip-name">${skill.name}</div>
-                                <div class="skill-tooltip-cost ${!canAfford ? 'insufficient' : ''}">${mpCost} MP</div>
-                            </div>
-                        </div>
-                        <div class="skill-tooltip-desc">${skill.desc || 'No description available.'}</div>
-                        <button class="skill-tooltip-btn" ${!canAfford ? 'disabled' : ''}>
-                            Usar Skill
-                        </button>
-                    </div>
                 </div>
             `;
-        }).join('');
+            }).join('');
+
+            // Atualizar ícones Lucide apenas se HTML foi recriado
+            if (typeof lucide !== 'undefined') {
+                setTimeout(() => lucide.createIcons(), 10);
+            }
+        } else {
+            // Reutilizar elementos existentes - apenas atualizar estados
+            existingButtons.forEach(btn => {
+                const skillId = btn.dataset.skillId;
+                const skill = skills.find(s => s.id === skillId);
+                if (!skill) return;
+
+                const mpCost = skill.mana || skill.cost || 0;
+                const canAfford = unit.sp >= mpCost;
+
+                if (canAfford) {
+                    btn.classList.remove('disabled');
+                } else {
+                    btn.classList.add('disabled');
+                }
+                const costEl = btn.querySelector('.skill-tooltip-cost');
+                if (costEl) {
+                    costEl.textContent = `${mpCost} MP`;
+                    if (canAfford) costEl.classList.remove('insufficient');
+                    else costEl.classList.add('insufficient');
+                }
+                const useBtn = btn.querySelector('.skill-tooltip-btn');
+                if (useBtn) useBtn.disabled = !canAfford;
+
+                // Atualizar título
+                btn.title = `${skill.name} (${mpCost} MP)`;
+            });
+        }
 
         skillBar.style.display = 'flex';
-
-        // Atualizar ícones Lucide
-        if (typeof lucide !== 'undefined') {
-            setTimeout(() => lucide.createIcons(), 10);
-        }
 
         // Aguardar DOM ser atualizado antes de anexar listeners
         setTimeout(() => {
             attachSkillBarListeners(unit, skills);
         }, 50);
     }
+
+    // Estado do tooltip global
+    let activeSkillTooltip = null;
+    let activeSkillTooltipData = null;
 
     function attachSkillBarListeners(unit, skills) {
         console.log('[DEBUG] attachSkillBarListeners called with:', {
@@ -4021,98 +4997,145 @@
             return;
         }
 
-        // Event listeners
-        const buttons = skillBar.querySelectorAll('.skill-icon-btn');
-        console.log('[DEBUG] Found', buttons.length, 'skill buttons');
+        // Criar ou reutilizar tooltip global (único para todas as skills)
+        let tooltipPanel = document.getElementById('skill-tooltip-panel');
+        if (!tooltipPanel) {
+            tooltipPanel = document.createElement('div');
+            tooltipPanel.id = 'skill-tooltip-panel';
+            tooltipPanel.className = 'skill-tooltip-panel';
+            tooltipPanel.innerHTML = `
+                <button class="skill-tooltip-close" aria-label="Fechar">×</button>
+                <div class="skill-tooltip-header">
+                    <div class="skill-tooltip-icon"></div>
+                    <div class="skill-tooltip-info">
+                        <div class="skill-tooltip-name"></div>
+                        <div class="skill-tooltip-cost"></div>
+                    </div>
+                </div>
+                <div class="skill-tooltip-desc"></div>
+                <button class="skill-tooltip-btn">Usar Skill</button>
+            `;
+            document.body.appendChild(tooltipPanel);
 
-        buttons.forEach(btn => {
-            const tooltip = btn.querySelector('.skill-tooltip');
-            if (!tooltip) {
-                console.warn('[DEBUG] Tooltip not found for skill button:', btn.dataset.skillId);
-                return;
+            // Handler de fechar
+            tooltipPanel.querySelector('.skill-tooltip-close').addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeSkillTooltip();
+            });
+
+            // Handler de usar skill
+            tooltipPanel.querySelector('.skill-tooltip-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (!activeSkillTooltipData || !activeSkillTooltipData.skill) return;
+
+                const { skill, unit } = activeSkillTooltipData;
+                const mpCost = skill.mana || skill.cost || 0;
+                if (unit && unit.sp >= mpCost) {
+                    closeSkillTooltip();
+                    await selectSkillForUse(unit, skill);
+                }
+            });
+        }
+
+        // Função para fechar tooltip
+        function closeSkillTooltip() {
+            tooltipPanel.classList.remove('visible');
+            activeSkillTooltip = null;
+            activeSkillTooltipData = null;
+            // Remover seleção visual
+            skillBar.querySelectorAll('.skill-icon-btn.selected').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+        }
+
+        // Função para abrir tooltip
+        function openSkillTooltip(btn, skill) {
+            const mpCost = skill.mana || skill.cost || 0;
+            const canAfford = unit.sp >= mpCost;
+            const typeClass = btn.dataset.skillType || 'physical';
+            const skillImg = btn.dataset.skillImg;
+
+            const iconEl = tooltipPanel.querySelector('.skill-tooltip-icon');
+            iconEl.className = `skill-tooltip-icon ${typeClass}`;
+            iconEl.innerHTML = `<img src="${skillImg}" alt="${skill.name}" onerror="this.style.display='none'">`;
+
+            tooltipPanel.querySelector('.skill-tooltip-name').textContent = skill.name;
+
+            const costEl = tooltipPanel.querySelector('.skill-tooltip-cost');
+            costEl.textContent = `${mpCost} MP`;
+            costEl.className = `skill-tooltip-cost ${canAfford ? '' : 'insufficient'}`;
+
+            tooltipPanel.querySelector('.skill-tooltip-desc').textContent = skill.desc || 'No description available.';
+
+            const useBtn = tooltipPanel.querySelector('.skill-tooltip-btn');
+            useBtn.disabled = !canAfford;
+
+            // Posicionar acima do botão clicado
+            const btnRect = btn.getBoundingClientRect();
+            const panelWidth = 280;
+            let left = btnRect.left + (btnRect.width / 2) - (panelWidth / 2);
+
+            // Manter dentro da tela
+            if (left < 10) left = 10;
+            if (left + panelWidth > window.innerWidth - 10) {
+                left = window.innerWidth - panelWidth - 10;
             }
 
-            // Click para abrir/fechar tooltip
-            btn.addEventListener('click', (e) => {
+            tooltipPanel.style.left = `${left}px`;
+            tooltipPanel.style.bottom = `${window.innerHeight - btnRect.top + 12}px`;
+
+            // Marcar botão como selecionado
+            skillBar.querySelectorAll('.skill-icon-btn.selected').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+
+            // Guardar dados
+            activeSkillTooltip = btn.dataset.skillId;
+            activeSkillTooltipData = { skill, unit };
+
+            // Mostrar
+            tooltipPanel.classList.add('visible');
+        }
+
+        // Event listeners para botões
+        const buttons = skillBar.querySelectorAll('.skill-icon-btn');
+        buttons.forEach(btn => {
+            // Remover listeners antigos clonando
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
 
-                const isVisible = tooltip.classList.contains('visible');
+                const skillId = newBtn.dataset.skillId;
+                const skill = skills.find(s => s.id === skillId);
 
-                // Fechar todos os tooltips primeiro
-                skillBar.querySelectorAll('.skill-tooltip.visible').forEach(t => {
-                    t.classList.remove('visible');
-                });
+                if (!skill) return;
+                if (newBtn.classList.contains('disabled')) return;
 
-                // Se não estava visível, abrir este
-                if (!isVisible && !btn.classList.contains('disabled')) {
-                    tooltip.classList.add('visible');
+                // Toggle: se já está aberto para esta skill, fechar
+                if (activeSkillTooltip === skillId && tooltipPanel.classList.contains('visible')) {
+                    closeSkillTooltip();
+                } else {
+                    openSkillTooltip(newBtn, skill);
                 }
             });
-
-            // Botão "Usar" no tooltip
-            const useBtn = tooltip.querySelector('.skill-tooltip-btn');
-            if (useBtn) {
-                console.log('[DEBUG] Attaching click listener to useBtn for skill:', btn.dataset.skillId);
-
-                // Remover listener anterior se existir (para evitar duplicatas)
-                const newUseBtn = useBtn.cloneNode(true);
-                useBtn.parentNode.replaceChild(newUseBtn, useBtn);
-
-                newUseBtn.addEventListener('click', (e) => {
-                    console.log('[DEBUG] Use Skill button clicked!', {
-                        skillId: btn.dataset.skillId,
-                        unit: unit?.id || unit?.name,
-                        hasUnit: !!unit,
-                        hasSkills: !!skills
-                    });
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const skillId = btn.dataset.skillId;
-                    const skill = skills.find(s => s.id === skillId);
-                    console.log('[DEBUG] Skill lookup result:', {
-                        skillId,
-                        skillFound: !!skill,
-                        skillName: skill?.name,
-                        unitMP: unit?.sp,
-                        skillMana: skill?.mana || skill?.cost,
-                        canAfford: skill && unit.sp >= (skill.mana || skill.cost || 0)
-                    });
-                    if (skill && unit && unit.sp >= (skill.mana || skill.cost || 0)) {
-                        console.log('[DEBUG] Calling selectSkillForUse with:', { unitId: unit.id, skillId: skill.id });
-                        selectSkillForUse(unit, skill);
-                        console.log('[DEBUG] selectSkillForUse called successfully');
-                        // Não precisa chamar hideSkillMenu() aqui pois selectSkillForUse já faz isso
-                    } else {
-                        console.warn('[DEBUG] Cannot use skill - insufficient MP or skill not found');
-                    }
-                });
-            } else {
-                console.warn('[DEBUG] useBtn not found in tooltip!');
-            }
         });
 
-        // Fechar tooltips ao clicar fora (com delay para não interferir com clique inicial)
-        let closeTooltipsHandlerTimeout = null;
-        const closeTooltipsHandler = function (e) {
-            const clickedTooltip = e.target.closest('.skill-tooltip');
-            const clickedBtn = e.target.closest('.skill-icon-btn');
+        // Fechar ao clicar fora
+        const closeOnOutsideClick = (e) => {
+            const clickedPanel = e.target.closest('#skill-tooltip-panel');
+            const clickedSkillBtn = e.target.closest('.skill-icon-btn');
+            const clickedSkillBar = e.target.closest('#skill-bar-container');
 
-            // Se clicou dentro de um tooltip ou botão, não fechar
-            if (clickedTooltip || clickedBtn) {
-                return;
+            if (!clickedPanel && !clickedSkillBtn && !clickedSkillBar) {
+                closeSkillTooltip();
             }
-
-            // Fechar todos os tooltips
-            skillBar.querySelectorAll('.skill-tooltip.visible').forEach(t => {
-                t.classList.remove('visible');
-            });
         };
 
-        // Adicionar listener com delay para não interferir com cliques nos botões
-        setTimeout(() => {
-            document.addEventListener('click', closeTooltipsHandler);
-        }, 250);
+        // Remover handler antigo e adicionar novo
+        document.removeEventListener('click', closeOnOutsideClick, true);
+        document.addEventListener('click', closeOnOutsideClick, true);
     }
 
     /**
@@ -4140,6 +5163,7 @@
         skillAreaCells = [];
         gameState.currentAction = null;
         gameState.selectedSkill = null;
+        // Não limpar attackRangeCells aqui, pois pode estar em modo de ataque
         needsRender = true;
     }
 
@@ -4148,7 +5172,35 @@
      * @param {Object} unit - Unidade que vai usar
      * @param {Object} skill - Skill selecionada
      */
-    function selectSkillForUse(unit, skill) {
+    async function selectSkillForUse(unit, skill) {
+        // Limpar estado de attack antes de mostrar skill range
+        attackRangeCells = [];
+
+        // Para skills self, executar imediatamente
+        const rangeType = getSkillRangeType(skill);
+        if (rangeType === 'self') {
+            // Ocultar menu
+            const skillBar = document.getElementById('skill-bar-container');
+            if (skillBar) {
+                skillBar.style.display = 'none';
+                skillBar.querySelectorAll('.skill-tooltip.visible').forEach(t => {
+                    t.classList.remove('visible');
+                });
+            }
+
+            // Limpar estados
+            skillRangeCells = [];
+            skillAreaCells = [];
+            selectedSkillForPreview = null;
+            gameState.currentAction = null;
+            gameState.selectedSkill = null;
+
+            // Executar skill imediatamente no próprio personagem
+            await executeSkill(unit, unit, skill, [unit]);
+            persistSessionState();
+            return;
+        }
+
         // Apenas ocultar o menu UI, sem limpar o preview da skill
         const skillBar = document.getElementById('skill-bar-container');
         if (skillBar) {
@@ -4310,15 +5362,15 @@
                 }
             }
         });
-        document.getElementById('action-skills')?.addEventListener('click', () => {
+        document.getElementById('action-skills')?.addEventListener('click', async () => {
             if (gameState.selectedUnit) {
-                showSkillMenu(gameState.selectedUnit);
+                await showSkillMenu(gameState.selectedUnit);
             }
         });
         document.getElementById('action-finish')?.addEventListener('click', () => {
             if (gameState.selectedUnit) finishUnitTurn(gameState.selectedUnit);
         });
-        document.getElementById('action-cancel')?.addEventListener('click', () => deselectUnit());
+        document.getElementById('action-cancel')?.addEventListener('click', () => { if (gameState.selectedUnit) returnToNormalSelection(); });
 
         // =====================================================
         // TACTICAL HUD EVENT LISTENERS
@@ -4363,16 +5415,15 @@
             }
         });
 
-        document.getElementById('tactical-skills')?.addEventListener('click', () => {
+        document.getElementById('tactical-skills')?.addEventListener('click', async () => {
             if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
-                showSkillMenu(gameState.selectedUnit);
+                await showSkillMenu(gameState.selectedUnit);
             }
         });
 
         document.getElementById('tactical-endturn')?.addEventListener('click', () => {
             if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
                 finishUnitTurn(gameState.selectedUnit);
-                hideTacticalHUD();
             }
         });
 
@@ -4816,9 +5867,10 @@
     // =====================================================
 
     /**
-     * Exibe banner animado ao ativar uma skill
+     * Exibe banner animado ao ativar uma skill.
+     * @param {string} skillImg - URL do PNG da skill (skill.img); se houver, usa em vez do ícone Lucide.
      */
-    function showSkillBanner(skillName, skillIcon = 'zap', skillType = 'physical') {
+    function showSkillBanner(skillName, skillIcon = 'zap', skillType = 'physical', skillImg = null) {
         return new Promise((resolve) => {
             const container = document.getElementById('map-container') || document.body;
 
@@ -4832,6 +5884,10 @@
             };
             const c = colors[skillType] || colors.physical;
 
+            const iconHtml = skillImg
+                ? `<img src="${skillImg}" alt="" class="skill-banner-icon-img" onerror="this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='block'"><i data-lucide="${skillIcon}" style="display:none"></i>`
+                : `<i data-lucide="${skillIcon}"></i>`;
+
             const banner = document.createElement('div');
             banner.className = 'skill-activation-banner';
             banner.style.setProperty('--banner-color', c.color);
@@ -4843,9 +5899,7 @@
             banner.innerHTML = `
                 <div class="skill-banner-glow"></div>
                 <div class="skill-banner-content">
-                    <div class="skill-banner-icon">
-                        <i data-lucide="${skillIcon}"></i>
-                    </div>
+                    <div class="skill-banner-icon">${iconHtml}</div>
                     <div class="skill-banner-text">
                         <div class="skill-banner-label">${skillType === 'ultimate' ? 'ULTIMATE' : 'SKILL ACTIVATE'}</div>
                         <div class="skill-banner-name">${skillName}</div>
@@ -4878,11 +5932,16 @@
     }
 
     /**
-     * Exibe cut-in estilo anime para ULTIMATE skills
+     * Exibe cut-in estilo anime para ULTIMATE skills.
+     * @param {string} skillImg - URL do PNG da skill (skill.img); se houver, usa em vez do ícone Lucide.
      */
-    function showUltimateCutIn(skillName, skillIcon = 'zap') {
+    function showUltimateCutIn(skillName, skillIcon = 'zap', skillImg = null) {
         return new Promise((resolve) => {
             const container = document.body;
+
+            const iconHtml = skillImg
+                ? `<img src="${skillImg}" alt="" class="ultimate-icon-img" onerror="this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='block'"><i data-lucide="${skillIcon}" style="display:none"></i>`
+                : `<i data-lucide="${skillIcon}"></i>`;
 
             // Speed lines com múltiplas camadas (estilo Hollywood)
             const speedLines = document.createElement('div');
@@ -4905,9 +5964,7 @@
             wrapper.innerHTML = `
                 <div class="ultimate-banner-strip">
                     <div class="ultimate-banner-content">
-                        <div class="ultimate-icon">
-                            <i data-lucide="${skillIcon}"></i>
-                        </div>
+                        <div class="ultimate-icon">${iconHtml}</div>
                         <div class="ultimate-text">
                             <div class="ultimate-label">ULTIMATE</div>
                             <div class="ultimate-name">${skillName}</div>
@@ -4997,6 +6054,9 @@
 
         // Clear existing (except label)
         const label = timeline.querySelector('.timeline-label');
+        if (label) {
+            label.textContent = `Turn: ${gameState.turn || 1}`;
+        }
         timeline.innerHTML = '';
         if (label) timeline.appendChild(label);
 
@@ -5043,6 +6103,10 @@
             const img = document.createElement('img');
             img.src = unit.avatar || '/public/assets/img/characters/swordman.png';
             img.alt = unit.name;
+            // Aplicar grayscale apenas na imagem se a unidade já agiu
+            if (gameState.unitsActedThisTurn.has(unit.id)) {
+                img.style.filter = 'grayscale(0.85) brightness(0.7)';
+            }
             portraitFrame.appendChild(img);
 
             // Level badge
@@ -5073,7 +6137,9 @@
 
             const hpIcon = document.createElement('div');
             hpIcon.className = 'hud-bar-icon hp';
-            hpIcon.textContent = '?';
+            const hpIconElement = document.createElement('i');
+            hpIconElement.setAttribute('data-lucide', 'heart');
+            hpIcon.appendChild(hpIconElement);
             hpRow.appendChild(hpIcon);
 
             const hpBar = document.createElement('div');
@@ -5100,7 +6166,9 @@
 
             const mpIcon = document.createElement('div');
             mpIcon.className = 'hud-bar-icon mp';
-            mpIcon.textContent = '?';
+            const mpIconElement = document.createElement('i');
+            mpIconElement.setAttribute('data-lucide', 'flame');
+            mpIcon.appendChild(mpIconElement);
             mpRow.appendChild(mpIcon);
 
             const mpBar = document.createElement('div');
@@ -5123,6 +6191,196 @@
             barsContainer.appendChild(mpRow);
 
             details.appendChild(barsContainer);
+
+            // Helper function to build detailed buff tooltip (English)
+            function buildBuffTooltip(effect, effectData) {
+                const parts = [];
+
+                // Name and duration
+                parts.push(`${effectData.name} (${effect.duration} turn${effect.duration !== 1 ? 's' : ''})`);
+
+                // Description
+                if (effectData.desc) {
+                    parts.push(effectData.desc);
+                }
+
+                // Modifiers from effect.data
+                const modifiers = [];
+                const data = effect.data || {};
+
+                if (data.atkBonus !== undefined) {
+                    const percent = Math.round(data.atkBonus * 100);
+                    modifiers.push(`ATK ${percent >= 0 ? '+' : ''}${percent}%`);
+                }
+                if (data.defPenalty !== undefined) {
+                    const percent = Math.round(data.defPenalty * 100);
+                    modifiers.push(`DEF ${percent >= 0 ? '+' : ''}${percent}%`);
+                }
+                if (data.damageDealt !== undefined && data.damageDealt !== 1) {
+                    const percent = Math.round((data.damageDealt - 1) * 100);
+                    modifiers.push(`Damage Dealt ${percent >= 0 ? '+' : ''}${percent}%`);
+                }
+                if (data.damageTaken !== undefined && data.damageTaken !== 1) {
+                    const percent = Math.round((data.damageTaken - 1) * 100);
+                    modifiers.push(`Damage Taken ${percent >= 0 ? '+' : ''}${percent}%`);
+                }
+                if (data.stats) {
+                    Object.entries(data.stats).forEach(([stat, value]) => {
+                        if (value !== 0) {
+                            const statName = stat.toUpperCase();
+                            modifiers.push(`${statName} ${value >= 0 ? '+' : ''}${value}`);
+                        }
+                    });
+                }
+                if (data.critBonus !== undefined && data.critBonus > 0) {
+                    const percent = Math.round(data.critBonus * 100);
+                    modifiers.push(`Crit +${percent}%`);
+                }
+                if (data.parryChance !== undefined && data.parryChance > 0) {
+                    const percent = Math.round(data.parryChance * 100);
+                    modifiers.push(`Parry +${percent}%`);
+                }
+                if (data.tauntChance !== undefined && data.tauntChance > 0) {
+                    const percent = Math.round(data.tauntChance * 100);
+                    modifiers.push(`Taunt +${percent}%`);
+                }
+
+                if (modifiers.length > 0) {
+                    parts.push(`Modifiers: ${modifiers.join(', ')}`);
+                }
+
+                return parts.join('\n');
+            }
+
+            // Helper for buffs not in effectsData (English)
+            function buildBuffTooltipFromData(effect, buffData, displayName, displayDesc) {
+                const parts = [];
+                parts.push(`${displayName} (${effect.duration} turn${effect.duration !== 1 ? 's' : ''})`);
+                if (displayDesc) parts.push(displayDesc);
+
+                const modifiers = [];
+                if (buffData.damageDealt !== undefined && buffData.damageDealt !== 1) {
+                    const percent = Math.round((buffData.damageDealt - 1) * 100);
+                    modifiers.push(`Damage Dealt ${percent >= 0 ? '+' : ''}${percent}%`);
+                }
+                if (buffData.damageTaken !== undefined && buffData.damageTaken !== 1) {
+                    const percent = Math.round((buffData.damageTaken - 1) * 100);
+                    modifiers.push(`Damage Taken ${percent >= 0 ? '+' : ''}${percent}%`);
+                }
+                if (buffData.stats) {
+                    Object.entries(buffData.stats).forEach(([stat, value]) => {
+                        if (value !== 0) {
+                            modifiers.push(`${stat.toUpperCase()} ${value >= 0 ? '+' : ''}${value}`);
+                        }
+                    });
+                }
+                if (buffData.critBonus !== undefined && buffData.critBonus > 0) {
+                    modifiers.push(`Crit +${buffData.critBonus}%`);
+                }
+                if (buffData.flee !== undefined && buffData.flee > 0) {
+                    modifiers.push(`Evasion +${buffData.flee}`);
+                }
+                if (buffData.hpRegen !== undefined && buffData.hpRegen > 0) {
+                    modifiers.push(`HP Regen +${Math.round(buffData.hpRegen * 100)}%/turn`);
+                }
+                if (buffData.aspd !== undefined && buffData.aspd !== 0) {
+                    modifiers.push(`ASPD ${buffData.aspd >= 0 ? '+' : ''}${buffData.aspd}`);
+                }
+                if (buffData.dotDamage !== undefined && buffData.dotDamage > 0) {
+                    modifiers.push(`Damage/turn ${Math.round(buffData.dotDamage * 100)}%`);
+                }
+                if (buffData.skipTurn) {
+                    modifiers.push(`Skip Turn`);
+                }
+
+                if (modifiers.length > 0) {
+                    parts.push(`Modifiers: ${modifiers.join(', ')}`);
+                }
+
+                return parts.join('\n');
+            }
+
+            // Status icons (buffs/debuffs)
+            if (window.TacticalSkillEngine) {
+                const statusIcons = document.createElement('div');
+                statusIcons.className = 'timeline-status-icons';
+
+                const activeEffects = window.TacticalSkillEngine.getActiveBuffsForDisplay(unit);
+                activeEffects.forEach(effect => {
+                    // Use effectsData if available, otherwise fallback to buff's own data
+                    const effectData = window.effectsData?.[effect.data?.id];
+                    const buffData = effect.data || {};
+
+                    // Get display info from effectsData or fallback to buff's own data
+                    const displayName = effectData?.name || buffData.name || buffData.id || 'Unknown';
+                    const displayIcon = effectData?.lucide || buffData.icon || 'sparkles';
+                    const displayPng = effectData?.png || null;
+                    const displayDesc = effectData?.desc || buffData.desc || '';
+
+                    const iconEl = document.createElement('div');
+                    iconEl.className = `timeline-status-icon ${effect.type}`;
+
+                    // Build detailed tooltip
+                    const tooltip = effectData
+                        ? buildBuffTooltip(effect, effectData)
+                        : buildBuffTooltipFromData(effect, buffData, displayName, displayDesc);
+
+                    // Try PNG first (from effectsData or skill path), then Lucide
+                    if (displayPng) {
+                        const img = document.createElement('img');
+                        img.src = displayPng;
+                        img.alt = displayName;
+                        img.onerror = function () {
+                            // Fallback to Lucide if image fails
+                            this.style.display = 'none';
+                            const lucideIcon = document.createElement('i');
+                            lucideIcon.setAttribute('data-lucide', displayIcon);
+                            this.parentNode.insertBefore(lucideIcon, this);
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        };
+                        iconEl.appendChild(img);
+                    } else {
+                        // Try skill-based image path
+                        const skillImg = `/public/assets/icons/skills/${effect.data?.id}.png`;
+                        const img = document.createElement('img');
+                        img.src = skillImg;
+                        img.alt = displayName;
+                        img.onerror = function () {
+                            // Fallback to Lucide if image fails
+                            this.style.display = 'none';
+                            const lucideIcon = document.createElement('i');
+                            lucideIcon.setAttribute('data-lucide', displayIcon);
+                            this.parentNode.insertBefore(lucideIcon, this);
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        };
+                        iconEl.appendChild(img);
+                    }
+
+                    if (effect.duration > 0) {
+                        const durationBadge = document.createElement('div');
+                        durationBadge.className = 'status-duration-badge';
+                        durationBadge.textContent = effect.duration;
+                        iconEl.appendChild(durationBadge);
+                    }
+
+                    // Global Status Tooltip system (JS-based to avoid overflow clipping)
+                    const tooltipContent = effectData ? buildBuffTooltip(effect, effectData) : buildBuffTooltipFromData(effect, buffData, displayName, displayDesc);
+
+                    iconEl.onmouseenter = (e) => showStatusTooltip(e, tooltipContent);
+                    iconEl.onmouseleave = () => hideStatusTooltip();
+
+                    statusIcons.appendChild(iconEl);
+                });
+
+                if (activeEffects.length > 0) {
+                    details.appendChild(statusIcons);
+                    // Initialize lucide icons if needed
+                    if (typeof lucide !== 'undefined') {
+                        setTimeout(() => lucide.createIcons(), 10);
+                    }
+                }
+            }
+
             cardEl.appendChild(details);
 
             // Click to select (if player unit)
@@ -5457,7 +6715,6 @@
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        // Salvar posição do mouse em coordenadas de canvas para uso em facing
         lastMouseCanvasPos = { x: mouseX, y: mouseY };
         const world = screenToWorld(mouseX, mouseY);
         const col = Math.floor(world.x / CONFIG.CELL_SIZE) + 1;
@@ -5682,34 +6939,50 @@
             if (targetCell && targetCell.enemy) {
                 attackRangeCells = [];
                 gameState.currentAction = null;
-                executeAttack(gameState.selectedUnit, targetCell.enemy).then(() => {
-                    persistSessionState();
-                    hideTacticalHUD();
-                });
+                executeAttack(gameState.selectedUnit, targetCell.enemy).then(() => persistSessionState());
             } else {
-                // Verificar se clicou em inimigo fora de alcance
                 const enemyAtCell = unitAtCell && unitAtCell.type === 'enemy' ? unitAtCell : null;
-                if (enemyAtCell) {
-                    showRangeWarning(); // Mensagem discreta no topo
-                }
+                if (enemyAtCell) showRangeWarning();
+                returnToNormalSelection();
             }
             return;
         }
 
         if (gameState.currentAction === 'skill' && gameState.selectedSkill && gameState.selectedUnit) {
-            const inRange = skillRangeCells.some(c => c.x === x && c.y === y);
-            if (!inRange) {
-                showNotification('Alvo fora do alcance da skill!', 'warning');
-                return;
-            }
-
             const caster = gameState.selectedUnit;
             const skill = gameState.selectedSkill;
             const rangeType = getSkillRangeType(skill);
 
-            let targets = [];
+            // Para skills self, não verificar range (já deveria ter sido executada imediatamente, mas por segurança)
             if (rangeType === 'self') {
-                targets = [caster];
+                skillRangeCells = [];
+                skillAreaCells = [];
+                gameState.currentAction = null;
+                gameState.selectedSkill = null;
+                executeSkill(caster, caster, skill, [caster]).then(() => persistSessionState());
+                return;
+            }
+
+            // Para outras skills, verificar range
+            const inRange = skillRangeCells.some(c => c.x === x && c.y === y);
+            if (!inRange) {
+                returnToNormalSelection();
+                return;
+            }
+
+            let targets = [];
+            if (rangeType === 'ally') {
+                // Para skills ally, verificar se clicou em aliado ou na própria célula
+                const clickedUnit = unitAtCell;
+                if (clickedUnit && clickedUnit.type === 'player' && clickedUnit.hp > 0) {
+                    targets = [clickedUnit];
+                } else if (x === caster.x && y === caster.y) {
+                    // Clicou na própria célula
+                    targets = [caster];
+                } else {
+                    returnToNormalSelection();
+                    return;
+                }
             } else {
                 const area = calculateSkillArea(skill, x, y, caster.x, caster.y);
                 const targetType = skill.type === 'ally' || skill.type === 'aoe_heal' ? 'player' : 'enemy';
@@ -5720,8 +6993,8 @@
                 );
             }
 
-            if (targets.length === 0 && rangeType !== 'self') {
-                showNotification('Nenhum alvo válido na área.', 'warning');
+            if (targets.length === 0) {
+                returnToNormalSelection();
                 return;
             }
 
@@ -5731,10 +7004,7 @@
             gameState.currentAction = null;
             gameState.selectedSkill = null;
 
-            executeSkill(caster, targets[0] || null, skill, targets).then(() => {
-                persistSessionState();
-                hideTacticalHUD();
-            });
+            executeSkill(caster, targets[0] || null, skill, targets).then(() => persistSessionState());
             return;
         }
 
@@ -5782,31 +7052,17 @@
             }
 
 
-            // Clicked empty ground or irrelevant cell
-            const alivePlayers = playerUnits.filter(u => u.hp > 0);
-            if (alivePlayers.length === 1) {
-                // Se há apenas 1 personagem, manter selecionado
-                showTacticalHUD(unit);
-            } else if (!unit.hasMoved) {
-                deselectUnit();
-            } else {
-                // Se já moveu, manter HUD tática
-                showTacticalHUD(unit);
-            }
+            // Clicou em chão vazio ou célula irrelevante: voltar à seleção normal (sai de movimento/ataque/skill, mostra HUD)
+            returnToNormalSelection();
         } else {
-            // 2. Select unit if nothing selected
+            // 2. Nada selecionado ou seleção que não pode agir: tentar selecionar aliado com ação
             if (unitAtCell && unitAtCell.type === 'player' && canUnitAct(unitAtCell)) {
                 selectUnit(unitAtCell);
+            } else if (gameState.selectedUnit) {
+                returnToNormalSelection();
             } else {
-                const alivePlayers = playerUnits.filter(u => u.hp > 0);
-                if (alivePlayers.length === 1) {
-                    // Se há apenas 1 personagem, manter selecionado
-                    if (gameState.selectedUnit) {
-                        showTacticalHUD(gameState.selectedUnit);
-                    }
-                } else {
-                    deselectUnit();
-                }
+                const first = playerUnits.find(u => u.hp > 0);
+                if (first) selectUnit(first);
             }
         }
     }
@@ -5879,23 +7135,13 @@
         zoom(e.deltaY > 0 ? -CONFIG.ZOOM_STEP : CONFIG.ZOOM_STEP, e.clientX, e.clientY);
     }
 
-    function handleKeyDown(e) {
+    async function handleKeyDown(e) {
         if (gameState.isAnimating) return;
 
         switch (e.key.toLowerCase()) {
             case 'escape':
-                // Se estiver em modo de ação (move/attack/skill), cancelar ação, senão desselecionar unidade
-                if (gameState.currentAction || attackRangeCells.length > 0 || skillRangeCells.length > 0) {
-                    gameState.currentAction = null;
-                    attackRangeCells = [];
-                    skillRangeCells = [];
-                    skillAreaCells = [];
-                    clearHighlights();
-                    if (gameState.selectedUnit) showTacticalHUD(gameState.selectedUnit);
-                    needsRender = true;
-                } else {
-                    deselectUnit();
-                }
+                // Cancelar modo movimento/ataque/skill e voltar à seleção normal (nunca desselecionar no turno do jogador)
+                returnToNormalSelection();
                 break;
             case 'm':
                 // Atalho para Mover
@@ -5914,14 +7160,13 @@
             case 's':
                 // Atalho para Skills
                 if (gameState.selectedUnit && gameState.selectedUnit.type === 'player' && !gameState.unitsActedThisTurn.has(gameState.selectedUnit.id)) {
-                    showSkillMenu(gameState.selectedUnit);
+                    await showSkillMenu(gameState.selectedUnit);
                 }
                 break;
             case 'f':
                 // Atalho para Flee/Pass (Finalizar Turno da Unidade)
                 if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
                     finishUnitTurn(gameState.selectedUnit);
-                    hideTacticalHUD();
                 }
                 break;
             case 'e':
@@ -6191,54 +7436,23 @@
         drawPortal();
 
         // Desenhar unidades ordenadas por Y (de cima para baixo)
-        // Isso garante que unidades mais abaixo fiquem por cima visualmente
-        // Se o mouse está sobre uma unidade, ela é desenhada por último (z-index dinâmico)
-        // EXCEÇÃO: Se inimigo está ACIMA de um player, não muda z-index (evita "montar" no herói)
+        // Unidade com Y maior (mais abaixo) é desenhada por último = na frente (evita "pisando")
 
-        // Verificar se hovered unit é inimigo acima de algum player
-        let shouldBoostHoveredZIndex = true;
-        let playerToFade = null; // Player que deve ter opacidade reduzida
-
-        if (hoveredUnit && hoveredUnit.type === 'enemy') {
-            // Verificar se há um player adjacente ABAIXO do inimigo hovered
-            for (const player of playerUnits) {
-                if (player.hp <= 0) continue;
-                const dx = Math.abs(player.x - hoveredUnit.x);
-                const dy = player.y - hoveredUnit.y; // Positivo = player abaixo, negativo = player acima
-                const isAdjacent = dx <= 1 && Math.abs(dy) <= 1 && !(dx === 0 && dy === 0);
-
-                if (isAdjacent && dy > 0) {
-                    // Inimigo está ACIMA do player - não boostar z-index
-                    // Em vez disso, reduzir opacidade do player para destacar o inimigo
-                    shouldBoostHoveredZIndex = false;
-                    playerToFade = player;
-                    break;
-                }
-            }
-        }
+        // Deslocamento horizontal quando 2+ unidades estão na mesma coluna em linhas adjacentes
+        applyStackOffsetX();
 
         const allUnits = [
             ...enemyUnits.filter(u => u.hp > 0).map(u => ({ unit: u, type: 'enemy' })),
             ...playerUnits.filter(u => u.hp > 0).map(u => ({ unit: u, type: 'player' }))
         ].sort((a, b) => {
-            // Unidade sob o mouse por último (por cima) - apenas se permitido
-            if (shouldBoostHoveredZIndex && hoveredUnit === a.unit) return 1;
-            if (shouldBoostHoveredZIndex && hoveredUnit === b.unit) return -1;
-            // Ordenação padrão por Y
-            return a.unit.y - b.unit.y;
+            // Ordenação por Y: maior Y (mais abaixo) é desenhado por último = na frente (evita "pisando")
+            // Desempate por X para ordem determinística
+            return a.unit.y - b.unit.y || a.unit.x - b.unit.x;
         });
 
         // Primeira passada: desenhar sprites (sem barras de HP)
         allUnits.forEach(({ unit, type }) => {
-            // Aplicar opacidade reduzida no player quando inimigo acima está em hover
-            const shouldFade = playerToFade === unit;
-            if (shouldFade) {
-                unit._tempFadeOpacity = 0.5; // Opacidade temporária
-            }
             drawUnitSprite(unit, type);
-            if (shouldFade) {
-                delete unit._tempFadeOpacity;
-            }
         });
 
         // Segunda passada: desenhar barras de HP (sempre por cima)
@@ -6281,7 +7495,6 @@
         const gridSize = 32;
         ctx.strokeStyle = 'rgba(30, 70, 120, 0.15)';
         ctx.lineWidth = 1;
-
         for (let x = 0; x < canvas.width; x += gridSize) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
@@ -6294,8 +7507,6 @@
             ctx.lineTo(canvas.width, y);
             ctx.stroke();
         }
-
-        // Larger grid lines
         ctx.strokeStyle = 'rgba(40, 90, 150, 0.2)';
         for (let x = 0; x < canvas.width; x += gridSize * 4) {
             ctx.beginPath();
@@ -6859,13 +8070,13 @@
         // Desenha apenas as barras de HP/MP
         if (unit.hp === undefined) return;
 
-        const cx = unit.renderX ?? (unit.x - 0.5) * CONFIG.CELL_SIZE;
+        const cx = (unit.renderX ?? (unit.x - 0.5) * CONFIG.CELL_SIZE) + (unit._stackOffsetX || 0);
         const cy = unit.renderY ?? (unit.y - 0.5) * CONFIG.CELL_SIZE;
         const radius = CONFIG.CELL_SIZE * 0.45;
 
         // Calcular posição das barras baseada SEMPRE na animação IDLE para manter fixa
-        const spriteName = getSpriteNameForUnit(unit);
-        const spriteAnimations = spriteName ? spriteCache.get(spriteName) : null;
+        const entityId = getEntityIdForUnit(unit);
+        const spriteAnimations = entityId ? spriteCache.get(entityId) : null;
 
         // Sempre usar 'idle' para calcular a altura da barra, a menos que não exista
         const barAnimState = (spriteAnimations && spriteAnimations.idle) ? 'idle' : (unit.animationState || 'idle');
@@ -6979,7 +8190,7 @@
     }
 
     function drawUnit(unit, type) {
-        const cx = unit.renderX ?? (unit.x - 0.5) * CONFIG.CELL_SIZE;
+        const cx = (unit.renderX ?? (unit.x - 0.5) * CONFIG.CELL_SIZE) + (unit._stackOffsetX || 0);
         const cy = unit.renderY ?? (unit.y - 0.5) * CONFIG.CELL_SIZE;
 
         const isSelected = gameState.selectedUnit === unit;
@@ -6988,8 +8199,8 @@
         const canStillAct = unit.hp > 0 && !hasActed;
 
         const img = loadedImages[unit.id];
-        const spriteName = getSpriteNameForUnit(unit);
-        const spriteAnimations = spriteName ? spriteCache.get(spriteName) : null;
+        const entityId = getEntityIdForUnit(unit);
+        const spriteAnimations = entityId ? spriteCache.get(entityId) : null;
 
         // DEBUG: Verificar se imagens desaparecem quando debug é ativado
         if (window.DEBUG_MODE && window.MapDebug && window.MapDebug.isActive && window.MapDebug.isActive() && unit.id && !unit._debugCheckLogged) {
@@ -7010,14 +8221,17 @@
             if (debugAnimationState !== null && debugAnimationState !== 'auto') {
                 animationState = debugAnimationState; // Forçar estado no debug apenas para unidade selecionada
             } else if (unit.forceAnimation && unit.forceAnimation !== 'auto') {
-                animationState = unit.forceAnimation;
+                const active = unit.animationState || 'idle';
+                animationState = (active === 'walk' || active === 'atack') ? active : unit.forceAnimation;
             } else {
-                animationState = unit.animationState || 'idle'; // Estado real da unidade
+                animationState = unit.animationState || 'idle';
             }
         } else if (unit.forceAnimation && unit.forceAnimation !== 'auto') {
-            animationState = unit.forceAnimation;
+            // forceAnimation não pode anular walk/atack (ex.: arqueira com forceAnimation "idle")
+            const active = unit.animationState || 'idle';
+            animationState = (active === 'walk' || active === 'atack') ? active : unit.forceAnimation;
         } else {
-            animationState = unit.animationState || 'idle'; // Estado real da unidade
+            animationState = unit.animationState || 'idle';
         }
 
         // Se a animação solicitada não existir, usar idle como fallback
@@ -7581,6 +8795,48 @@
         ctx.restore();
     }
 
+    /**
+     * Quando 2 ou 3 unidades (players + inimigos) estão na mesma coluna em linhas adjacentes,
+     * aplica deslocamento horizontal (_stackOffsetX) para reduzir o efeito de "pisando".
+     * Pilhas mistas (ex.: slime + archer + swordman) também recebem offset.
+     */
+    function applyStackOffsetX() {
+        const OFFSET = 12; // Deslocamento visual apenas; ataque/alcance usam x,y lógicos
+        const all = [...playerUnits, ...enemyUnits].filter(u => u.hp > 0);
+        all.forEach(u => { delete u._stackOffsetX; });
+        const byX = new Map();
+        all.forEach(u => {
+            const k = u.x;
+            if (!byX.has(k)) byX.set(k, []);
+            byX.get(k).push(u);
+        });
+        byX.forEach((units) => {
+            if (units.length < 2) return;
+            units.sort((a, b) => a.y - b.y);
+            const stacks = [];
+            let stack = [units[0]];
+            for (let i = 1; i < units.length; i++) {
+                if (units[i].y === stack[stack.length - 1].y + 1) {
+                    stack.push(units[i]);
+                } else {
+                    if (stack.length >= 2) stacks.push(stack);
+                    stack = [units[i]];
+                }
+            }
+            if (stack.length >= 2) stacks.push(stack);
+            stacks.forEach(s => {
+                if (s.length === 2) {
+                    s[0]._stackOffsetX = -OFFSET;
+                    s[1]._stackOffsetX = OFFSET;
+                } else if (s.length === 3) {
+                    s[0]._stackOffsetX = -OFFSET;
+                    s[1]._stackOffsetX = 0;
+                    s[2]._stackOffsetX = OFFSET;
+                }
+            });
+        });
+    }
+
     function drawChests() {
         chests.forEach(chest => {
             if (chest.opened) return;
@@ -7802,16 +9058,18 @@
     // =====================================================
     // Garantir que todas as dependências estejam carregadas antes de inicializar
     function waitForDependencies(callback, maxAttempts = 50, attempt = 0) {
-        if (window.combatData) {
+        // Check for TacticalDataLoader (combatData removed)
+        if (window.TacticalDataLoader) {
             callback();
         } else if (attempt < maxAttempts) {
             setTimeout(() => waitForDependencies(callback, maxAttempts, attempt + 1), 100);
         } else {
-            console.error('[MAP-ENGINE] Timeout aguardando dependências. combatData não disponível.');
-            hideLoadingState();
+            console.warn('[MAP-ENGINE] Timeout aguardando dependências. Tentando continuar mesmo assim...');
+            // Continue anyway - entities can be loaded later
+            callback();
         }
     }
-    
+
     // Aguardar DOM estar pronto E dependências carregadas
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -7822,10 +9080,57 @@
         waitForDependencies(init);
     }
 
+    // =====================================================
+    // GLOBAL STATUS TOOLTIP HELPERS
+    // =====================================================
+    function showStatusTooltip(e, content) {
+        let panel = document.getElementById('status-tooltip-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'status-tooltip-panel';
+            panel.className = 'status-tooltip-panel';
+            document.body.appendChild(panel);
+        }
+
+        panel.innerHTML = content.replace(/\n/g, '<br>');
+        panel.classList.add('visible');
+
+        // Position panel near the icon, ensuring it doesn't go off-screen
+        const rect = e.target.getBoundingClientRect();
+
+        // Use a temporary measure to get panel dimensions if it was hidden
+        panel.style.display = 'block';
+        const panelRect = panel.getBoundingClientRect();
+
+        let top = rect.top - panelRect.height - 12;
+        let left = rect.left + (rect.width / 2) - (panelRect.width / 2);
+
+        // Clamp to screen bounds
+        if (top < 10) top = rect.bottom + 12;
+        if (left < 10) left = 10;
+        if (left + panelRect.width > window.innerWidth - 10) left = window.innerWidth - panelRect.width - 10;
+
+        panel.style.top = `${top}px`;
+        panel.style.left = `${left}px`;
+    }
+
+    function hideStatusTooltip() {
+        const panel = document.getElementById('status-tooltip-panel');
+        if (panel) {
+            panel.classList.remove('visible');
+            setTimeout(() => {
+                if (!panel.classList.contains('visible')) {
+                    panel.style.display = 'none';
+                }
+            }, 200);
+        }
+    }
+
     // Expose public API
     window.MapEngine = {
         resetGame: resetGame,
-        saveMapState: saveMapState
+        saveMapState: persistSessionState, // Alias para persistSessionState
+        showDamageNumber: showDamageNumber // Expor para o SkillEngine
     };
 
 })();

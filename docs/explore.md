@@ -605,3 +605,4 @@ const HP_BAR_HEIGHT = 6;
 *Última atualização: Janeiro 2026*
 
 
+

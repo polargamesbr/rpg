@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Effects Data - declarative registry for buffs / debuffs / statuses.
  * Used for UI labels, icons (png/lucide) and friendly descriptions.
  *
@@ -29,7 +29,7 @@ window.effectsData = {
   divine_favor: { type: 'buff', name: 'Divine Favor', lucide: 'zap', png: null, desc: 'Empowers your spirit.' },
   reflect_shield: { type: 'buff', name: 'Reflect Shield', lucide: 'shield', png: null, desc: 'Reflects 35% of incoming damage back to attackers.' },
   defensive_stance: { type: 'buff', name: 'Defensive Stance', lucide: 'shield-check', png: null, desc: 'Reduces damage taken by 30%, +15% parry chance.' },
-  berserk_mode: { type: 'buff', name: 'Berserk Mode', lucide: 'sword', png: null, desc: 'ATK +100%, DEF -50%. High risk, high reward.' },
+  berserk_mode: { type: 'buff', name: 'Berserk Mode', lucide: 'sword', png: '/public/assets/icons/skills/berserk_mode.png', desc: 'Increases ATK by 100% but reduces DEF by 50% for 3 turns. High risk, high reward.' },
   shell_defense: { type: 'buff', name: 'Shell Defense', lucide: 'shield', png: null, desc: 'Reduces damage taken by 25% for 3 turns.' },
   undead_resilience: { type: 'buff', name: 'Undead Resilience', lucide: 'shield', png: null, desc: 'Increases defense and reduces damage taken.' },
   troll_regeneration: { type: 'buff', name: 'Troll Regeneration', lucide: 'heart', png: null, desc: 'Increases vitality and defense for 3 turns.' },
