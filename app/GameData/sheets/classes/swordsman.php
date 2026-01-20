@@ -11,13 +11,16 @@ return [
     'desc' => 'A disciplined warrior trained in one-handed combat and military tactics. Masters of sword and shield, they excel at both offense and defense, making them reliable front-line fighters.',
     'base_level' => 1,
     'images' => [
-        'default' => 'assets/entities/swordsman/avatar.png',
-        'male' => 'assets/entities/swordsman/avatar.png',
-        'female' => 'assets/entities/swordsman/avatar.png',
+        'default' => 'assets/entities/swordsman/avatar.webp',
+        'male' => 'assets/entities/swordsman/avatar.webp',
+        'female' => 'assets/entities/swordsman/avatar.webp',
     ],
     'animations' => [
         'base' => 'entities',
         'types' => ['idle', 'walk', 'atack'],
+        'idle'  => ['animationFPS' => 15,  'animationScale' => 1.4, 'animationOffsetX' => 6,  'animationOffsetXWhenFacingRight' => -6, 'animationOffsetY' => 34],
+        'walk'  => ['animationFPS' => 14.5, 'animationScale' => 2,   'animationOffsetX' => 2,  'animationOffsetXWhenFacingRight' => -2, 'animationOffsetY' => 34],
+        'atack' => ['animationFPS' => 13,  'animationScale' => 3.6, 'animationOffsetX' => -2, 'animationOffsetXWhenFacingRight' => 2,  'animationOffsetY' => 70],
     ],
     'sounds' => [
         'weapon' => 'sword',

@@ -16,7 +16,7 @@
             <!-- Hero Image & Slots Container -->
             <div class="relative flex-1 overflow-hidden group">
                 <!-- Hero Image: No Filters -->
-                <img src="assets/img/archer-male.png" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700" alt="Hero">
+                <img src="assets/img/archer-male.webp" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700" alt="Hero">
                 
                 <!-- Radiant Background Effect -->
                 <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent"></div>

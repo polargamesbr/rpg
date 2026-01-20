@@ -19,7 +19,7 @@
     <!-- Background (Bright Center, Dark Edges) -->
     <div class="absolute inset-0 bg-[#050505] transition-colors duration-1000" id="combat-bg-layer">
         <!-- Main BG Image -->
-        <img id="combat-bg-img" src="assets/img/battle.png" class="absolute inset-0 w-full h-full object-cover object-center opacity-100 blur-[0px] scale-105 transition-transform duration-[20s] ease-linear">
+        <img id="combat-bg-img" src="assets/img/battle.webp" class="absolute inset-0 w-full h-full object-cover object-center opacity-100 blur-[0px] scale-105 transition-transform duration-[20s] ease-linear">
         
         <!-- Vignette (Darkens edges only) -->
         <div class="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/90 via-transparent to-black/90"></div>

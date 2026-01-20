@@ -21,7 +21,7 @@ $questStartUrlJs = htmlspecialchars($questStartUrl, ENT_QUOTES, 'UTF-8');
 $assetImgBaseJs = htmlspecialchars($assetImgBase, ENT_QUOTES, 'UTF-8');
 
 // Prepare CSS with image path
-$tavernFooterImg = asset('img/tavern-footer.jpg');
+$tavernFooterImg = asset('img/tavern-footer.webp');
 $additionalStyles = <<<CSS
 .tavern-panel {
     background: rgba(20, 15, 10, 0.4);
@@ -701,7 +701,7 @@ ob_start();
         
         <!-- Hero Section com Background -->
         <div class="relative w-full" style="height: 38vh; min-height: 300px;">
-            <img src="<?= asset('img/tavern-background.jpg') ?>" alt="Tavern" class="w-full h-full object-cover object-center">
+            <img src="<?= asset('img/tavern-background.webp') ?>" alt="Tavern" class="w-full h-full object-cover object-center">
             <div class="absolute bottom-0 left-0 right-0" style="height: 20%; background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);"></div>
             
             <!-- Header Superior (Absolute) -->

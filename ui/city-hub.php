@@ -21,7 +21,7 @@
             
             <!-- Hero Section com Background -->
             <div class="relative w-full shrink-0" style="height: 50vh; min-height: 400px;">
-                <img src="assets/img/stormhaven.png" alt="Stormhaven" class="w-full h-full object-cover object-center">
+                <img src="assets/img/stormhaven.webp" alt="Stormhaven" class="w-full h-full object-cover object-center">
                 <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-stone-900 to-transparent"></div>
                 
                 <!-- Atmospheric Fog (Optional - reusing existing styles if possible) -->

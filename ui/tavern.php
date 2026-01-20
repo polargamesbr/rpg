@@ -328,7 +328,7 @@
             min-height: 700px;
             z-index: 1;
             pointer-events: none;
-            background-image: url('assets/img/tavern-footer.jpg');
+            background-image: url('assets/img/tavern-footer.webp');
             background-repeat: repeat-x;
             background-position: bottom center;
             background-size: contain;
@@ -353,7 +353,7 @@
             
             <!-- Hero Section com Background -->
             <div class="relative w-full" style="height: 38vh; min-height: 300px;">
-                <img src="assets/img/tavern-background.jpg" alt="Tavern" class="w-full h-full object-cover object-center">
+                <img src="assets/img/tavern-background.webp" alt="Tavern" class="w-full h-full object-cover object-center">
                 <div class="absolute bottom-0 left-0 right-0" style="height: 20%; background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);"></div>
                 
                 <!-- Header Superior (Absolute) -->
@@ -399,7 +399,7 @@
                                     <div class="chat-message">
                                         <div class="chat-avatar">
                                             <div class="chat-avatar-inner">
-                                                <img src="assets/img/avatar.png" alt="Hector">
+                                                <img src="assets/img/avatar.webp" alt="Hector">
                                             </div>
                                         </div>
                                         <div class="chat-message-content">
@@ -415,7 +415,7 @@
                                     <div class="chat-message">
                                         <div class="chat-avatar">
                                             <div class="chat-avatar-inner">
-                                                <img src="assets/img/avatar.png" alt="Amira">
+                                                <img src="assets/img/avatar.webp" alt="Amira">
                                             </div>
                                         </div>
                                         <div class="chat-message-content">
@@ -431,7 +431,7 @@
                                     <div class="chat-message">
                                         <div class="chat-avatar">
                                             <div class="chat-avatar-inner">
-                                                <img src="assets/img/avatar.png" alt="Arie">
+                                                <img src="assets/img/avatar.webp" alt="Arie">
                                             </div>
                                         </div>
                                         <div class="chat-message-content">
@@ -451,7 +451,7 @@
                                     <div class="chat-message">
                                         <div class="chat-avatar">
                                             <div class="chat-avatar-inner">
-                                                <img src="assets/img/avatar.png" alt="Rhogar">
+                                                <img src="assets/img/avatar.webp" alt="Rhogar">
                                             </div>
                                         </div>
                                         <div class="chat-message-content">
@@ -467,7 +467,7 @@
                                     <div class="chat-message">
                                         <div class="chat-avatar">
                                             <div class="chat-avatar-inner">
-                                                <img src="assets/img/avatar.png" alt="Calder">
+                                                <img src="assets/img/avatar.webp" alt="Calder">
                                             </div>
                                         </div>
                                         <div class="chat-message-content">

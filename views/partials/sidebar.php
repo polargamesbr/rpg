@@ -6,7 +6,7 @@ use App\Models\ClassModel;
 $character = CharacterService::getActiveCharacter();
 
 // Get avatar image based on class and gender
-$avatarImage = 'avatar.png';
+$avatarImage = 'avatar.webp';
 $characterName = 'Unknown';
 $characterClass = 'Adventurer';
 $characterLevel = 1;

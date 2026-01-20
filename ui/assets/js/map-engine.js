@@ -17,7 +17,7 @@
         ZOOM_STEP: 0.15,
         ANIMATION_SPEED: 100,
         RULER_SIZE: 28,  // Size of the ruler guides
-        MAP_PATH: '/public/assets/img/maps/castle-map.png'
+        MAP_PATH: '/public/assets/img/maps/castle-map.webp'
     };
 
     // Map dimensions (set after image loads)
@@ -202,19 +202,19 @@
             {
                 id: 'hero1', name: getEntityName('hero_swordman', 'Swordman'), type: 'player',
                 x: 16, y: 8, hp: 100, maxHp: 100, sp: 50, maxSp: 50, attack: 18, defense: 12,
-                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/swordman-male.png',
+                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/swordman-male.webp',
                 class: 'warrior', scale: 1.0
             },
             {
                 id: 'hero2', name: getEntityName('hero_mage', 'Mage'), type: 'player',
                 x: 15, y: 10, hp: 60, maxHp: 60, sp: 100, maxSp: 100, attack: 25, defense: 5,
-                moveRange: 3, attackRange: 3, avatar: '/public/assets/img/mage-male.png',
+                moveRange: 3, attackRange: 3, avatar: '/public/assets/img/mage-male.webp',
                 class: 'mage', scale: 1.0
             },
             {
                 id: 'hero3', name: getEntityName('hero_archer', 'Archer'), type: 'player',
                 x: 14, y: 9, hp: 70, maxHp: 70, sp: 60, maxSp: 60, attack: 20, defense: 8,
-                moveRange: 5, attackRange: 3, avatar: '/public/assets/img/archer-female.png',
+                moveRange: 5, attackRange: 3, avatar: '/public/assets/img/archer-female.webp',
                 class: 'archer', scale: 1.0
             }
         ];
@@ -224,19 +224,19 @@
             {
                 id: 'orc1', name: getEntityName('orc', 'Orc Warrior'), type: 'enemy',
                 x: 18, y: 8, hp: 35, maxHp: 35, attack: 10, defense: 5,
-                moveRange: 3, attackRange: 1, avatar: '/public/assets/img/orc.png',
+                moveRange: 3, attackRange: 1, avatar: '/public/assets/img/orc.webp',
                 behavior: 'aggressive', scale: 1.0
             },
             {
                 id: 'orc2', name: getEntityName('orc_scout', 'Orc Scout'), type: 'enemy',
                 x: 19, y: 7, hp: 45, maxHp: 45, attack: 15, defense: 3,  // Adjacent to orc1
-                moveRange: 2, attackRange: 3, avatar: '/public/assets/img/orc_scout.png',
+                moveRange: 2, attackRange: 3, avatar: '/public/assets/img/orc_scout.webp',
                 behavior: 'defensive', scale: 1.0
             },
             {
                 id: 'orc3', name: getEntityName('bandit_marauder', 'Bandit Marauder'), type: 'enemy',
                 x: 19, y: 9, hp: 120, maxHp: 120, attack: 22, defense: 10,  // Adjacent to orc1
-                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/bandit_marauder.png',
+                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/bandit_marauder.webp',
                 behavior: 'aggressive', scale: 1.0
             },
             {

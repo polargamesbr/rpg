@@ -261,7 +261,7 @@
 
     <!-- Espadachim (Swordsman) -->
     <div class="hero-panel" style="--class-color: #ef4444; --class-glow: rgba(239, 68, 68, 0.6);">
-        <div class="hero-bg" style="background-image: url('assets/img/avatar.png');"></div>
+        <div class="hero-bg" style="background-image: url('assets/img/avatar.webp');"></div>
         <div class="overlay"></div>
         
         <i data-lucide="sword" class="class-icon-watermark w-24 h-24"></i>
@@ -292,7 +292,7 @@
 
     <!-- Arqueiro (Archer) -->
     <div class="hero-panel" style="--class-color: #22c55e; --class-glow: rgba(34, 197, 94, 0.6);">
-        <div class="hero-bg" style="background-image: url('assets/img/avatar.png');"></div>
+        <div class="hero-bg" style="background-image: url('assets/img/avatar.webp');"></div>
         <div class="overlay"></div>
 
         <i data-lucide="crosshair" class="class-icon-watermark w-24 h-24"></i>
@@ -323,7 +323,7 @@
 
     <!-- Mago (Mage) -->
     <div class="hero-panel" style="--class-color: #3b82f6; --class-glow: rgba(59, 130, 246, 0.6);">
-        <div class="hero-bg" style="background-image: url('assets/img/avatar.png');"></div>
+        <div class="hero-bg" style="background-image: url('assets/img/avatar.webp');"></div>
         <div class="overlay"></div>
 
         <i data-lucide="zap" class="class-icon-watermark w-24 h-24"></i>
@@ -354,7 +354,7 @@
 
     <!-- Ladrão (Thief) -->
     <div class="hero-panel" style="--class-color: #a8a29e; --class-glow: rgba(168, 162, 158, 0.6);">
-        <div class="hero-bg" style="background-image: url('assets/img/avatar.png');"></div>
+        <div class="hero-bg" style="background-image: url('assets/img/avatar.webp');"></div>
         <div class="overlay"></div>
 
         <i data-lucide="ghost" class="class-icon-watermark w-24 h-24"></i>
@@ -385,7 +385,7 @@
 
     <!-- Acolito (Acolyte) -->
     <div class="hero-panel" style="--class-color: #facc15; --class-glow: rgba(250, 204, 21, 0.6);">
-        <div class="hero-bg" style="background-image: url('assets/img/avatar.png');"></div>
+        <div class="hero-bg" style="background-image: url('assets/img/avatar.webp');"></div>
         <div class="overlay"></div>
 
         <i data-lucide="sun" class="class-icon-watermark w-24 h-24"></i>
@@ -416,7 +416,7 @@
 
     <!-- Ferreiro (Blacksmith) -->
     <div class="hero-panel" style="--class-color: #f97316; --class-glow: rgba(249, 115, 22, 0.6);">
-        <div class="hero-bg" style="background-image: url('assets/img/avatar.png');"></div>
+        <div class="hero-bg" style="background-image: url('assets/img/avatar.webp');"></div>
         <div class="overlay"></div>
 
         <i data-lucide="hammer" class="class-icon-watermark w-24 h-24"></i>

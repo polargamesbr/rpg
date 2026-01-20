@@ -272,7 +272,7 @@
     
     <!-- Scene Background -->
     <div class="scene-bg">
-        <img src="assets/img/tavern-background.jpg" alt="Scene">
+        <img src="assets/img/tavern-background.webp" alt="Scene">
     </div>
     
     <!-- Visual Effects -->
@@ -350,7 +350,7 @@
                 <div class="flex items-center gap-3">
                     <div class="relative">
                         <div class="w-12 h-12 rounded-full overflow-hidden ring-2 ring-amber-500/30">
-                            <img src="assets/img/swordman-male.png" class="w-full h-full object-cover">
+                            <img src="assets/img/swordman-male.webp" class="w-full h-full object-cover">
                         </div>
                         <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-600 text-[10px] font-black flex items-center justify-center border-2 border-black">
                             7

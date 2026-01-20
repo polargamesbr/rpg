@@ -10,8 +10,8 @@ return [
     'desc' => 'An agile rogue who moves through shadows and strikes from the darkness. Masters of stealth and precision, they excel at quick, deadly attacks and evading danger.',
     'base_level' => 1,
     'images' => [
-        'male' => 'assets/img/thief-male.png',
-        'female' => 'assets/img/thief-female.png',
+        'male' => 'assets/img/thief-male.webp',
+        'female' => 'assets/img/thief-female.webp',
     ],
     'attributes' => [
         'str' => 8,

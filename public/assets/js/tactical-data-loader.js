@@ -46,48 +46,38 @@ window.TacticalDataLoader = (function() {
             return pendingEntityRequests[cacheKey];
         }
 
-        // Create new request
-        const requestPromise = fetch(`/game/api/entities?ids=${encodeURIComponent(uncachedIds.join(','))}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Failed to load entities: ${response.status}`);
+        // Create new request (retry 1x on failure; on second failure, cancel)
+        const url = `/game/api/entities?ids=${encodeURIComponent(uncachedIds.join(','))}`;
+        const doFetch = async () => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load entities: ${response.status}`);
+            return response.json();
+        };
+        const requestPromise = (async () => {
+            let data;
+            try {
+                data = await doFetch();
+            } catch (e) {
+                try {
+                    data = await doFetch();
+                } catch (e2) {
+                    delete pendingEntityRequests[cacheKey];
+                    throw new Error('Falha ao carregar entidades. Tente novamente.');
                 }
-                return response.json();
-            })
-            .then(data => {
-                const entities = data.entities || {};
-                
-                // Store in cache (by request key and by sheet.id for entity_id lookup)
-                Object.keys(entities).forEach(key => {
-                    const sheet = entities[key];
-                    entityCache[key] = sheet;
-                    if (sheet && sheet.id) {
-                        entityCache[sheet.id] = sheet;
-                    }
-                });
-                
-                // Remove from pending requests
-                delete pendingEntityRequests[cacheKey];
-                
-                // Return all requested entities (cached + newly loaded)
-                const result = {};
-                ids.forEach(id => {
-                    if (entityCache[id]) {
-                        result[id] = entityCache[id];
-                    }
-                });
-                
-                return result;
-            })
-            .catch(error => {
-                console.error('[TacticalDataLoader] Error loading entities:', error);
-                delete pendingEntityRequests[cacheKey];
-                throw error;
+            }
+            const entities = data.entities || {};
+            Object.keys(entities).forEach(key => {
+                const sheet = entities[key];
+                entityCache[key] = sheet;
+                if (sheet && sheet.id) entityCache[sheet.id] = sheet;
             });
+            delete pendingEntityRequests[cacheKey];
+            const result = {};
+            ids.forEach(id => { if (entityCache[id]) result[id] = entityCache[id]; });
+            return result;
+        })();
 
-        // Store pending request
         pendingEntityRequests[cacheKey] = requestPromise;
-        
         return requestPromise;
     }
 
@@ -158,44 +148,34 @@ window.TacticalDataLoader = (function() {
             return pendingSkillRequests[cacheKey];
         }
 
-        // Create new request
-        const requestPromise = fetch(`/game/api/skills?ids=${encodeURIComponent(uncachedIds.join(','))}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Failed to load skills: ${response.status}`);
+        // Create new request (retry 1x on failure; on second failure, cancel)
+        const url = `/game/api/skills?ids=${encodeURIComponent(uncachedIds.join(','))}`;
+        const doFetch = async () => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load skills: ${response.status}`);
+            return response.json();
+        };
+        const requestPromise = (async () => {
+            let data;
+            try {
+                data = await doFetch();
+            } catch (e) {
+                try {
+                    data = await doFetch();
+                } catch (e2) {
+                    delete pendingSkillRequests[cacheKey];
+                    throw new Error('Falha ao carregar skills. Tente novamente.');
                 }
-                return response.json();
-            })
-            .then(data => {
-                const skills = data.skills || {};
-                
-                // Store in cache
-                Object.keys(skills).forEach(id => {
-                    skillCache[id] = skills[id];
-                });
-                
-                // Remove from pending requests
-                delete pendingSkillRequests[cacheKey];
-                
-                // Return all requested skills (cached + newly loaded)
-                const result = {};
-                stringIds.forEach(id => {
-                    if (skillCache[id]) {
-                        result[id] = skillCache[id];
-                    }
-                });
-                
-                return result;
-            })
-            .catch(error => {
-                console.error('[TacticalDataLoader] Error loading skills:', error);
-                delete pendingSkillRequests[cacheKey];
-                throw error;
-            });
+            }
+            const skills = data.skills || {};
+            Object.keys(skills).forEach(id => { skillCache[id] = skills[id]; });
+            delete pendingSkillRequests[cacheKey];
+            const result = {};
+            stringIds.forEach(id => { if (skillCache[id]) result[id] = skillCache[id]; });
+            return result;
+        })();
 
-        // Store pending request
         pendingSkillRequests[cacheKey] = requestPromise;
-        
         return requestPromise;
     }
 

@@ -2,7 +2,7 @@
     "gridCols": 60,
     "gridRows": 20,
     "cellSize": 64,
-    "mapImage": "/public/assets/img/maps/first-steps.png",
+    "mapImage": "/public/assets/img/maps/first-steps.webp",
     "walls": [
         {
             "x": 8,

@@ -1090,16 +1090,16 @@ const combatSystem = {
             if (regPng) return regPng;
 
             const map = {
-                poison: '/public/assets/icons/skills/poison_arrow.png',
-                bleed: '/public/assets/icons/skills/crushing_blow.png',
-                burn: '/public/assets/icons/skills/2.png',
-                freeze: '/public/assets/icons/skills/2.png',
-                stun: '/public/assets/icons/skills/shield_bash.png',
-                paralyze: '/public/assets/icons/skills/3.png',
-                hunters_focus: '/public/assets/icons/skills/hunters_focus.png',
-                battle_focus: '/public/assets/icons/skills/battle_focus.png',
-                defensive_wall: '/public/assets/icons/skills/defensive_wall.png',
-                parry_stance: '/public/assets/icons/skills/parry_stance.png',
+                poison: '/public/assets/icons/skills/poison_arrow.webp',
+                bleed: '/public/assets/icons/skills/crushing_blow.webp',
+                burn: '/public/assets/icons/skills/2.webp',
+                freeze: '/public/assets/icons/skills/2.webp',
+                stun: '/public/assets/icons/skills/shield_bash.webp',
+                paralyze: '/public/assets/icons/skills/3.webp',
+                hunters_focus: '/public/assets/icons/skills/hunters_focus.webp',
+                battle_focus: '/public/assets/icons/skills/battle_focus.webp',
+                defensive_wall: '/public/assets/icons/skills/defensive_wall.webp',
+                parry_stance: '/public/assets/icons/skills/parry_stance.webp',
             };
             return map[id] || null;
         };

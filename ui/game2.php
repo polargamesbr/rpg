@@ -164,7 +164,7 @@
         
         <!-- Left Column: Scene Image -->
         <div class="w-[50%] relative">
-            <img src="assets/img/guild.jpg" alt="Scene" class="absolute inset-0 w-full h-full object-cover">
+            <img src="assets/img/guild.webp" alt="Scene" class="absolute inset-0 w-full h-full object-cover">
             <div class="scene-overlay absolute inset-0"></div>
             
             <!-- Floating Quest Info -->
@@ -199,7 +199,7 @@
                     <!-- Avatar -->
                     <div class="relative">
                         <div class="w-16 h-16 rounded-2xl overflow-hidden ring-2 ring-purple-500/40 ring-offset-2 ring-offset-black">
-                            <img src="assets/img/swordman-male.png" alt="Player" class="w-full h-full object-cover">
+                            <img src="assets/img/swordman-male.webp" alt="Player" class="w-full h-full object-cover">
                         </div>
                         <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-br from-purple-500 to-purple-700 rounded-lg flex items-center justify-center text-[10px] font-black border-2 border-black">
                             7

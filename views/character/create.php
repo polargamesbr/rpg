@@ -804,7 +804,7 @@ ob_start();
     <audio id="audio-whats-your-name" preload="auto">
         <source src="<?= asset('mp3/whats-your-name.mp3') ?>" type="audio/mpeg">
     </audio>
-    <div class="absolute inset-0 z-0 bg-cover bg-center" style="background-image: url('<?= asset('img/tavern-background.jpg') ?>'); filter: grayscale(100%) blur(5px) brightness(0.4);"></div>
+    <div class="absolute inset-0 z-0 bg-cover bg-center" style="background-image: url('<?= asset('img/tavern-background.webp') ?>'); filter: grayscale(100%) blur(5px) brightness(0.4);"></div>
     <canvas id="particles-bg" class="absolute inset-0 z-10"></canvas>
     
     <div class="input-group relative z-20 flex flex-col items-center">

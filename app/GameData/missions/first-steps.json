@@ -4,56 +4,20 @@
         "y": 10
     },
     "player_defaults": {
-        "scale": 1.7,
-        "animations": {
-            "idle": {
-                "animationFPS": 7,
-                "animationScale": 1.9,
-                "animationOffsetX": 1,
-                "animationOffsetY": 39
-            },
-            "walk": {
-                "animationFPS": 7,
-                "animationScale": 2,
-                "animationOffsetX": 1,
-                "animationOffsetY": 43
-            },
-            "atack": {
-                "animationFPS": 7,
-                "animationScale": 3.6,
-                "animationOffsetX": 3,
-                "animationOffsetY": 70
-            }
-        },
-        "forceAnimation": "auto"
+        "scale": 1.7
     },
     "allies": [
         {
             "id": "ally_archer_1",
             "combat_key": "hero_archer",
             "x": 11,
-            "y": 9,
-            "animations": {
-                "idle": {
-                    "animationFPS": 7,
-                    "animationScale": 1.9,
-                    "animationOffsetX": 2,
-                    "animationOffsetY": 44
-                },
-                "walk": {
-                    "animationFPS": 10,
-                    "animationScale": 2.1,
-                    "animationOffsetX": -1,
-                    "animationOffsetY": 43
-                },
-                "atack": {
-                    "animationFPS": 14.5,
-                    "animationScale": 2,
-                    "animationOffsetX": 0,
-                    "animationOffsetY": 41
-                }
-            },
-            "forceAnimation": "idle"
+            "y": 9
+        },
+        {
+            "id": "ally_acolyte_1",
+            "combat_key": "hero_acolyte",
+            "x": 12,
+            "y": 10
         }
     ],
     "enemies": [
@@ -61,66 +25,31 @@
             "id": "slime_1",
             "combat_key": "toxic_slime",
             "x": 24,
-            "y": 10,
-            "animationFPS": 7,
-            "animationScale": 1,
-            "animationOffsetX": -1,
-            "animationOffsetY": 50,
-            "forceAnimation": "auto"
+            "y": 10
         },
         {
             "id": "slime_2",
             "combat_key": "toxic_slime",
             "x": 40,
-            "y": 9,
-            "animationFPS": 7,
-            "animationScale": 1,
-            "animationOffsetX": -1,
-            "animationOffsetY": 50,
-            "forceAnimation": "auto"
+            "y": 9
         },
         {
             "id": "wolf_1",
             "combat_key": "wolf",
             "x": 45,
-            "y": 8,
-            "animations": {
-                "idle": {
-                    "animationFPS": 6,
-                    "animationScale": 2.1,
-                    "animationOffsetX": -1,
-                    "animationOffsetY": 58
-                },
-                "walk": {
-                    "animationFPS": 6,
-                    "animationScale": 1.8,
-                    "animationOffsetX": -1,
-                    "animationOffsetY": 53
-                }
-            },
-            "forceAnimation": "auto"
+            "y": 8
         },
         {
             "id": "wolf_2",
             "combat_key": "wolf",
             "x": 30,
-            "y": 10,
-            "animations": {
-                "idle": { "animationFPS": 6, "animationScale": 2.1, "animationOffsetX": -1, "animationOffsetY": 58 },
-                "walk": { "animationFPS": 6, "animationScale": 1.8, "animationOffsetX": -1, "animationOffsetY": 53 }
-            },
-            "forceAnimation": "auto"
+            "y": 10
         },
         {
             "id": "slime_3",
             "combat_key": "toxic_slime",
             "x": 24,
-            "y": 14,
-            "animationFPS": 7,
-            "animationScale": 1,
-            "animationOffsetX": -1,
-            "animationOffsetY": 50,
-            "forceAnimation": "auto"
+            "y": 14
         }
     ],
     "chests": [

@@ -6,7 +6,7 @@ return [
         'title' => 'First Steps',
         'description' => 'Learn the basics of combat and exploration in Stormhaven. Master your first sword techniques, learn to navigate the city, and discover the fundamentals of adventuring.',
         'prompt_ia' => 'You are a narrator for an RPG game. The player is starting their first quest: "First Steps". This is a tutorial quest where the character learns the basics of adventuring in Stormhaven. The character is a newcomer to the city and needs to learn about combat, exploration, and the world around them. Create an engaging narrative that introduces the player to the game mechanics while telling an interesting story. The story should be set in Stormhaven, a dark fantasy medieval city.',
-        'image' => 'torvin.png',
+        'image' => 'torvin.webp',
         'rewards' => [
             'xp' => 50,
             'gold' => 10

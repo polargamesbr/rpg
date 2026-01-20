@@ -11,11 +11,14 @@ return [
     'desc' => 'A precision archer with deep connection to nature and keen eyesight. They strike from a distance with deadly accuracy, using the environment to their advantage.',
     'base_level' => 1,
     'images' => [
-        'default' => 'assets/entities/archer/avatar.png',
+        'default' => 'assets/entities/archer/avatar.webp',
     ],
     'animations' => [
         'base' => 'entities',
         'types' => ['idle', 'walk', 'atack'],
+        'idle'  => ['animationFPS' => 17.5, 'animationScale' => 1.4, 'animationOffsetX' => -5, 'animationOffsetXWhenFacingRight' => 5,  'animationOffsetY' => 35],
+        'walk'  => ['animationFPS' => 9.5,  'animationScale' => 1.6, 'animationOffsetX' => -8, 'animationOffsetXWhenFacingRight' => 8,  'animationOffsetY' => 33],
+        'atack' => ['animationFPS' => 14.5, 'animationScale' => 1.4, 'animationOffsetX' => -3, 'animationOffsetXWhenFacingRight' => 3,  'animationOffsetY' => 36],
     ],
     'sounds' => [
         'weapon' => 'bow',

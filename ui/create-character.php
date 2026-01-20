@@ -666,7 +666,7 @@
     <!-- STEP 1: NAME INPUT -->
     <div id="step-name" class="step-container step-active flex items-center justify-center min-h-screen">
         <!-- Background Layer -->
-        <div class="absolute inset-0 z-0 bg-cover bg-center" style="background-image: url('assets/img/tavern-background.jpg'); filter: grayscale(100%) blur(5px) brightness(0.4);"></div>
+        <div class="absolute inset-0 z-0 bg-cover bg-center" style="background-image: url('assets/img/tavern-background.webp'); filter: grayscale(100%) blur(5px) brightness(0.4);"></div>
         <canvas id="particles-bg" class="absolute inset-0 z-10"></canvas>
         
         <div class="input-group relative z-20 flex flex-col items-center">
@@ -688,7 +688,7 @@
             
             <!-- Espadachim -->
             <div class="hero-panel" id="panel-espadachim" data-color="#ef4444" style="--class-color: #ef4444; --class-glow: rgba(239, 68, 68, 0.5);">
-                <div class="hero-bg class-hero-bg" id="bg-espadachim" style="background-image: url('assets/img/swordman-male.png');"></div>
+                <div class="hero-bg class-hero-bg" id="bg-espadachim" style="background-image: url('assets/img/swordman-male.webp');"></div>
                 <div class="overlay"></div>
                 <div class="panel-content">
                     <div class="flex items-center gap-8 mb-4">
@@ -715,7 +715,7 @@
 
             <!-- Arqueiro -->
             <div class="hero-panel" id="panel-arqueiro" data-color="#22c55e" style="--class-color: #22c55e; --class-glow: rgba(34, 197, 94, 0.5);">
-                <div class="hero-bg class-hero-bg" id="bg-arqueiro" style="background-image: url('assets/img/archer-male.png');"></div>
+                <div class="hero-bg class-hero-bg" id="bg-arqueiro" style="background-image: url('assets/img/archer-male.webp');"></div>
                 <div class="overlay"></div>
                 <div class="panel-content">
                     <div class="flex items-center gap-8 mb-4">
@@ -742,7 +742,7 @@
 
             <!-- Mago -->
             <div class="hero-panel" data-color="#3b82f6" style="--class-color: #3b82f6; --class-glow: rgba(59, 130, 246, 0.5);">
-                <div class="hero-bg class-hero-bg" id="bg-mago" style="background-image: url('assets/img/mage-male.png');"></div>
+                <div class="hero-bg class-hero-bg" id="bg-mago" style="background-image: url('assets/img/mage-male.webp');"></div>
                 <div class="overlay"></div>
                 <div class="panel-content">
                     <div class="flex items-center gap-8 mb-4">
@@ -769,7 +769,7 @@
 
             <!-- Ladrão -->
             <div class="hero-panel" data-color="#a8a29e" style="--class-color: #a8a29e; --class-glow: rgba(168, 162, 158, 0.5);">
-                <div class="hero-bg class-hero-bg" id="bg-ladrao" style="background-image: url('assets/img/thief-male.png');"></div>
+                <div class="hero-bg class-hero-bg" id="bg-ladrao" style="background-image: url('assets/img/thief-male.webp');"></div>
                 <div class="overlay"></div>
                 <div class="panel-content">
                     <div class="flex items-center gap-8 mb-4">
@@ -796,7 +796,7 @@
 
             <!-- Acolito -->
             <div class="hero-panel" data-color="#facc15" style="--class-color: #facc15; --class-glow: rgba(250, 204, 21, 0.5);">
-                <div class="hero-bg class-hero-bg" id="bg-acolito" style="background-image: url('assets/img/sacer-male.png');"></div>
+                <div class="hero-bg class-hero-bg" id="bg-acolito" style="background-image: url('assets/img/sacer-male.webp');"></div>
                 <div class="overlay"></div>
                 <div class="panel-content">
                     <div class="flex items-center gap-8 mb-4">
@@ -823,7 +823,7 @@
 
             <!-- Ferreiro -->
             <div class="hero-panel" data-color="#f97316" style="--class-color: #f97316; --class-glow: rgba(249, 115, 22, 0.5);">
-                <div class="hero-bg class-hero-bg" id="bg-ferreiro" style="background-image: url('assets/img/blacksmith-male.png');"></div>
+                <div class="hero-bg class-hero-bg" id="bg-ferreiro" style="background-image: url('assets/img/blacksmith-male.webp');"></div>
                 <div class="overlay"></div>
                 <div class="panel-content">
                     <div class="flex items-center gap-8 mb-4">
@@ -1131,7 +1131,7 @@
 
                 // Hero Image & Background
                 // Construct filename matches Logic in setGender
-                let imgName = 'archer-male.png'; // Default fallback
+                let imgName = 'archer-male.webp'; // Default fallback
                 if(className === 'Espadachim') imgName = `swordman-${selectedGender}.png`;
                 else if(className === 'Arqueiro') imgName = `archer-${selectedGender}.png`;
                 else if(className === 'Mago') imgName = `mage-${selectedGender}.png`;

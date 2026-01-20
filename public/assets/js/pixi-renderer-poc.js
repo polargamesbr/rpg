@@ -3,9 +3,9 @@
  * Demonstra: Application, Sprite do mapa, câmera (pan + zoom).
  *
  * Uso: carregue Pixi antes (CDN ou bundle) e este script. Chame:
- *   PixiMapDemo.run('pixi-container', '/public/assets/img/maps/first-steps.png');
+ *   PixiMapDemo.run('pixi-container', '/public/assets/img/maps/first-steps.webp');
  *
- * Ou deixe os padrões: container 'pixi-container', mapa first-steps.png.
+ * Ou deixe os padrões: container 'pixi-container', mapa first-steps.webp.
  */
 (function (global) {
     'use strict';
@@ -81,11 +81,11 @@
 
     /**
      * @param {string} containerId - id do elemento (ex: 'pixi-container')
-     * @param {string} mapImageUrl - URL da imagem do mapa (ex: '/public/assets/img/maps/first-steps.png')
+     * @param {string} mapImageUrl - URL da imagem do mapa (ex: '/public/assets/img/maps/first-steps.webp')
      */
     async function run(containerId, mapImageUrl) {
         containerId = containerId || 'pixi-container';
-        mapImageUrl = mapImageUrl || '/public/assets/img/maps/first-steps.png';
+        mapImageUrl = mapImageUrl || '/public/assets/img/maps/first-steps.webp';
 
         const container = document.getElementById(containerId);
         if (!container) {

@@ -163,6 +163,7 @@
      */
     function selectUnit(unit) {
         debugSelectedUnit = unit;
+        const d = document.getElementById('debug-stats-diff'); if (d) d.textContent = '';
         updateDebugPanelFromUnit();
         updateDebugConfigJson();
         console.log(`[MAP-DEBUG] Unidade selecionada: ${unit?.name || 'nenhuma'}`);
@@ -291,7 +292,7 @@
                     <button id="debug-anim-idle" class="debug-anim-btn" data-anim="idle" style="flex: 1; padding: 6px; background: #1e40af; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 11px;">Idle</button>
                     <button id="debug-anim-walk" class="debug-anim-btn" data-anim="walk" style="flex: 1; padding: 6px; background: #1e40af; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 11px;">Walk</button>
                     <button id="debug-anim-atack" class="debug-anim-btn" data-anim="atack" style="flex: 1; padding: 6px; background: #1e40af; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 11px;">Atack</button>
-                    <button id="debug-anim-auto" class="debug-anim-btn" data-anim="" style="flex: 1; padding: 6px; background: #3b82f6; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 11px;">Auto</button>
+                    <button id="debug-anim-normal" class="debug-anim-btn" data-anim="" style="flex: 1; padding: 6px; background: #3b82f6; border: 1px solid #60a5fa; border-radius: 4px; color: white; cursor: pointer; font-size: 11px;">Normal</button>
                 </div>
             </div>
             
@@ -316,6 +317,21 @@
                     🔍 Inspect Status
                 </button>
                 <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">Mostra status completo no console</div>
+            </div>
+            
+            <div style="margin-bottom: 15px; padding-top: 10px; border-top: 1px solid #333;">
+                <div style="font-size: 10px; color: #a78bfa; margin-bottom: 4px; font-weight: bold;">Atributos (Ficha):</div>
+                <div style="font-size: 9px; color: #666; margin-bottom: 4px;">STR AGI VIT INT DEX LUK</div>
+                <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 6px;">
+                    <input type="number" id="debug-attr-str" min="1" max="999" value="1" style="width: 100%; padding: 4px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 4px; font-size: 11px; text-align: center;" title="STR">
+                    <input type="number" id="debug-attr-agi" min="1" max="999" value="1" style="width: 100%; padding: 4px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 4px; font-size: 11px; text-align: center;" title="AGI">
+                    <input type="number" id="debug-attr-vit" min="1" max="999" value="1" style="width: 100%; padding: 4px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 4px; font-size: 11px; text-align: center;" title="VIT">
+                    <input type="number" id="debug-attr-int" min="1" max="99" value="1" style="width: 100%; padding: 4px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 4px; font-size: 11px; text-align: center;" title="INT">
+                    <input type="number" id="debug-attr-dex" min="1" max="999" value="1" style="width: 100%; padding: 4px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 4px; font-size: 11px; text-align: center;" title="DEX">
+                    <input type="number" id="debug-attr-luk" min="1" max="999" value="1" style="width: 100%; padding: 4px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 4px; font-size: 11px; text-align: center;" title="LUK">
+                </div>
+                <button id="debug-apply-attributes" style="width: 100%; padding: 6px; background: #7c3aed; border: 1px solid #a78bfa; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Aplicar atributos</button>
+                <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">Recalcula ATK/DEF/HP/MP</div>
             </div>
             
             <div style="margin-bottom: 15px; padding-top: 10px; border-top: 1px solid #333;">
@@ -490,11 +506,15 @@
                 <div id="debug-stats-display" style="font-size: 10px; color: #94a3b8; line-height: 1.6;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px;">
                         <span>ATK: <span id="debug-stat-atk">--</span></span>
+                        <span>ATK Rng: <span id="debug-stat-atkRanged">--</span></span>
                         <span>MATK: <span id="debug-stat-matk">--</span></span>
                         <span>DEF: <span id="debug-stat-def">--</span></span>
                         <span>MDEF: <span id="debug-stat-mdef">--</span></span>
+                        <span>HP: <span id="debug-stat-hp">--</span></span>
+                        <span>MP: <span id="debug-stat-mp">--</span></span>
                     </div>
                 </div>
+                <div id="debug-stats-diff" style="font-size: 9px; color: #4ade80; margin-top: 6px; min-height: 14px;"></div>
                 <button id="debug-apply-level" style="width: 100%; margin-top: 8px; padding: 6px; background: #ca8a04; border: 1px solid #eab308; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Aplicar Level</button>
             </div>
             
@@ -656,8 +676,9 @@
                     delete debugSelectedUnit.debugOffsetX;
                     delete debugSelectedUnit.debugOffsetY;
 
-                    // Resetar animationStartFrame para que animações não-loop (atack) reiniciem do início
-                    delete debugSelectedUnit.animationStartFrame;
+                    // Resetar animationStartTimeMs para que animações não-loop (atack) reiniciem do início
+                    delete debugSelectedUnit.animationStartTimeMs;
+                    delete debugSelectedUnit.animationStartFrame; // legado
                     delete debugSelectedUnit._animReverting;
                 }
 
@@ -751,6 +772,9 @@
 
         // Aplicar level
         document.getElementById('debug-apply-level')?.addEventListener('click', applyLevel);
+
+        // Aplicar atributos (ficha)
+        document.getElementById('debug-apply-attributes')?.addEventListener('click', applyAttributes);
 
         // Botão Inspect Status
         document.getElementById('debug-inspect-status')?.addEventListener('click', () => {
@@ -1895,21 +1919,69 @@
     function applyLevel() {
         if (!debugSelectedUnit) return;
 
+        const before = snapshotStats(debugSelectedUnit);
         const level = parseInt(document.getElementById('debug-level-slider')?.value || '1');
         debugSelectedUnit.level = level;
 
-        if (debugSelectedUnit.attributes && window.SkillEngine) {
-            const stats = window.SkillEngine.calculateStatsFromAttributes(level, debugSelectedUnit.attributes);
+        if (mapEngineRef && typeof mapEngineRef.applySkillEngineStats === 'function') {
+            mapEngineRef.applySkillEngineStats([debugSelectedUnit]);
+        } else if (debugSelectedUnit.attributes && window.TacticalSkillEngine?.calculateStatsFromAttributes) {
+            const stats = window.TacticalSkillEngine.calculateStatsFromAttributes(level, debugSelectedUnit.attributes);
             debugSelectedUnit.attack = stats.atk;
             debugSelectedUnit.matk = stats.matk;
+            debugSelectedUnit.attackRanged = stats.atkRanged;
             debugSelectedUnit.defense = stats.softDef;
             debugSelectedUnit.mdef = stats.mdef;
             debugSelectedUnit.maxHp = stats.maxHp;
-            debugSelectedUnit.hp = Math.min(debugSelectedUnit.hp, stats.maxHp);
+            debugSelectedUnit.hp = Math.min(debugSelectedUnit.hp || stats.maxHp, stats.maxHp);
             debugSelectedUnit.maxSp = stats.maxMana;
+            debugSelectedUnit.maxMana = stats.maxMana;
+            debugSelectedUnit.sp = Math.min(debugSelectedUnit.sp ?? stats.maxMana, stats.maxMana);
         }
 
         updateStatsDisplay();
+        showStatsDiff(before, debugSelectedUnit);
+        updateTacticalHUDIfNeeded();
+        triggerRender();
+    }
+
+    function applyAttributes() {
+        if (!debugSelectedUnit) return;
+
+        const get = (id) => Math.max(1, Math.min(999, parseInt(document.getElementById(id)?.value, 10) || 1));
+        debugSelectedUnit.attributes = {
+            str: get('debug-attr-str'),
+            agi: get('debug-attr-agi'),
+            vit: get('debug-attr-vit'),
+            int: get('debug-attr-int'),
+            dex: get('debug-attr-dex'),
+            luk: get('debug-attr-luk')
+        };
+        // recalculateStats usa baseAttributes; ao editar a ficha no debug, sincronizar para o novo cálculo (maxHp, flee, aspd, etc.) refletir VIT/INT/AGI/etc.
+        debugSelectedUnit.baseAttributes = { ...debugSelectedUnit.attributes };
+
+        const before = snapshotStats(debugSelectedUnit);
+
+        if (mapEngineRef && typeof mapEngineRef.applySkillEngineStats === 'function') {
+            mapEngineRef.applySkillEngineStats([debugSelectedUnit]);
+        } else if (window.TacticalSkillEngine && window.TacticalSkillEngine.calculateStatsFromAttributes) {
+            const level = debugSelectedUnit.level || 1;
+            const stats = window.TacticalSkillEngine.calculateStatsFromAttributes(level, debugSelectedUnit.attributes);
+            debugSelectedUnit.attack = stats.atk;
+            debugSelectedUnit.matk = stats.matk;
+            debugSelectedUnit.attackRanged = stats.atkRanged;
+            debugSelectedUnit.defense = stats.softDef;
+            debugSelectedUnit.mdef = stats.mdef;
+            debugSelectedUnit.maxHp = stats.maxHp;
+            debugSelectedUnit.hp = Math.min(debugSelectedUnit.hp || stats.maxHp, stats.maxHp);
+            debugSelectedUnit.maxSp = stats.maxMana;
+            debugSelectedUnit.maxMana = stats.maxMana;
+            debugSelectedUnit.sp = Math.min(debugSelectedUnit.sp ?? stats.maxMana, stats.maxMana);
+        }
+
+        updateStatsDisplay();
+        showStatsDiff(before, debugSelectedUnit);
+        updateTacticalHUDIfNeeded();
         triggerRender();
     }
 
@@ -1961,7 +2033,6 @@
             let animConfig = null;
             if (unit.animations && unit.animations[activeAnimationState]) {
                 animConfig = unit.animations[activeAnimationState];
-                console.log(`[MAP-DEBUG] Lendo valores originais da animação ${activeAnimationState}:`, animConfig);
             }
 
             // Carregar valores: primeiro de debug temporário, depois de animConfig, depois global, depois padrão
@@ -2024,10 +2095,21 @@
                 if (levelDisplay) levelDisplay.textContent = unit.level;
             }
 
+            // Atributos (ficha)
+            const attrs = unit.attributes || unit.baseAttributes || {};
+            ['str', 'agi', 'vit', 'int', 'dex', 'luk'].forEach(key => {
+                const el = document.getElementById('debug-attr-' + key);
+                if (el) el.value = Math.max(1, Math.min(999, parseInt(attrs[key], 10) || 1));
+            });
+
             updateStatsDisplay();
         } else {
             unitDiv.textContent = 'Clique em uma unidade';
             unitDiv.style.color = '#888';
+            ['debug-stat-atk','debug-stat-atkRanged','debug-stat-matk','debug-stat-def','debug-stat-mdef','debug-stat-hp','debug-stat-mp'].forEach(id => {
+                const e = document.getElementById(id); if (e) e.textContent = '--';
+            });
+            const d = document.getElementById('debug-stats-diff'); if (d) d.textContent = '';
 
             // Desabilitar botão Inspect Status quando não há unidade
             const inspectBtn = document.getElementById('debug-inspect-status');
@@ -2083,9 +2165,9 @@
                         animationOffsetY: unit.animations.atack?.animationOffsetY ?? (unit.animationOffsetY ?? debugOffsetY)
                     }
                 },
-                forceAnimation: debugAnimationState !== null
+                forceAnimation: debugAnimationState !== null && debugAnimationState !== ''
                     ? debugAnimationState
-                    : (unit.forceAnimation !== undefined ? unit.forceAnimation : 'auto')
+                    : (unit.forceAnimation !== undefined ? unit.forceAnimation : 'idle')
             };
             configTextarea.value = JSON.stringify(config, null, 2);
         } else {
@@ -2095,9 +2177,9 @@
                 animationScale: unit.debugScale !== undefined ? unit.debugScale : (unit.animationScale !== undefined ? unit.animationScale : debugScale),
                 animationOffsetX: unit.debugOffsetX !== undefined ? unit.debugOffsetX : (unit.animationOffsetX !== undefined ? unit.animationOffsetX : debugOffsetX),
                 animationOffsetY: unit.debugOffsetY !== undefined ? unit.debugOffsetY : (unit.animationOffsetY !== undefined ? unit.animationOffsetY : debugOffsetY),
-                forceAnimation: debugAnimationState !== null
+                forceAnimation: debugAnimationState !== null && debugAnimationState !== ''
                     ? debugAnimationState
-                    : (unit.forceAnimation !== undefined ? unit.forceAnimation : 'auto')
+                    : (unit.forceAnimation !== undefined ? unit.forceAnimation : 'idle')
             };
             configTextarea.value = JSON.stringify(config, null, 2);
         }
@@ -2105,11 +2187,44 @@
 
     function updateStatsDisplay() {
         if (!debugSelectedUnit) return;
+        const u = debugSelectedUnit;
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v != null && v !== '') ? v : '--'; };
+        set('debug-stat-atk', u.attack);
+        set('debug-stat-atkRanged', u.attackRanged);
+        set('debug-stat-matk', u.matk);
+        set('debug-stat-def', u.defense);
+        set('debug-stat-mdef', u.mdef);
+        set('debug-stat-hp', u.maxHp);
+        set('debug-stat-mp', u.maxSp ?? u.maxMana);
+    }
 
-        document.getElementById('debug-stat-atk').textContent = debugSelectedUnit.attack || '--';
-        document.getElementById('debug-stat-matk').textContent = debugSelectedUnit.matk || '--';
-        document.getElementById('debug-stat-def').textContent = debugSelectedUnit.defense || '--';
-        document.getElementById('debug-stat-mdef').textContent = debugSelectedUnit.mdef || '--';
+    function snapshotStats(unit) {
+        if (!unit) return null;
+        return {
+            atk: unit.attack,
+            atkRanged: unit.attackRanged,
+            matk: unit.matk,
+            def: unit.defense,
+            mdef: unit.mdef,
+            maxHp: unit.maxHp,
+            maxSp: unit.maxSp ?? unit.maxMana
+        };
+    }
+
+    function showStatsDiff(before, unit) {
+        const el = document.getElementById('debug-stats-diff');
+        if (!el || !before || !unit) return;
+        const a = (name, b, a2) => (a2 != null && b != null && a2 !== b) ? (a2 > b ? `↑${name} +${a2 - b}` : `↓${name} ${a2 - b}`) : null;
+        const parts = [
+            a('ATK', before.atk, unit.attack),
+            a('ATKRng', before.atkRanged, unit.attackRanged),
+            a('MATK', before.matk, unit.matk),
+            a('DEF', before.def, unit.defense),
+            a('MDEF', before.mdef, unit.mdef),
+            a('HP', before.maxHp, unit.maxHp),
+            a('MP', before.maxSp, unit.maxSp ?? unit.maxMana)
+        ].filter(Boolean);
+        el.textContent = parts.length ? parts.join('  ') : '';
     }
 
     function triggerRender() {

@@ -53,7 +53,7 @@ $activeTab = $activeTab ?? 'login';
         .auth-bg-image {
             position: absolute;
             inset: 0;
-            background-image: url('<?= asset('img/tavern-background.jpg') ?>');
+            background-image: url('<?= asset('img/tavern-background.webp') ?>');
             background-size: cover;
             background-position: center;
             opacity: 0.12;

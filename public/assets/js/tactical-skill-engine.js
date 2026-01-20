@@ -458,6 +458,7 @@ class TacticalSkillEngine {
         stats.hit = recalculated.hit + ((stats.hit || 0) - baseStats.hit);
         stats.flee = recalculated.flee + ((stats.flee || 0) - baseStats.flee);
         stats.aspd = recalculated.aspd + ((stats.aspd || 0) - baseStats.aspd);
+        stats.atkRanged = recalculated.atkRanged;
 
         // Apply percentage-based bonuses AFTER recalculating stats (Berserk Mode atkBonus)
         // This ensures the multiplier is applied to the final calculated ATK
@@ -523,27 +524,33 @@ class TacticalSkillEngine {
         const maxHp = Math.floor((lvl * 100) + (a.vit * 25));
         const maxMana = Math.floor((lvl * 15) + (a.int * 8));
 
-        // ATK: STR is primary, level amplifies significantly
+        // ATK: STR principal, level importa bastante — escalar forte para Lv99/999 sentir “destruir”
         const statusAtk = Math.floor(
-            (a.str * 2) +           // Strength is doubled
-            (lvl * 1.5) +           // Level has real weight
-            (a.dex * 0.5) +         // DEX contributes
-            (a.luk * 0.3)           // LUK contributes
+            (a.str * 5.5) + (lvl * 6.5) +
+            (a.dex * 0.5) +
+            (a.luk * 0.3)
         );
-        const atk = statusAtk + 50;
+        const atk = statusAtk + 10;
 
-        // MATK: INT is primary, level amplifies
+        // MATK: INT principal, level amplifica
         const statusMatk = Math.floor(
-            (a.int * 2) +           // Intelligence doubled
-            (lvl * 1.2) +           // Level scaling
-            (a.dex * 0.4) +         // DEX for casting speed
-            (a.luk * 0.3)           // LUK for crit magic
+            (a.int * 5.5) + (lvl * 6.5) +
+            (a.dex * 0.4) +
+            (a.luk * 0.3)
         );
-        const matk = statusMatk + 30;
+        const matk = statusMatk + 10;
 
-        // DEF: VIT is base, scales with level
-        const softDef = Math.floor((a.vit * 0.8) + (a.agi * 0.3) + (lvl * 0.5));
-        const hardDef = Math.floor(20 + (lvl * 0.3));
+        // ATK Ranged: DEX principal (arqueiro), level amplifica
+        const atkRanged = Math.floor(
+            (a.dex * 5.5) + (a.str * 0.2) + (a.luk * 0.2) + (lvl * 6.5)
+        ) + 10;
+
+        // DEF: VIT principal (tank), level e AGI — escalar forte pra 999 VIT segurar porrada
+        const softDef = Math.floor(
+            (a.vit * 3.5) + (lvl * 4.5) + (a.agi * 0.5) +
+            5
+        );
+        const hardDef = Math.floor(10 + (lvl * 1.5) + (a.vit * 0.2));
 
         // HIT/FLEE: Dexterity and level based
         const hit = Math.floor(175 + (lvl * 2) + (a.dex * 1.5) + (a.luk * 0.5));
@@ -555,10 +562,12 @@ class TacticalSkillEngine {
         // ASPD: Agility and dexterity
         const aspd = Math.floor(150 + (a.agi * 0.5) + (a.dex * 0.3) + (lvl * 0.2));
 
-        // MDEF: Intelligence and vitality, scales with level
-        const mdef = Math.floor((a.int * 1.2) + (a.vit * 0.6) + (lvl * 0.8));
+        // MDEF: INT e VIT (tanque aguenta magia), level — balancear com MATK alto
+        const mdef = Math.floor(
+            (a.int * 3) + (a.vit * 1.2) + (lvl * 3.5) + 5
+        );
 
-        return { atk, matk, softDef, hardDef, mdef, hit, flee, crit, aspd, maxHp, maxMana };
+        return { atk, matk, atkRanged, softDef, hardDef, mdef, hit, flee, crit, aspd, maxHp, maxMana };
     }
 
     /**

@@ -66,7 +66,7 @@
             
             <!-- Avatar -->
             <div class="w-14 h-14 rounded-full bg-zinc-900 overflow-hidden relative z-10 ring-2 ring-black border-2 border-white/10">
-                <img class="w-full h-full object-cover" src="assets/img/avatar.png" alt="Player">
+                <img class="w-full h-full object-cover" src="assets/img/avatar.webp" alt="Player">
             </div>
             
             <!-- Nome e Stats -->
@@ -194,7 +194,7 @@
             
             <!-- Coluna Direita: Imagem da Cena -->
             <div class="w-[45%] relative bg-black flex-none overflow-hidden">
-                <img class="w-full h-full object-cover transition-opacity duration-1000" alt="Scene" src="assets/img/tavern-1.jpg" style="width: 100%; height: 100%; object-fit: cover;">
+                <img class="w-full h-full object-cover transition-opacity duration-1000" alt="Scene" src="assets/img/tavern-1.webp" style="width: 100%; height: 100%; object-fit: cover;">
                 <div class="absolute inset-0 z-20 opacity-[0.05] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
             </div>
         </div>

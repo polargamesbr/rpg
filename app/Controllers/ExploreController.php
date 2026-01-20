@@ -82,7 +82,7 @@ class ExploreController
             'gridCols' => 20,
             'gridRows' => 15,
             'cellSize' => 64,
-            'mapImage' => '/public/assets/img/maps/castle-map.png'
+            'mapImage' => '/public/assets/img/maps/castle-map.webp'
         ];
         
         // Walls são imutáveis e sempre vêm do config, não do state

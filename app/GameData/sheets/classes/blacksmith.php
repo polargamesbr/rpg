@@ -10,8 +10,8 @@ return [
     'desc' => 'A warrior blacksmith who combines combat prowess with masterful crafting. They forge weapons in battle and use their hammer as both tool and weapon, creating and destroying with equal skill.',
     'base_level' => 1,
     'images' => [
-        'male' => 'assets/img/blacksmith-male.png',
-        'female' => 'assets/img/blacksmith-female.png',
+        'male' => 'assets/img/blacksmith-male.webp',
+        'female' => 'assets/img/blacksmith-female.webp',
     ],
     'attributes' => [
         'str' => 14,

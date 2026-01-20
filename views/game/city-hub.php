@@ -25,14 +25,14 @@ ob_start();
             <?php
             // Map city names to image files
             $cityImages = [
-                'Stormhaven' => 'stormhaven.png',
+                'Stormhaven' => 'stormhaven.webp',
                 'Eldervale' => 'eldervale.png',
                 'Aetherys' => 'aetherys.png',
                 'Dunrath' => 'dunrath.png',
                 'Lumenfall' => 'lumenfall.png',
                 'Brumaférrea' => 'brumaferrea.png'
             ];
-            $cityImage = $cityImages[$originCity] ?? 'stormhaven.png';
+            $cityImage = $cityImages[$originCity] ?? 'stormhaven.webp';
             ?>
             <img src="<?= asset('img/' . $cityImage) ?>" alt="<?= htmlspecialchars($originCity) ?>" class="w-full h-full object-cover object-center">
             <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-stone-900 to-transparent"></div>

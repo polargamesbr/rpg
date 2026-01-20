@@ -108,7 +108,7 @@ class SkillService
             // Try to construct img path from icon name
             $iconName = $skill['icon'];
             $skillId = $normalized['id'];
-            $normalized['img'] = "/public/assets/icons/skills/{$skillId}.png";
+            $normalized['img'] = "/public/assets/icons/skills/{$skillId}.webp";
         }
 
         // Copy optional fields if present

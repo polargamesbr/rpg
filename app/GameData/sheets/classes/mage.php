@@ -10,8 +10,8 @@ return [
     'desc' => 'An arcane spellcaster who wields powerful magical forces. Through years of study and dedication, they command the elements and bend reality to their will.',
     'base_level' => 1,
     'images' => [
-        'male' => 'assets/img/mage-male.png',
-        'female' => 'assets/img/mage-female.png',
+        'male' => 'assets/img/mage-male.webp',
+        'female' => 'assets/img/mage-female.webp',
     ],
     'attributes' => [
         'str' => 5,

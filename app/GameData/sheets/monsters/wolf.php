@@ -11,11 +11,14 @@ return [
     'desc' => 'A fierce and intelligent wolf that hunts in packs. Known for their savage bites and coordinated attacks, they are dangerous predators of the wilderness.',
     'base_level' => 8,
     'images' => [
-        'default' => 'assets/entities/wolf/avatar.png',
+        'default' => 'assets/entities/wolf/avatar.webp',
     ],
     'animations' => [
         'base' => 'entities',
-        'types' => ['idle', 'walk'],
+        'types' => ['idle', 'walk', 'atack'],
+        'idle'  => ['animationFPS' => 10,   'animationScale' => 1.6, 'animationOffsetX' => -1, 'animationOffsetXWhenFacingRight' => 1,  'animationOffsetY' => 36],
+        'walk'  => ['animationFPS' => 13,   'animationScale' => 1.8, 'animationOffsetX' => 0,  'animationOffsetXWhenFacingRight' => 0,  'animationOffsetY' => 36],
+        'atack' => ['animationFPS' => 14.5, 'animationScale' => 0.9, 'animationOffsetX' => 3,  'animationOffsetXWhenFacingRight' => -3, 'animationOffsetY' => 45],
     ],
     'sounds' => [
         'hit' => ['wolf_claw_hit1', 'wolf_claw_hit2', 'wolf_claw_hit3', 'wolf_claw_hit4'],

@@ -7,7 +7,7 @@
         <div class="flex flex-col items-center mb-6 relative z-10">
             <div class="cinematic-avatar-frame mb-3">
                 <div class="w-full h-full rounded-full overflow-hidden border-2 border-black">
-                    <img src="assets/img/avatar.png" alt="Avatar" class="w-full h-full object-cover">
+                    <img src="assets/img/avatar.webp" alt="Avatar" class="w-full h-full object-cover">
                 </div>
                 <div class="level-badge">LVL 7</div>
             </div>

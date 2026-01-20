@@ -140,10 +140,10 @@
     }
 
     /* Specific Backgrounds */
-    .rpg-card.tavern { background-image: url('assets/img/tavern.jpg'); }
-    .rpg-card.market { background-image: url('assets/img/market.jpg'); }
-    .rpg-card.forge { background-image: url('assets/img/forge.jpg'); }
-    .rpg-card.guild { background-image: url('assets/img/guild.jpg'); }
+    .rpg-card.tavern { background-image: url('assets/img/tavern.webp'); }
+    .rpg-card.market { background-image: url('assets/img/market.webp'); }
+    .rpg-card.forge { background-image: url('assets/img/forge.webp'); }
+    .rpg-card.guild { background-image: url('assets/img/guild.webp'); }
 
     /* Inner Wrapper ensures content stays readable */
     .card-content-wrapper {
@@ -509,7 +509,7 @@
 
     /* Sidebar and other global styles restored */
     .sidebar-background {
-        background-image: url('assets/img/sidebar.png');
+        background-image: url('assets/img/sidebar.webp');
         background-repeat: repeat;
     }
     .stat-bar-container {

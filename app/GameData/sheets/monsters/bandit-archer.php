@@ -9,7 +9,7 @@ return [
     'desc' => 'A rogue archer who turned to banditry, using stolen bows and poisoned arrows to ambush travelers. They strike from hidden positions and rarely fight fair.',
     'base_level' => 10,
     'images' => [
-        'default' => 'assets/img/archer-female.png',
+        'default' => 'assets/img/archer-female.webp',
     ],
     'video' => 'assets/video/archer-female.mp4', // optional (only used if you add the asset)
     'attributes' => [

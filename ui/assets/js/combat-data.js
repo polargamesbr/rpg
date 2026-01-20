@@ -3,7 +3,7 @@ window.combatData = {
     entities: {
         // --- CLASSES ---
         hero_blacksmith: {
-            name: 'Blacksmith', type: 'class', element: 'fire', img: 'assets/img/blacksmith-male.png', video: 'assets/video/blacksmith-female.mp4',
+            name: 'Blacksmith', type: 'class', element: 'fire', img: 'assets/img/blacksmith-male.webp', video: 'assets/video/blacksmith-female.mp4',
             desc: 'A warrior blacksmith who combines combat prowess with masterful crafting. They forge weapons in battle and use their hammer as both tool and weapon, creating and destroying with equal skill.',
             // Balanced attributes (aligned with the "attribute-scale" used by SkillEngine formulas)
             attributes: { str: 14, agi: 6, vit: 11, int: 8, dex: 7, luk: 4 },
@@ -17,7 +17,7 @@ window.combatData = {
             inventory: { potion_hp: 2, potion_mana: 1, potion_panacea: 1 }
         },
         hero_mage: {
-            name: 'Mage', type: 'class', element: 'fire', img: 'assets/img/mage-male.png',
+            name: 'Mage', type: 'class', element: 'fire', img: 'assets/img/mage-male.webp',
             desc: 'An arcane spellcaster who wields powerful magical forces. Through years of study and dedication, they command the elements and bend reality to their will.',
             attributes: { str: 5, agi: 7, vit: 6, int: 15, dex: 10, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 10,
@@ -31,7 +31,7 @@ window.combatData = {
             inventory: { potion_hp: 1, potion_mana: 3, potion_antidote: 1 }
         },
         hero_swordman: {
-            name: 'Swordman', type: 'class', element: 'neutral', img: 'assets/img/swordman-male.png',
+            name: 'Swordman', type: 'class', element: 'neutral', img: 'assets/img/swordman-male.webp',
             desc: 'A disciplined warrior trained in one-handed combat and military tactics. Masters of sword and shield, they excel at both offense and defense, making them reliable front-line fighters.',
             attributes: { str: 12, agi: 8, vit: 10, int: 5, dex: 8, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 10,
@@ -44,7 +44,7 @@ window.combatData = {
             inventory: { potion_hp: 3, potion_mana: 1, potion_antidote: 1 }
         },
         hero_archer: {
-            name: 'Archer', type: 'class', element: 'wind', img: 'assets/img/archer-female.png', video: 'assets/video/archer-female.mp4',
+            name: 'Archer', type: 'class', element: 'wind', img: 'assets/img/archer-female.webp', video: 'assets/video/archer-female.mp4',
             desc: 'A precision archer with deep connection to nature and keen eyesight. They strike from a distance with deadly accuracy, using the environment to their advantage.',
             attributes: { str: 8, agi: 15, vit: 8, int: 7, dex: 14, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 10,
@@ -58,7 +58,7 @@ window.combatData = {
         },
         // NOTE: Renamed to match your actual class set/assets (Thief/Acolyte)
         hero_thief: {
-            name: 'Thief', type: 'class', element: 'shadow', img: 'assets/img/thief-male.png',
+            name: 'Thief', type: 'class', element: 'shadow', img: 'assets/img/thief-male.webp',
             desc: 'An agile rogue who moves through shadows and strikes from the darkness. Masters of stealth and precision, they excel at quick, deadly attacks and evading danger.',
             attributes: { str: 8, agi: 14, vit: 7, int: 6, dex: 15, luk: 8 },
             maxHp: 1, maxMana: 1, baseLevel: 10,
@@ -72,7 +72,7 @@ window.combatData = {
             inventory: { potion_hp: 1, poison_vial: 3, potion_antidote: 1 }
         },
         hero_acolyte: {
-            name: 'Acolyte', type: 'class', element: 'holy', img: 'assets/img/sacer-female.png', video: 'assets/video/acolyte-female.mp4',
+            name: 'Acolyte', type: 'class', element: 'holy', img: 'assets/img/sacer-female.webp', video: 'assets/video/acolyte-female.mp4',
             desc: 'A sacred cleric devoted to divine powers of healing and protection. They channel holy energy to mend wounds, shield allies, and smite the unholy.',
             // Battle Healer: high INT/mana + solid VIT sustain, modest damage, safe solo progression
             attributes: { str: 6, agi: 6, vit: 9, int: 13, dex: 8, luk: 6 },
@@ -89,7 +89,7 @@ window.combatData = {
 
         // --- MONSTERS ---
         wolf: {
-            name: 'Dire Wolf', type: 'monster', element: 'neutral', img: 'assets/img/wolf.png', video: 'assets/video/wolf.mp4',
+            name: 'Dire Wolf', type: 'monster', element: 'neutral', img: 'assets/img/wolf.webp', video: 'assets/video/wolf.mp4',
             desc: 'A fierce and intelligent wolf that hunts in packs. Known for their savage bites and coordinated attacks, they are dangerous predators of the wilderness.',
             attributes: { str: 10, agi: 12, vit: 8, int: 2, dex: 10, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 4,
@@ -98,7 +98,7 @@ window.combatData = {
             inventory: { potion_hp: 1 }
         },
         orc: {
-            name: 'Orc Warrior', type: 'monster', element: 'earth', img: 'assets/img/orc.png', video: 'assets/video/orc.mp4',
+            name: 'Orc Warrior', type: 'monster', element: 'earth', img: 'assets/img/orc.webp', video: 'assets/video/orc.mp4',
             desc: 'A brutal orc warrior who relies on raw strength and brute force. They charge into battle with overwhelming power, crushing enemies with their massive weapons.',
             attributes: { str: 14, agi: 5, vit: 14, int: 2, dex: 6, luk: 2 },
             maxHp: 1, maxMana: 1, baseLevel: 6,
@@ -124,7 +124,7 @@ window.combatData = {
             lootTable: { goldMin: 10, goldMax: 25, xp: 45, items: [{ id: 'goblin_ear', chance: 0.8, rarity: 'common' }] }
         },
         hobgoblin: {
-            name: 'Hobgoblin Brute', type: 'monster', element: 'earth', img: 'assets/img/swordman-female.png',
+            name: 'Hobgoblin Brute', type: 'monster', element: 'earth', img: 'assets/img/swordman-female.webp',
             desc: 'A massive hobgoblin warrior known for brute strength and heavy armor. They charge into battle without fear, crushing enemies with overwhelming force.',
             attributes: { str: 16, agi: 4, vit: 18, int: 2, dex: 8, luk: 2 },
             maxHp: 1, maxMana: 1, baseLevel: 8,
@@ -133,7 +133,7 @@ window.combatData = {
             lootTable: { goldMin: 30, goldMax: 60, xp: 80, items: [{ id: 'iron_shard', chance: 0.7, rarity: 'common' }] }
         },
         bandit: {
-            name: 'Bandit Archer', type: 'monster', element: 'neutral', img: 'assets/img/archer-female.png', video: 'assets/video/archer-female.mp4',
+            name: 'Bandit Archer', type: 'monster', element: 'neutral', img: 'assets/img/archer-female.webp', video: 'assets/video/archer-female.mp4',
             desc: 'A rogue archer who turned to banditry, using stolen bows and poisoned arrows to ambush travelers. They strike from hidden positions and rarely fight fair.',
             attributes: { str: 11, agi: 13, vit: 9, int: 4, dex: 14, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 7,
@@ -146,7 +146,7 @@ window.combatData = {
         // STORMHAVEN MONSTERS (Swordsman starting city)
         // ========================================
         goblin_raider: {
-            name: 'Goblin Raider', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Goblin Raider', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'A coastal goblin that survives by raiding ships and travelers. They use stolen equipment and are known for their quick and dirty attacks.',
             attributes: { str: 9, agi: 10, vit: 7, int: 4, dex: 9, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 2,
@@ -155,7 +155,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         coastal_crab: {
-            name: 'Coastal Crab', type: 'monster', element: 'water', img: 'assets/img/placeholder.png',
+            name: 'Coastal Crab', type: 'monster', element: 'water', img: 'assets/img/placeholder.webp',
             desc: 'A giant crab that dwells along the coastlines. With their hard shells and powerful pincers, they guard their territory fiercely.',
             attributes: { str: 8, agi: 4, vit: 12, int: 2, dex: 6, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 3,
@@ -164,7 +164,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         sea_rat: {
-            name: 'Sea Rat', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            name: 'Sea Rat', type: 'monster', element: 'poison', img: 'assets/img/placeholder.webp',
             desc: 'A large rat that infests port areas, carrying disease and poison. They are quick and vicious, attacking in swarms when threatened.',
             attributes: { str: 6, agi: 11, vit: 8, int: 3, dex: 10, luk: 7 },
             maxHp: 1, maxMana: 1, baseLevel: 4,
@@ -173,7 +173,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         bandit_marauder: {
-            name: 'Bandit Marauder', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Bandit Marauder', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'A coastal bandit who plunders ships and coastal settlements. They are ruthless raiders known for their brutal tactics and love of loot.',
             attributes: { str: 10, agi: 9, vit: 9, int: 4, dex: 11, luk: 8 },
             maxHp: 1, maxMana: 1, baseLevel: 5,
@@ -182,7 +182,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         rock_golem_small: {
-            name: 'Rock Golem (Small)', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Rock Golem (Small)', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'A small stone guardian created to protect coastal areas. Though slow, their stone bodies make them incredibly resilient defenders.',
             attributes: { str: 12, agi: 2, vit: 16, int: 1, dex: 4, luk: 2 },
             maxHp: 1, maxMana: 1, baseLevel: 6,
@@ -191,7 +191,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         skeleton_soldier: {
-            name: 'Skeleton Soldier', type: 'monster', element: 'undead', img: 'assets/img/placeholder.png',
+            name: 'Skeleton Soldier', type: 'monster', element: 'undead', img: 'assets/img/placeholder.webp',
             desc: 'An undead soldier from the coastal wars, risen to serve dark forces. They retain their military discipline and fight with rusted weapons.',
             attributes: { str: 11, agi: 6, vit: 10, int: 2, dex: 8, luk: 4 },
             maxHp: 1, maxMana: 1, baseLevel: 7,
@@ -200,7 +200,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         orc_scout: {
-            name: 'Orc Scout', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Orc Scout', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'An orc explorer who patrols coastal regions. More agile than their warrior kin, they scout ahead and report back to their war bands.',
             attributes: { str: 13, agi: 8, vit: 11, int: 2, dex: 9, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 8,
@@ -209,7 +209,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         harpy: {
-            name: 'Harpy', type: 'monster', element: 'wind', img: 'assets/img/placeholder.png',
+            name: 'Harpy', type: 'monster', element: 'wind', img: 'assets/img/placeholder.webp',
             desc: 'A flying creature that nests in coastal cliffs. Their piercing screeches can stun enemies, and their talons strike from above.',
             attributes: { str: 8, agi: 14, vit: 7, int: 5, dex: 13, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 9,
@@ -218,7 +218,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         troll_warrior: {
-            name: 'Troll Warrior', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Troll Warrior', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'A coastal troll warrior known for their incredible regeneration. They fight with massive clubs and rarely retreat from battle.',
             attributes: { str: 15, agi: 4, vit: 14, int: 2, dex: 7, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 10,
@@ -227,7 +227,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         pirate_ghost: {
-            name: 'Pirate Ghost', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            name: 'Pirate Ghost', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.webp',
             desc: 'The restless spirit of a fallen pirate, cursed to haunt the coast. They wield ethereal weapons and drain the life force of the living.',
             attributes: { str: 9, agi: 10, vit: 8, int: 8, dex: 11, luk: 7 },
             maxHp: 1, maxMana: 1, baseLevel: 11,
@@ -236,7 +236,7 @@ window.combatData = {
             city: 'Stormhaven'
         },
         captain_grimbeard: {
-            name: 'Captain Grimbeard', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            name: 'Captain Grimbeard', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.webp',
             desc: 'A legendary pirate captain who became a ghostly boss. His cursed blade and dark aura make him a fearsome opponent, commanding other undead pirates.',
             attributes: { str: 16, agi: 7, vit: 15, int: 6, dex: 10, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 12,
@@ -250,7 +250,7 @@ window.combatData = {
         // ELDERVALE MONSTERS (Archer starting city)
         // ========================================
         gelatinous_cube: {
-            name: 'Gelatinous Cube', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            name: 'Gelatinous Cube', type: 'monster', element: 'poison', img: 'assets/img/placeholder.webp',
             desc: 'A gelatinous cube that absorbs and dissolves its prey. They slowly move through dungeons and forests, consuming anything in their path.',
             attributes: { str: 7, agi: 3, vit: 11, int: 4, dex: 5, luk: 4 },
             maxHp: 1, maxMana: 1, baseLevel: 2,
@@ -259,7 +259,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         feral_wolf: {
-            name: 'Feral Wolf', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Feral Wolf', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'A wild wolf from the deep forests. More aggressive than their dire cousins, they hunt alone and attack with savage ferocity.',
             attributes: { str: 9, agi: 11, vit: 7, int: 2, dex: 9, luk: 4 },
             maxHp: 1, maxMana: 1, baseLevel: 3,
@@ -268,7 +268,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         giant_spider: {
-            name: 'Giant Spider', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            name: 'Giant Spider', type: 'monster', element: 'poison', img: 'assets/img/placeholder.webp',
             desc: 'A massive spider that weaves deadly webs in the forest. Their venomous bite and web traps make them dangerous predators.',
             attributes: { str: 8, agi: 10, vit: 9, int: 4, dex: 11, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 4,
@@ -277,7 +277,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         bat_swarm: {
-            name: 'Bat Swarm', type: 'monster', element: 'wind', img: 'assets/img/placeholder.png',
+            name: 'Bat Swarm', type: 'monster', element: 'wind', img: 'assets/img/placeholder.webp',
             desc: 'A swarm of bats that attacks in numbers. Their screeches disorient enemies while they drain blood with their sharp fangs.',
             attributes: { str: 6, agi: 13, vit: 6, int: 3, dex: 12, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 5,
@@ -286,7 +286,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         treant_sapling: {
-            name: 'Treant Sapling', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Treant Sapling', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'A young animated tree that guards the forest. Though smaller than ancient treants, they are still formidable protectors of nature.',
             attributes: { str: 10, agi: 3, vit: 13, int: 5, dex: 5, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 6,
@@ -295,7 +295,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         giant_rat: {
-            name: 'Giant Rat', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            name: 'Giant Rat', type: 'monster', element: 'poison', img: 'assets/img/placeholder.webp',
             desc: 'A massive rat that dwells in forest undergrowth. Their quick scurrying and poisonous claws make them dangerous vermin.',
             attributes: { str: 7, agi: 12, vit: 8, int: 3, dex: 11, luk: 7 },
             maxHp: 1, maxMana: 1, baseLevel: 8,
@@ -304,7 +304,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         hornet_queen: {
-            name: 'Hornet Queen', type: 'monster', element: 'poison', img: 'assets/img/placeholder.png',
+            name: 'Hornet Queen', type: 'monster', element: 'poison', img: 'assets/img/placeholder.webp',
             desc: 'A giant hornet queen that commands swarms of smaller hornets. Her venomous stinger and ability to command her hive make her a deadly foe.',
             attributes: { str: 9, agi: 13, vit: 8, int: 5, dex: 14, luk: 8 },
             maxHp: 1, maxMana: 1, baseLevel: 9,
@@ -313,7 +313,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         wild_boar: {
-            name: 'Wild Boar', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Wild Boar', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'A fierce wild boar that charges through the forest. Their thick hide and powerful tusks make them dangerous when cornered.',
             attributes: { str: 14, agi: 5, vit: 13, int: 2, dex: 8, luk: 4 },
             maxHp: 1, maxMana: 1, baseLevel: 10,
@@ -322,7 +322,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         dryad: {
-            name: 'Dryad', type: 'monster', element: 'wind', img: 'assets/img/placeholder.png',
+            name: 'Dryad', type: 'monster', element: 'wind', img: 'assets/img/placeholder.webp',
             desc: 'A nature spirit bound to the forest. They wield nature magic and protect their domain with healing breezes and thorny vines.',
             attributes: { str: 7, agi: 10, vit: 9, int: 10, dex: 11, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 11,
@@ -331,7 +331,7 @@ window.combatData = {
             city: 'Eldervale'
         },
         ancient_treant: {
-            name: 'Ancient Treant', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Ancient Treant', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'An ancient tree guardian that has protected the forest for centuries. Their massive size and nature magic make them formidable bosses of the wild.',
             attributes: { str: 15, agi: 3, vit: 16, int: 8, dex: 7, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 12,
@@ -345,7 +345,7 @@ window.combatData = {
         // AETHERY sayS MONSTERS (Mage starting city)
         // ========================================
         arcane_fragment: {
-            name: 'Arcane Fragment', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Arcane Fragment', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'A fragment of pure arcane energy that drifts through magical towers. These unstable remnants of powerful spells attack with basic magic.',
             attributes: { str: 3, agi: 5, vit: 6, int: 8, dex: 7, luk: 4 },
             maxHp: 1, maxMana: 1, baseLevel: 2,
@@ -354,7 +354,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         cursed_book: {
-            name: 'Cursed Book', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            name: 'Cursed Book', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.webp',
             desc: 'A tome corrupted by dark magic, its pages writhe with malevolent energy. It curses those who read it, weakening their minds.',
             attributes: { str: 2, agi: 4, vit: 7, int: 10, dex: 6, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 3,
@@ -363,7 +363,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         floating_orb: {
-            name: 'Floating Orb', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Floating Orb', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'A magical orb that hovers through arcane ruins. Its ethereal nature makes it hard to hit, and it strikes with precise magic.',
             attributes: { str: 2, agi: 8, vit: 5, int: 9, dex: 10, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 4,
@@ -372,7 +372,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         possessed_armor: {
-            name: 'Possessed Armor', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Possessed Armor', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'An empty suit of armor animated by dark magic. It retains its defensive capabilities while striking with physical force.',
             attributes: { str: 10, agi: 3, vit: 13, int: 4, dex: 5, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 5,
@@ -381,7 +381,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         shadow_wisp: {
-            name: 'Shadow Wisp', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            name: 'Shadow Wisp', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.webp',
             desc: 'A wisp of pure shadow that drifts through magical spaces. Immune to physical attacks, it drains the life force of the living.',
             attributes: { str: 1, agi: 11, vit: 6, int: 11, dex: 9, luk: 7 },
             maxHp: 1, maxMana: 1, baseLevel: 6,
@@ -390,7 +390,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         golem_arcane: {
-            name: 'Golem (Arcane)', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Golem (Arcane)', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'A golem constructed from arcane materials and infused with magic. It wields powerful arcane attacks and resists magical damage.',
             attributes: { str: 11, agi: 2, vit: 14, int: 12, dex: 4, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 7,
@@ -399,7 +399,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         skeleton_mage: {
-            name: 'Skeleton Mage', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            name: 'Skeleton Mage', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.webp',
             desc: 'An undead mage that retains its magical knowledge in death. It casts dark spells and is vulnerable to holy magic.',
             attributes: { str: 4, agi: 6, vit: 8, int: 13, dex: 8, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 8,
@@ -408,7 +408,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         gargoyle: {
-            name: 'Gargoyle', type: 'monster', element: 'earth', img: 'assets/img/placeholder.png',
+            name: 'Gargoyle', type: 'monster', element: 'earth', img: 'assets/img/placeholder.webp',
             desc: 'A stone guardian that perches on magical towers. It can fly and strikes with both physical and magical attacks.',
             attributes: { str: 12, agi: 7, vit: 12, int: 7, dex: 9, luk: 4 },
             maxHp: 1, maxMana: 1, baseLevel: 9,
@@ -417,7 +417,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         wraith: {
-            name: 'Wraith', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.png',
+            name: 'Wraith', type: 'monster', element: 'shadow', img: 'assets/img/placeholder.webp',
             desc: 'A powerful ghost that haunts arcane ruins. It drains mana from its victims, leaving them powerless.',
             attributes: { str: 5, agi: 9, vit: 9, int: 12, dex: 10, luk: 6 },
             maxHp: 1, maxMana: 1, baseLevel: 10,
@@ -426,7 +426,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         arcane_construct: {
-            name: 'Arcane Construct', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Arcane Construct', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'A powerful magical construct created by archmages. It channels pure arcane energy into devastating beams of magic.',
             attributes: { str: 8, agi: 4, vit: 13, int: 15, dex: 7, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 11,
@@ -435,7 +435,7 @@ window.combatData = {
             city: 'Aetherys'
         },
         archmage_specter: {
-            name: 'Archmage Specter', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.png',
+            name: 'Archmage Specter', type: 'monster', element: 'neutral', img: 'assets/img/placeholder.webp',
             desc: 'The ghostly remains of a powerful archmage, still wielding immense arcane power. It commands multiple elements and can summon arcane orbs to aid in battle.',
             attributes: { str: 6, agi: 8, vit: 12, int: 18, dex: 11, luk: 7 },
             maxHp: 1, maxMana: 1, baseLevel: 12,

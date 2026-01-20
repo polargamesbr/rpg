@@ -17,7 +17,7 @@
         ZOOM_STEP: 0.15,
         ANIMATION_SPEED: 250, // Duração em ms (fallback)
         RULER_SIZE: 28,  // Size of the ruler guides
-        MAP_PATH: '/public/assets/img/maps/castle-map.png'
+        MAP_PATH: '/public/assets/img/maps/castle-map.webp'
     };
 
     // Movimento por tipo (snappy para player, pesado para inimigos)
@@ -62,6 +62,7 @@
     let chests = [];
     let portal = null;
     let loadedImages = {};
+    let lastTimelineSignature = '';
 
     // =====================================================
     // SPRITE SHEET SYSTEM
@@ -105,6 +106,8 @@
         if (skill.rangeType) return skill.rangeType;
         if (skill.type === 'aoe' || skill.type === 'aoe_heal') return 'aoe';
         if (skill.type === 'self') return 'self';
+        if (skill.type === 'ally') return 'ally';
+        if (skill.type === 'heal') return 'heal';
         if (skill.type === 'revive') return 'revive';
         if (skill.type === 'summon') return 'summon';
         if (skill.type === 'pierce') return 'line';
@@ -305,13 +308,12 @@
             }
         }
 
-        // Para skills self/ally, incluir própria célula
-        if (rangeType === 'self' || rangeType === 'ally') {
+        // Para skills self/ally/heal: incluir própria célula
+        if (rangeType === 'self' || rangeType === 'ally' || rangeType === 'heal') {
             reachable.push({ x: unit.x, y: unit.y, dist: 0 });
         }
-
-        // Para skills ally, também incluir células com aliados no range
-        if (rangeType === 'ally') {
+        // Para skills ally/heal: incluir células com aliados no alcance
+        if (rangeType === 'ally' || rangeType === 'heal') {
             const allyUnits = playerUnits.filter(u => u.hp > 0 && u.id !== unit.id);
             allyUnits.forEach(ally => {
                 const dist = Math.max(Math.abs(unit.x - ally.x), Math.abs(unit.y - ally.y)); // Chebyshev
@@ -324,8 +326,8 @@
             });
         }
 
-        // Calcular células no alcance (Manhattan distance) - apenas para skills que não são self/ally
-        if (rangeType !== 'self' && rangeType !== 'ally') {
+        // Calcular células no alcance (Manhattan) - para skills que não são self/ally/heal
+        if (rangeType !== 'self' && rangeType !== 'ally' && rangeType !== 'heal') {
             for (let dx = -range; dx <= range; dx++) {
                 for (let dy = -range; dy <= range; dy++) {
                     const dist = Math.abs(dx) + Math.abs(dy); // Manhattan
@@ -352,7 +354,7 @@
 
         const rangeType = getSkillRangeType(skill);
 
-        if (rangeType === 'single') {
+        if (rangeType === 'single' || rangeType === 'ally' || rangeType === 'heal') {
             area.push({ x: targetX, y: targetY });
             return area;
         }
@@ -419,6 +421,7 @@
         const combatMap = {
             'hero_swordman': 'swordsman', 'swordman': 'swordsman',
             'hero_archer': 'archer', 'archer': 'archer',
+            'hero_acolyte': 'acolyte', 'acolyte': 'acolyte',
             'toxic_slime': 'toxic_slime', 'slime': 'toxic_slime',
             'wolf': 'wolf'
         };
@@ -427,6 +430,7 @@
         const classMap = {
             'swordsman': 'swordsman', 'swordman': 'swordsman', 'warrior': 'swordsman',
             'archer': 'archer', 'ranged': 'archer', 'hero': 'swordsman',
+            'acolyte': 'acolyte',
             'slime': 'toxic_slime', 'toxic_slime': 'toxic_slime', 'wolf': 'wolf'
         };
         return classMap[className] || combatKey || null;
@@ -434,7 +438,7 @@
 
     /**
      * Carrega uma animação específica (idle, walk, atack) de uma entidade.
-     * Formato: public/assets/entities/<entityId>/animations/<animationType>/1.png, 2.png, ...
+     * Formato: public/assets/entities/<entityId>/animations/<animationType>/1.webp, 2.webp, ...
      */
     async function loadSpriteAnimation(entityId, animationType) {
         const frames = [];
@@ -462,14 +466,14 @@
             state: 'loading'
         };
 
-        // Carregar frames sequencialmente usando numeração simples (1.png, 2.png, 3.png, ...)
+        // Carregar frames sequencialmente usando numeração simples (1.webp, 2.webp, 3.webp, ...)
         // Estratégia: tentar carregar até encontrar o primeiro frame que não existe
         // Para evitar 404 desnecessário, verificamos se o frame N+1 existe antes de continuar
         let frameIndex = 1;
         let lastSuccessfulFrame = 0;
 
         while (frameIndex <= maxFrames) {
-            const framePath = `${basePath}${frameIndex}.png`;
+            const framePath = `${basePath}${frameIndex}.webp`;
 
             const loaded = await new Promise((resolve) => {
                 const img = new Image();
@@ -594,11 +598,11 @@
                 fps = baseFPS;
             }
             if (typeof fps !== 'number' || fps <= 0 || !isFinite(fps)) fps = 12;
-            const frameDurationFallback = 60 / fps;
-            return Math.floor((animationFrame / frameDurationFallback) % fallback.frameCount);
+            const frameIntervalMs = 1000 / fps;
+            return Math.floor((animationTimeMs / frameIntervalMs)) % fallback.frameCount;
         }
 
-        // Usar animationFrame global para sincronizar animação ou local se não for loop
+        // Usar animationTimeMs (tempo real) para animação independente do FPS do game loop
         let fps;
         let animConfig = null;
         if (unit && unit.animations && unit.animations[state]) {
@@ -621,26 +625,25 @@
         }
 
         if (typeof fps !== 'number' || fps <= 0 || !isFinite(fps)) fps = 12;
-        const frameDuration = 60 / fps; // Frames do game loop por frame de animação
+        const frameIntervalMs = 1000 / fps; // ms por frame de sprite
 
-        // Se a animação não for em loop (ex: atack), calcular baseada no início
+        // Se a animação não for em loop (ex: atack), calcular baseada no início (tempo real)
         if (animation.loop === false && unit) {
-            if (unit.animationStartFrame === undefined) {
-                unit.animationStartFrame = animationFrame;
+            if (unit.animationStartTimeMs === undefined) {
+                unit.animationStartTimeMs = animationTimeMs;
             }
-            const elapsed = animationFrame - unit.animationStartFrame;
-            let frameIndex = Math.floor(elapsed / frameDuration);
+            const elapsedMs = animationTimeMs - unit.animationStartTimeMs;
+            let frameIndex = Math.floor(elapsedMs / frameIntervalMs);
 
             if (frameIndex >= animation.frameCount) {
                 frameIndex = animation.frameCount - 1;
 
-                // Retornar para idle automaticamente após o fim (sem side-effect direto no render)
+                // Retornar para idle automaticamente após o fim
                 if (unit.animationState === state && !unit._animReverting) {
                     unit._animReverting = true;
                     setTimeout(() => {
                         if (unit.animationState === state) {
                             unit.animationState = 'idle';
-                            unit.animationStartFrame = animationFrame;
                         }
                         unit._animReverting = false;
                     }, 50);
@@ -649,8 +652,8 @@
             return Math.max(0, Math.min(frameIndex, animation.frameCount - 1));
         }
 
-        // Loop padrão sincronizado
-        return Math.floor((animationFrame / frameDuration) % animation.frameCount);
+        // Loop padrão (idle, walk) – baseado em tempo real
+        return Math.floor((animationTimeMs / frameIntervalMs)) % animation.frameCount;
     }
 
     /**
@@ -788,6 +791,12 @@
         setTimeout(() => playHitImpactSfx(false), 60);
     }
 
+    function playStaffSfx(entityId, isCrit = false) {
+        const staff = pickRandom(['staff_hit.mp3', 'staff_hit2.mp3', 'staff_hit3.mp3']);
+        playSfxEntity(entityId, staff, 0.5, 1.0);
+        setTimeout(() => playHitImpactSfx(isCrit), 80);
+    }
+
     function playMagicSfx(isCrit = false) {
         const start = pickRandom(['skill_start1.mp3', 'skill_start2.mp3', 'skill_start3.mp3']);
         playSfx(start, 0.45, 1.0);
@@ -915,6 +924,8 @@
     let attackRangeCells = []; // Células no alcance de ataque
 
     let animationFrame = 0;
+    let animationTimeMs = 0;   // tempo acumulado para animações (ms) – base para sprites
+    let lastFrameTime;         // performance.now() do frame anterior
     let floatingTexts = [];
     let particles = []; // Sistema de partículas (movido para cima para inicialização do MapSFX)
     let portalPromptShown = false;
@@ -1057,7 +1068,13 @@
                     return [...effectiveWalls, ...debugWallsAdded];
                 },
                 toggleWall: toggleDebugWall,
-                triggerRender: () => { needsRender = true; }
+                triggerRender: () => { needsRender = true; },
+                showHealNumber: showHealNumber,
+                showManaNumber: showManaNumber,
+                showDamageNumber: showDamageNumber,
+                spawnHealEffect: spawnHealEffect,
+                spawnImpactBurst: spawnImpactBurst,
+                applySkillEngineStats: applySkillEngineStats
             });
         }
 
@@ -1072,65 +1089,53 @@
                 await loadSessionStateFromServer(sessionUid);
                 console.log('[MAP-ENGINE] Sessão carregada');
 
-                // Load entities from API if TacticalDataLoader is available
+                // Load entities from API if TacticalDataLoader is available (sem fallback: falha após retry cancela o jogo)
                 if (window.TacticalDataLoader && sessionData) {
                     console.log('[MAP-ENGINE] Carregando entities via API...');
-                    try {
-                        // player + allies + entities (inimigos); ver collectCombatKeysFromSession()
-                        const combatKeys = collectCombatKeysFromSession(sessionData);
+                    // player + allies + entities (inimigos); ver collectCombatKeysFromSession()
+                    const combatKeys = collectCombatKeysFromSession(sessionData);
 
-                        if (combatKeys.size > 0) {
-                            const keysArray = Array.from(combatKeys);
-                            console.log('[MAP-ENGINE] Carregando entities:', keysArray);
-                            await window.TacticalDataLoader.loadEntities(keysArray);
-                            console.log('[MAP-ENGINE] Entities carregadas com sucesso');
+                    if (combatKeys.size > 0) {
+                        const keysArray = Array.from(combatKeys);
+                        console.log('[MAP-ENGINE] Carregando entities:', keysArray);
+                        await window.TacticalDataLoader.loadEntities(keysArray);
+                        console.log('[MAP-ENGINE] Entities carregadas com sucesso');
 
-                            // Atualizar atributos das unidades com dados das entity sheets
-                            updateUnitsAttributesFromEntitySheets();
+                        // Atualizar atributos das unidades com dados das entity sheets
+                        updateUnitsAttributesFromEntitySheets();
 
-                            // Now load ALL skills from all loaded entities BEFORE game starts
-                            console.log('[MAP-ENGINE] Extraindo e carregando todas as skills...');
-                            try {
-                                const allSkillIds = new Set();
+                        // Now load ALL skills from all loaded entities BEFORE game starts
+                        console.log('[MAP-ENGINE] Extraindo e carregando todas as skills...');
+                        const allSkillIds = new Set();
 
-                                // Extract skill IDs from all loaded entities
-                                keysArray.forEach(combatKey => {
-                                    const entity = window.TacticalDataLoader.entityCache[combatKey];
-                                    if (entity && Array.isArray(entity.skills)) {
-                                        entity.skills.forEach(skill => {
-                                            if (typeof skill === 'object' && skill !== null) {
-                                                // New format: skill object with 'id' property
-                                                if (skill.id && typeof skill.id === 'string') {
-                                                    allSkillIds.add(skill.id);
-                                                }
-                                            } else if (typeof skill === 'string') {
-                                                // Legacy format: skill is just an ID string
-                                                allSkillIds.add(skill);
-                                            }
-                                        });
+                        // Extract skill IDs from all loaded entities
+                        keysArray.forEach(combatKey => {
+                            const entity = window.TacticalDataLoader.entityCache[combatKey];
+                            if (entity && Array.isArray(entity.skills)) {
+                                entity.skills.forEach(skill => {
+                                    if (typeof skill === 'object' && skill !== null) {
+                                        if (skill.id && typeof skill.id === 'string') {
+                                            allSkillIds.add(skill.id);
+                                        }
+                                    } else if (typeof skill === 'string') {
+                                        allSkillIds.add(skill);
                                     }
                                 });
-
-                                // Load all skills in one batch request
-                                if (allSkillIds.size > 0) {
-                                    const skillIdsArray = Array.from(allSkillIds);
-                                    console.log('[MAP-ENGINE] Carregando', skillIdsArray.length, 'skills:', skillIdsArray);
-                                    await window.TacticalDataLoader.loadSkills(skillIdsArray);
-                                    console.log('[MAP-ENGINE] Todas as skills carregadas com sucesso');
-
-                                    // Preload all skill images to avoid reloading on every click
-                                    console.log('[MAP-ENGINE] Pré-carregando imagens de skills...');
-                                    preloadSkillImages(skillIdsArray);
-                                } else {
-                                    console.warn('[MAP-ENGINE] Nenhuma skill encontrada nas entities');
-                                }
-                            } catch (skillErr) {
-                                console.error('[MAP-ENGINE] Erro ao carregar skills:', skillErr);
-                                // Continue anyway - skills will be loaded on-demand if needed
                             }
+                        });
+
+                        if (allSkillIds.size > 0) {
+                            const skillIdsArray = Array.from(allSkillIds);
+                            console.log('[MAP-ENGINE] Carregando', skillIdsArray.length, 'skills:', skillIdsArray);
+                            await window.TacticalDataLoader.loadSkills(skillIdsArray);
+                            console.log('[MAP-ENGINE] Todas as skills carregadas com sucesso');
+
+                            // Preload all skill images to avoid reloading on every click
+                            console.log('[MAP-ENGINE] Pré-carregando imagens de skills...');
+                            preloadSkillImages(skillIdsArray);
+                        } else {
+                            console.warn('[MAP-ENGINE] Nenhuma skill encontrada nas entities');
                         }
-                    } catch (err) {
-                        console.warn('[MAP-ENGINE] Erro ao carregar entities via API, usando fallback:', err);
                     }
                 }
             } else {
@@ -1138,6 +1143,7 @@
             }
         } catch (err) {
             console.error('[MAP-ENGINE] Erro ao carregar sessão:', err);
+            window.__mapEngineLoadError = err && err.message ? err.message : 'Não foi possível carregar. Tente novamente.';
             hideLoadingState();
             return;
         }
@@ -1393,7 +1399,7 @@
                 level: 10,
                 attributes: { str: 15, agi: 8, vit: 12, int: 5, dex: 10, luk: 6 },
                 hp: 100, maxHp: 100, sp: 1000, maxSp: 1000, attack: 18, defense: 12,
-                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/characters/swordman.png',
+                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/characters/swordman.webp',
                 class: 'warrior', scale: 1.0
             }
         ];
@@ -1407,7 +1413,7 @@
                 level: 5,
                 attributes: { str: 12, agi: 5, vit: 10, int: 3, dex: 6, luk: 3 },
                 hp: 35, maxHp: 35, attack: 10, defense: 5,
-                moveRange: 3, attackRange: 1, avatar: '/public/assets/img/orc.png',
+                moveRange: 3, attackRange: 1, avatar: '/public/assets/img/orc.webp',
                 behavior: 'aggressive', scale: 1.0
             },
             {
@@ -1416,7 +1422,7 @@
                 level: 6,
                 attributes: { str: 8, agi: 10, vit: 7, int: 4, dex: 12, luk: 4 },
                 hp: 45, maxHp: 45, attack: 15, defense: 3,
-                moveRange: 2, attackRange: 3, avatar: '/public/assets/img/orc_scout.png',
+                moveRange: 2, attackRange: 3, avatar: '/public/assets/img/orc_scout.webp',
                 behavior: 'defensive', scale: 1.0
             },
             {
@@ -1425,7 +1431,7 @@
                 level: 12,
                 attributes: { str: 18, agi: 8, vit: 15, int: 5, dex: 10, luk: 5 },
                 hp: 120, maxHp: 120, attack: 22, defense: 10,
-                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/bandit_marauder.png',
+                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/bandit_marauder.webp',
                 behavior: 'aggressive', scale: 1.0
             },
             {
@@ -1439,12 +1445,14 @@
             },
             {
                 id: 'wolf1', name: getEntityName('wolf', 'Dire Wolf'), type: 'enemy',
+                combatKey: 'wolf',
                 x: 12, y: 11,
                 level: 5,
                 attributes: { str: 10, agi: 15, vit: 8, int: 2, dex: 8, luk: 4 },
                 hp: 40, maxHp: 40, attack: 12, defense: 4,
-                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/characters/wolf.png',
-                behavior: 'aggressive', scale: 1.0
+                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/characters/wolf.webp',
+                behavior: 'aggressive', scale: 1.0,
+                animationState: 'idle'
             },
             {
                 id: 'slime1', name: getEntityName('toxic_slime', 'Toxic Slime'), type: 'enemy',
@@ -1452,7 +1460,7 @@
                 level: 3,
                 attributes: { str: 5, agi: 4, vit: 12, int: 6, dex: 4, luk: 5 },
                 hp: 30, maxHp: 30, attack: 8, defense: 8,
-                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/characters/slime.png',
+                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/characters/slime.webp',
                 behavior: 'aggressive', scale: 1.0
             }
         ];
@@ -1510,6 +1518,7 @@
             unit.stats = {
                 atk: stats.atk,
                 matk: stats.matk,
+                atkRanged: stats.atkRanged,
                 def: stats.softDef,
                 hardDef: stats.hardDef,
                 mdef: stats.mdef,
@@ -1522,6 +1531,7 @@
             // Manter compatibilidade com propriedades individuais
             unit.attack = stats.atk;
             unit.matk = stats.matk;
+            unit.attackRanged = stats.atkRanged;
             unit.defense = stats.softDef;
             unit.mdef = stats.mdef;
             unit.hit = stats.hit;
@@ -1562,6 +1572,7 @@
                 if (unit.stats) {
                     unit.attack = unit.stats.atk || unit.attack;
                     unit.matk = unit.stats.matk || unit.matk;
+                    unit.attackRanged = unit.stats.atkRanged ?? unit.attackRanged;
                     unit.defense = unit.stats.def || unit.defense;
                     unit.mdef = unit.stats.mdef || unit.mdef;
                     unit.hit = unit.stats.hit || unit.hit;
@@ -1572,7 +1583,9 @@
             }
 
             console.log(`[MAP] Stats calculados para ${unit.name} (Lv${level}):`, {
-                atk: unit.stats?.atk || unit.attack, matk: unit.stats?.matk || unit.matk,
+                atk: unit.stats?.atk || unit.attack,
+                atkRanged: unit.stats?.atkRanged ?? unit.attackRanged,
+                matk: unit.stats?.matk || unit.matk,
                 def: unit.stats?.def || unit.defense,
                 hp: unit.maxHp, mp: unit.maxSp
             });
@@ -1632,7 +1645,7 @@
                 element: player.element || entityDef?.element || 'neutral',
                 x: player.x || 5,
                 y: player.y || 5,
-                level: player.level || entityDef?.level || 1,
+                level: player.level || entityDef?.level || entityDef?.base_level || 1,
                 // Copiar atributos: primeiro de player (salvo), depois entity sheet, depois padrão
                 attributes: player.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
                 baseAttributes: player.baseAttributes || player.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
@@ -1648,7 +1661,7 @@
                 moveRange: player.moveRange || 4,
                 attackRange: player.attackRange || 1,
                 // Avatar é imutável e sempre vem do entity sheet/config, não do state salvo
-                avatar: entityDef?.images ? '/public/' + (entityDef.images.default || entityDef.images.male || entityDef.images.female || Object.values(entityDef.images || {})[0] || 'assets/img/characters/swordman.png') : (player.avatar || '/public/assets/img/characters/swordman.png'),
+                avatar: entityDef?.images ? '/public/' + (entityDef.images.default || entityDef.images.male || entityDef.images.female || Object.values(entityDef.images || {})[0] || 'assets/img/characters/swordman.webp') : (player.avatar || '/public/assets/img/characters/swordman.webp'),
                 class: player.class || entityDef?.class || 'hero',
                 scale: player.scale || 1.0,
                 combatKey: combatKey,
@@ -1662,30 +1675,13 @@
                 statusEffects: player.statusEffects || []
             };
 
-            // Carregar configurações de animação do JSON (se presentes)
-            // Suporte para objeto 'animations' (idle/walk) ou propriedades globais (retrocompatibilidade)
-            if (player.animations && typeof player.animations === 'object') {
-                // Copiar objeto animations completo
-                playerUnit.animations = JSON.parse(JSON.stringify(player.animations)); // Deep copy
-                console.log('[DEBUG][initEntities] Player - Animations carregado:', playerUnit.animations);
-            } else {
-                // Retrocompatibilidade: propriedades globais
-                if (player.animationFPS !== undefined) {
-                    playerUnit.animationFPS = player.animationFPS;
-                }
-                if (player.animationScale !== undefined) {
-                    playerUnit.animationScale = player.animationScale;
-                }
-                if (player.animationOffsetX !== undefined) {
-                    playerUnit.animationOffsetX = player.animationOffsetX;
-                }
-                if (player.animationOffsetY !== undefined) {
-                    playerUnit.animationOffsetY = player.animationOffsetY;
-                }
+            // Animação: apenas da ficha (entityDef); sem fallback
+            if (!entityDef) throw new Error('Entity not found: ' + combatKey);
+            playerUnit.animations = {};
+            for (const k of ['idle', 'walk', 'atack']) {
+                if (entityDef.animations && entityDef.animations[k]) playerUnit.animations[k] = { ...entityDef.animations[k] };
             }
-            if (player.forceAnimation !== undefined) {
-                playerUnit.forceAnimation = player.forceAnimation;
-            }
+            playerUnit.forceAnimation = entityDef.forceAnimation ?? 'idle';
 
             playerUnits.push(playerUnit);
         }
@@ -1714,7 +1710,7 @@
                 element: ally.element || entityDef?.element || 'neutral',
                 x: ally.x || (playerUnits[0]?.x || 5) + 1,
                 y: ally.y || playerUnits[0]?.y || 5,
-                level: ally.level || entityDef?.level || 1,
+                level: ally.level || entityDef?.level || entityDef?.base_level || 1,
                 // Copiar atributos: primeiro de ally (salvo), depois entity sheet, depois padrão
                 attributes: ally.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
                 baseAttributes: ally.baseAttributes || ally.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
@@ -1730,7 +1726,7 @@
                 moveRange: ally.moveRange || 5,
                 attackRange: ally.attackRange || 4, // Ranged units have longer range
                 // Avatar é imutável e sempre vem do entity sheet/config, não do state salvo
-                avatar: entityDef?.images ? '/public/' + (entityDef.images.default || entityDef.images.male || entityDef.images.female || Object.values(entityDef.images || {})[0] || 'assets/img/archer-male.png') : (ally.avatar || '/public/assets/img/archer-male.png'),
+                avatar: entityDef?.images ? '/public/' + (entityDef.images.default || entityDef.images.male || entityDef.images.female || Object.values(entityDef.images || {})[0] || 'assets/img/archer-male.webp') : (ally.avatar || '/public/assets/img/archer-male.webp'),
                 class: ally.class || entityDef?.class || 'archer',
                 scale: ally.scale || 1.0,
                 combatKey: combatKey,
@@ -1744,32 +1740,14 @@
                 statusEffects: ally.statusEffects || []
             };
 
-            // Carregar configurações de animação do JSON (se presentes)
-            // Suporte para objeto 'animations' (idle/walk) ou propriedades globais (retrocompatibilidade)
-            if (ally.animations && typeof ally.animations === 'object') {
-                // Copiar objeto animations completo
-                allyUnit.animations = JSON.parse(JSON.stringify(ally.animations)); // Deep copy
-                console.log(`[DEBUG][initEntities] Aliado ${index + 1} - Animations carregado:`, allyUnit.animations);
-            } else {
-                // Retrocompatibilidade: propriedades globais
-                if (ally.animationFPS !== undefined) {
-                    allyUnit.animationFPS = ally.animationFPS;
-                }
-                if (ally.animationScale !== undefined) {
-                    allyUnit.animationScale = ally.animationScale;
-                }
-                if (ally.animationOffsetX !== undefined) {
-                    allyUnit.animationOffsetX = ally.animationOffsetX;
-                }
-                if (ally.animationOffsetY !== undefined) {
-                    allyUnit.animationOffsetY = ally.animationOffsetY;
-                }
+            // Animação: apenas da ficha (entityDef); sem fallback
+            if (!entityDef) throw new Error('Entity not found: ' + combatKey);
+            allyUnit.animations = {};
+            for (const k of ['idle', 'walk', 'atack']) {
+                if (entityDef.animations && entityDef.animations[k]) allyUnit.animations[k] = { ...entityDef.animations[k] };
             }
-            if (ally.forceAnimation !== undefined) {
-                allyUnit.forceAnimation = ally.forceAnimation;
-            }
+            allyUnit.forceAnimation = entityDef.forceAnimation ?? 'idle';
 
-            console.log(`[DEBUG][initEntities] Aliado criado:`, allyUnit);
             playerUnits.push(allyUnit);
         });
 
@@ -1792,7 +1770,7 @@
                 id: enemy.id || `enemy_${Math.random().toString(36).slice(2, 8)}`,
                 name: enemy.name || entityDef?.name || 'Enemy',
                 type: 'enemy',
-                level: enemy.level || entityDef?.level || 1,
+                level: enemy.level || entityDef?.level || entityDef?.base_level || 1,
                 // Copiar atributos: primeiro de enemy (salvo), depois entity sheet, depois padrão
                 attributes: enemy.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
                 baseAttributes: enemy.baseAttributes || enemy.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
@@ -1823,40 +1801,15 @@
                 statusEffects: enemy.statusEffects || []
             };
 
-            // Carregar configurações de animação do JSON (se presentes)
-            // Suporte para objeto 'animations' (idle/walk) ou propriedades globais (retrocompatibilidade)
-            console.log(`[DEBUG][initEntities] Inimigo ${index + 1} - enemy.animations:`, enemy.animations);
-            if (enemy.animations && typeof enemy.animations === 'object') {
-                // Copiar objeto animations completo
-                unit.animations = JSON.parse(JSON.stringify(enemy.animations)); // Deep copy
-                console.log(`[DEBUG][initEntities] Unidade ${index + 1} - Animations carregado:`, unit.animations);
-            } else {
-                // Retrocompatibilidade: propriedades globais
-                if (enemy.animationFPS !== undefined) {
-                    unit.animationFPS = enemy.animationFPS;
-                }
-                if (enemy.animationScale !== undefined) {
-                    unit.animationScale = enemy.animationScale;
-                }
-                if (enemy.animationOffsetX !== undefined) {
-                    unit.animationOffsetX = enemy.animationOffsetX;
-                }
-                if (enemy.animationOffsetY !== undefined) {
-                    unit.animationOffsetY = enemy.animationOffsetY;
-                }
+            // Animação: apenas da ficha (entityDef); sem fallback
+            if (!entityDef) throw new Error('Entity not found: ' + combatKey);
+            unit.animations = {};
+            for (const k of ['idle', 'walk', 'atack']) {
+                if (entityDef.animations && entityDef.animations[k]) unit.animations[k] = { ...entityDef.animations[k] };
             }
-            if (enemy.forceAnimation !== undefined) {
-                unit.forceAnimation = enemy.forceAnimation;
-            }
+            unit.forceAnimation = entityDef.forceAnimation ?? 'idle';
+            unit.animationState = 'idle';
 
-            // Definir estado inicial da animação
-            if (!enemy.forceAnimation || enemy.forceAnimation === 'auto') {
-                unit.animationState = 'idle';
-            } else {
-                unit.animationState = enemy.forceAnimation;
-            }
-
-            console.log(`[DEBUG][initEntities] Unidade criada:`, unit);
             enemyUnits.push(unit);
         });
 
@@ -2013,27 +1966,16 @@
 
         // Carregar TODAS as imagens imediatamente (não esperar onload)
         Object.entries(sources).forEach(([id, src]) => {
-            // Verificar se já existe no loadedImages (pode ter sido carregado anteriormente)
-            if (loadedImages[id] && loadedImages[id].complete) {
-                return;
-            }
+            // Evitar requisição duplicada: já carregada ou já em carregamento
+            if (loadedImages[id]) return;
 
             const img = new Image();
-            img.onerror = () => {
-                // Silenciosamente ignorar erros (sprites podem não existir)
-            };
-            img.onload = () => {
-                loadedImages[id] = img;
-                needsRender = true;
-            };
-            // IMPORTANTE: Definir src DEPOIS de configurar os event handlers
+            loadedImages[id] = img; // reservar antes de src para que outra loadImages() não dispare request duplicado
+            img.onerror = () => { /* silencioso */ };
+            img.onload = () => { needsRender = true; };
             img.src = src;
 
-            // Se a imagem já estiver em cache, onload pode não disparar - verificar complete IMEDIATAMENTE
-            if (img.complete && img.width > 0 && img.height > 0) {
-                loadedImages[id] = img;
-                needsRender = true;
-            }
+            if (img.complete && img.width > 0 && img.height > 0) needsRender = true;
         });
     }
 
@@ -2183,12 +2125,10 @@
             }
 
             // Voltar para idle após ação
-            if (!enemy.forceAnimation || enemy.forceAnimation === 'auto') {
-                const prevState = enemy.animationState || 'walk';
-                enemy.animationState = 'idle';
-                if (prevState !== 'idle') {
-                    startAnimationBlend(enemy, prevState, 'idle', 160);
-                }
+            const prevState = enemy.animationState || 'walk';
+            enemy.animationState = 'idle';
+            if (prevState !== 'idle') {
+                startAnimationBlend(enemy, prevState, 'idle', 160);
             }
 
             updateUI();
@@ -3168,7 +3108,7 @@
         // Trigger attack animation if available
         if (spriteAnimations && spriteAnimations.atack && spriteAnimations.atack.loaded) {
             attacker.animationState = 'atack';
-            attacker.animationStartFrame = animationFrame;
+            attacker.animationStartTimeMs = animationTimeMs;
             attacker._animReverting = false;
 
             // Buscar FPS (usar o mesmo cálculo do render)
@@ -3194,10 +3134,13 @@
         const direction = { x: dirX / dirLength, y: dirY / dirLength };
 
         // 2. CÁLCULO DE DANO COM CRÍTICO
-        const baseDamage = attacker.attack || 10;
+        const baseDamage = (range > 1 && (attacker.attackRanged != null && attacker.attackRanged > 0))
+            ? (attacker.attackRanged || attacker.attack || 10)
+            : (attacker.attack || 10);
         const defense = target.defense || 0;
         const variance = 0.8 + Math.random() * 0.4;
-        const isCrit = Math.random() < 0.15; // 15% chance de crítico
+        const critChance = Math.min(95, Math.max(1, (attacker.stats?.crit ?? attacker.crit ?? 5) + (attacker.buffedCritBonus || 0)));
+        const isCrit = Math.random() * 100 < critChance;
         let damage = Math.max(1, Math.floor((baseDamage - defense * 0.5) * variance));
         if (isCrit) damage = Math.floor(damage * 1.5);
 
@@ -3241,14 +3184,15 @@
 
         // Deriva tipo de atacante (entity_id/combatKey/class) para efeitos e sons
         const _aid = (attackerEntityId || attacker.entity_id || attacker.combatKey || attacker.combat_key || attacker.class || '').toLowerCase();
-        const attackerSprite = _aid.includes('slime') ? 'slime' : _aid.includes('wolf') ? 'wolf' : _aid.includes('sword') || _aid === 'hero_swordman' ? 'swordman' : _aid.includes('archer') || _aid === 'hero_archer' ? 'archer' : _aid.includes('mage') || _aid === 'hero_mage' ? 'mage' : null;
+        const attackerSprite = _aid.includes('slime') ? 'slime' : _aid.includes('wolf') ? 'wolf' : _aid.includes('sword') || _aid === 'hero_swordman' ? 'swordman' : _aid.includes('archer') || _aid === 'hero_archer' ? 'archer' : _aid.includes('acolyte') || _aid === 'hero_acolyte' ? 'acolyte' : _aid.includes('mage') || _aid === 'hero_mage' ? 'mage' : null;
 
         // Determinar tipo de unidade atacante para efeito apropriado
         const isWarrior = attacker.class === 'warrior' || attacker.class === 'swordman' || attackerSprite === 'swordman';
         const isArcher = attacker.class === 'archer' || attackerSprite === 'archer';
         const isMage = attacker.class === 'mage' || attackerSprite === 'mage';
+        const isAcolyte = attacker.class === 'acolyte' || attackerSprite === 'acolyte';
 
-        if (isWarrior || (!isArcher && !isMage)) {
+        if (isWarrior || (!isArcher && !isMage && !isAcolyte)) {
             // Slash effect para warriors/melee
             spawnSwordSlashEffect(targetPxX, targetPxY);
         } else if (isArcher) {
@@ -3259,6 +3203,9 @@
         } else if (isMage) {
             // Efeito mágico para magos
             spawnMagicEffect(targetPxX, targetPxY, '#a855f7');
+        } else if (isAcolyte) {
+            // Efeito santo para acolyte (staff/holy)
+            spawnMagicEffect(targetPxX, targetPxY, '#fef3c7');
         }
 
         // Efeito de impacto universal premium
@@ -3277,6 +3224,8 @@
             playClawSfx(attackerEntityId);
         } else if (attackerSprite === 'slime') {
             playSlimeSfx(attackerEntityId);
+        } else if (attackerSprite === 'acolyte') {
+            playStaffSfx(attackerEntityId, isCrit);
         } else {
             playHitImpactSfx(isCrit);
         }
@@ -3362,19 +3311,21 @@
             ? targets
             : (target ? [target] : []);
 
+        const casterEntityId = getEntityIdForUnit(caster);
         // Determinar tipo de efeito visual baseado na skill
-        const isMagic = skill.damageType === 'magic' || skill.element || ['fire', 'ice', 'lightning', 'holy', 'dark'].includes(skill.element);
+        const isMagic = skill.damageType === 'magic' || (skill.element && ['fire', 'ice', 'lightning', 'holy', 'dark'].includes(skill.element));
         const isPhysical = skill.damageType === 'physical' || caster.class === 'warrior' || caster.class === 'swordman';
+        const isArcher = caster.class === 'archer' || (casterEntityId || '').toLowerCase().includes('archer');
         const isHeal = skill.type === 'heal' || skill.type === 'aoe_heal';
         const isBuff = skill.type === 'self' || skill.type === 'ally' || skill.type === 'buff';
 
         // Determinar tipo de skill para cor do banner
         const skillType = isHeal ? 'heal' : isBuff ? 'buff' : isMagic ? 'magic' : 'physical';
 
-        // BANNER + EFEITO DE SKILL (icone: PNG da skill se skill.img ou /public/assets/icons/skills/{id}.png, senao Lucide)
+        // BANNER + EFEITO DE SKILL (icone: skill.img ou /public/assets/icons/skills/{id}.webp, senao Lucide)
         // Ultimate: showUltimateCutIn (linhas vermelhas no fundo, vignette, flash, banner ULTIMATE)
         // Demais: showSkillBanner (banner simples)
-        const skillImg = skill.img || (skill.id ? `/public/assets/icons/skills/${skill.id}.png` : null);
+        const skillImg = skill.img || (skill.id ? `/public/assets/icons/skills/${skill.id}.webp` : null);
         if (skill.ultimate) {
             await showUltimateCutIn(skill.name, skill.icon || 'zap', skillImg);
         } else {
@@ -3382,12 +3333,16 @@
         }
 
         // Trigger attack animation for caster (igual ao executeAttack)
-        const casterEntityId = getEntityIdForUnit(caster);
         const casterSpriteAnims = casterEntityId ? spriteCache.get(casterEntityId) : null;
 
         // Lobos: uivo (howling_wolf) no início de toda skill (lunar_rampage, pack_howl, savage_bite, etc.)
         if (casterEntityId === 'wolf') {
             playSfxEntity('wolf', 'howling_wolf.mp3', 0.55, 1.0);
+        }
+        // Acolyte: som de preparo de skill (acolyte_skill_prepare)
+        if (casterEntityId === 'acolyte') {
+            const aco = pickRandom(['acolyte_skill_prepare.mp3', 'acolyte_skill_prepare2.mp3', 'acolyte_skill_prepare3.mp3', 'acolyte_skill_prepare4.mp3']);
+            playSfxEntity('acolyte', aco, 0.5, 1.0);
         }
 
         // Posição do caster em pixels
@@ -3427,7 +3382,7 @@
 
         if (casterSpriteAnims && casterSpriteAnims.atack && casterSpriteAnims.atack.loaded) {
             caster.animationState = 'atack';
-            caster.animationStartFrame = animationFrame;
+            caster.animationStartTimeMs = animationTimeMs;
             caster._animReverting = false;
 
             // Buscar FPS
@@ -3459,8 +3414,17 @@
                 return false;
             }
 
-            const baseDamage = caster.attack || 10;
-            const dmgMult = typeof skill.dmgMult === 'number' ? skill.dmgMult : 1.0;
+            // baseDamage: magia -> MATK (INT); arqueiro físico -> attackRanged (DEX); melee -> attack (STR)
+            let baseDamage;
+            if (isMagic) {
+                baseDamage = caster.matk || caster.attack || 10;
+            } else if (isArcher) {
+                baseDamage = (caster.attackRanged != null && caster.attackRanged > 0) ? caster.attackRanged : (caster.attack || 10);
+            } else {
+                baseDamage = caster.attack || 10;
+            }
+            const dmgMult = typeof skill.dmgMult === 'number' ? skill.dmgMult : (typeof skill.dmg_mult === 'number' ? skill.dmg_mult : 1.0);
+            const critChance = Math.min(95, Math.max(1, (caster.stats?.crit ?? caster.crit ?? 5) + (caster.buffedCritBonus || 0)));
 
             // Loop de hits
             for (let hit = 0; hit < numHits; hit++) {
@@ -3497,10 +3461,17 @@
                     if (!t || t.hp <= 0) continue;
 
                     const variance = 0.9 + Math.random() * 0.2;
-                    const isCrit = Math.random() < 0.1;
+                    const isCrit = Math.random() * 100 < critChance;
                     // Dano dividido pelos hits para balanceamento
                     const hitDmgMult = dmgMult / numHits;
                     let damage = Math.max(1, Math.floor(baseDamage * hitDmgMult * variance * (isCrit ? 1.5 : 1)));
+
+                    // Redução por DEF (físico) ou MDEF (magia) do alvo
+                    if (isMagic) {
+                        damage = Math.max(1, damage - Math.floor((t.mdef || 0) * 0.25));
+                    } else {
+                        damage = Math.max(1, damage - Math.floor((t.defense || 0) * 0.3));
+                    }
 
                     // Aplicar multiplicadores de dano de buffs/debuffs
                     if (caster.buffedDamageDealt) damage = Math.floor(damage * caster.buffedDamageDealt);
@@ -3612,10 +3583,17 @@
         } else if (skill.type === 'heal' || skill.type === 'aoe_heal') {
             for (const t of targetsToHit) {
                 if (!t || t.hp <= 0) continue;
-                const healing = Math.floor(skill.power || 30);
+                let healing = 0;
+                if (skill.healPct != null) {
+                    healing += Math.floor((t.maxHp || 0) * skill.healPct);
+                } else {
+                    healing += Math.floor(skill.power || 30);
+                }
+                // Cura escala com MATK do curador (MATK vem de INT) — estilo Ragnarok
+                healing += Math.floor((caster.matk || 0) * (skill.healMatk ?? 0.5));
+                healing = Math.max(1, healing);
                 t.hp = Math.min(t.maxHp, t.hp + healing);
-                showFloatingText(`+${healing}`, (t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#22c55e');
-                // Efeito visual de cura PREMIUM
+                showHealNumber(t.x, t.y, healing);
                 spawnHealEffect((t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE);
             }
         } else if (skill.type === 'self' || skill.type === 'ally' || skill.type === 'buff') {
@@ -4381,7 +4359,13 @@
         if (gameState.selectedUnit) {
             const u = gameState.selectedUnit;
             if (miniName) miniName.textContent = u.name;
-            if (miniAvatar) miniAvatar.src = u.avatar;
+            if (miniAvatar) {
+                const want = String(u.avatar || '');
+                if (miniAvatar.dataset.avatarUrl !== want) {
+                    miniAvatar.src = want || '';
+                    miniAvatar.dataset.avatarUrl = want;
+                }
+            }
 
             if (miniStatus) miniStatus.classList.add('hidden');
             if (miniStatsRow) {
@@ -4397,7 +4381,10 @@
                 miniStatsRow.classList.remove('flex');
             }
             if (miniName) miniName.textContent = `Exploração (Turno ${gameState.turn})`;
-            if (miniAvatar) miniAvatar.src = '';
+            if (miniAvatar && miniAvatar.dataset.avatarUrl !== '') {
+                miniAvatar.src = '';
+                miniAvatar.dataset.avatarUrl = '';
+            }
         }
     }
 
@@ -4587,7 +4574,7 @@
                 img.onerror = tryLucide;
                 icon.appendChild(img);
             } else {
-                const skillImg = `/public/assets/icons/skills/${effect.data?.id}.png`;
+                const skillImg = `/public/assets/icons/skills/${effect.data?.id}.webp`;
                 const img = document.createElement('img');
                 img.src = skillImg;
                 img.alt = displayName;
@@ -4770,6 +4757,7 @@
      * Desenha o alcance de ataque (área vermelha) - Estilo Premium como movimento
      */
     function drawAttackRange() {
+        if (window.__rpgPerf?.skip?.highlights) return;
         if (gameState.currentAction !== 'attacking' || attackRangeCells.length === 0) return;
 
         const pulse = (Math.sin(animationFrame / 15) + 1) / 2;
@@ -4848,7 +4836,7 @@
             const skill = window.TacticalDataLoader?.skillCache?.[skillId];
             if (!skill) return;
 
-            const skillImg = skill.img || `/public/assets/icons/skills/${skillId}.png`;
+            const skillImg = skill.img || `/public/assets/icons/skills/${skillId}.webp`;
 
             // Criar imagem e pré-carregar
             const img = new Image();
@@ -4924,7 +4912,7 @@
                 const mpCost = skill.mana || skill.cost || 0;
                 const canAfford = unit.sp >= mpCost;
                 const typeClass = getSkillTypeClass(skill);
-                const skillImg = skill.img || `/public/assets/icons/skills/${skill.id}.png`;
+                const skillImg = skill.img || `/public/assets/icons/skills/${skill.id}.webp`;
 
                 return `
                 <div class="skill-icon-btn ${typeClass} ${!canAfford ? 'disabled' : ''}" 
@@ -5176,7 +5164,7 @@
         // Limpar estado de attack antes de mostrar skill range
         attackRangeCells = [];
 
-        // Para skills self, executar imediatamente
+        // Para skills self e aoe_heal, executar imediatamente
         const rangeType = getSkillRangeType(skill);
         if (rangeType === 'self') {
             // Ocultar menu
@@ -5197,6 +5185,22 @@
 
             // Executar skill imediatamente no próprio personagem
             await executeSkill(unit, unit, skill, [unit]);
+            persistSessionState();
+            return;
+        }
+        if (skill.type === 'aoe_heal') {
+            const skillBar = document.getElementById('skill-bar-container');
+            if (skillBar) {
+                skillBar.style.display = 'none';
+                skillBar.querySelectorAll('.skill-tooltip.visible').forEach(t => t.classList.remove('visible'));
+            }
+            skillRangeCells = [];
+            skillAreaCells = [];
+            selectedSkillForPreview = null;
+            gameState.currentAction = null;
+            gameState.selectedSkill = null;
+            const allies = playerUnits.filter(u => u.hp > 0);
+            await executeSkill(unit, unit, skill, allies.length ? allies : [unit]);
             persistSessionState();
             return;
         }
@@ -6052,31 +6056,56 @@
         const timeline = document.getElementById('turn-timeline');
         if (!timeline) return;
 
-        // Clear existing (except label)
         const label = timeline.querySelector('.timeline-label');
-        if (label) {
-            label.textContent = `Turn: ${gameState.turn || 1}`;
-        }
-        timeline.innerHTML = '';
-        if (label) timeline.appendChild(label);
+        if (label) label.textContent = `Turn: ${gameState.turn || 1}`;
 
         // Get all units in order
         const allUnits = [];
-
-        // Current phase units first
         const currentUnits = gameState.phase === 'player' ? playerUnits : enemyUnits;
         const nextUnits = gameState.phase === 'player' ? enemyUnits : playerUnits;
 
         currentUnits.filter(u => u.hp > 0).forEach(u => allUnits.push({ ...u, isCurrent: true }));
-
-        // Add separator
         if (nextUnits.filter(u => u.hp > 0).length > 0) {
             allUnits.push({ separator: true });
             nextUnits.filter(u => u.hp > 0).forEach(u => allUnits.push({ ...u, isCurrent: false }));
         }
 
-        // Render units as cards
-        allUnits.forEach((unit, index) => {
+        const sig = allUnits.map(x => x.separator ? '|' : x.id).join(',');
+        if (sig === lastTimelineSignature) {
+            // Light update: só barras, classes e filtro da img — não recria <img> nem altera .src
+            const cards = timeline.querySelectorAll('.timeline-unit-card');
+            cards.forEach(card => {
+                const id = card.getAttribute('data-unit-id');
+                const unit = allUnits.find(u => !u.separator && u.id === id);
+                if (!unit) return;
+                card.classList.toggle('acted', gameState.unitsActedThisTurn.has(unit.id));
+                card.classList.toggle('active', !!(gameState.selectedUnit && gameState.selectedUnit.id === unit.id));
+                const img = card.querySelector('.unit-portrait-frame img');
+                if (img) img.style.filter = gameState.unitsActedThisTurn.has(unit.id) ? 'grayscale(0.85) brightness(0.7)' : '';
+                const rows = card.querySelectorAll('.hud-bar-row');
+                const hpFill = rows[0]?.querySelector('.hud-bar-fill.hp');
+                const hpText = rows[0]?.querySelector('.hud-bar-text');
+                const mpFill = rows[1]?.querySelector('.hud-bar-fill.mp');
+                const mpText = rows[1]?.querySelector('.hud-bar-text');
+                const hpPct = Math.max(0, (unit.hp / unit.maxHp) * 100);
+                const mp = unit.sp ?? unit.mp ?? 0;
+                const maxMp = unit.maxSp ?? unit.maxMp ?? 100;
+                const mpPct = Math.max(0, (mp / maxMp) * 100);
+                if (hpFill) hpFill.style.width = `${hpPct}%`;
+                if (hpText) hpText.textContent = `${unit.hp}/${unit.maxHp}`;
+                if (hpFill) hpFill.classList.toggle('low', hpPct < 30);
+                if (mpFill) mpFill.style.width = `${mpPct}%`;
+                if (mpText) mpText.textContent = `${mp}/${maxMp}`;
+            });
+            return;
+        }
+        lastTimelineSignature = sig;
+
+        // Full rebuild: limpar e recriar cards (e seus <img>) só quando a lista de unidades mudar
+        timeline.innerHTML = '';
+        if (label) timeline.appendChild(label);
+
+        allUnits.forEach((unit) => {
             if (unit.separator) {
                 const sep = document.createElement('div');
                 sep.className = 'timeline-separator';
@@ -6095,13 +6124,14 @@
             if (gameState.selectedUnit && gameState.selectedUnit.id === unit.id) {
                 cardEl.classList.add('active');
             }
+            cardEl.setAttribute('data-unit-id', unit.id);
 
             // Portrait frame
             const portraitFrame = document.createElement('div');
             portraitFrame.className = 'unit-portrait-frame';
 
             const img = document.createElement('img');
-            img.src = unit.avatar || '/public/assets/img/characters/swordman.png';
+            img.src = unit.avatar || '/public/assets/img/characters/swordman.webp';
             img.alt = unit.name;
             // Aplicar grayscale apenas na imagem se a unidade já agiu
             if (gameState.unitsActedThisTurn.has(unit.id)) {
@@ -6341,7 +6371,7 @@
                         iconEl.appendChild(img);
                     } else {
                         // Try skill-based image path
-                        const skillImg = `/public/assets/icons/skills/${effect.data?.id}.png`;
+                        const skillImg = `/public/assets/icons/skills/${effect.data?.id}.webp`;
                         const img = document.createElement('img');
                         img.src = skillImg;
                         img.alt = displayName;
@@ -6398,15 +6428,6 @@
         });
     }
 
-    function cellPulseImpact(x, y) {
-        // Find if an enemy is here to show a "target" highlight
-        const unit = getUnitAt(x, y);
-        if (unit && unit.type === 'enemy') {
-            // Visual feedback: brief flash or floating icon
-            showFloatingText('🎯', x + 0.1, y - 0.2, '#ef4444');
-            needsRender = true;
-        }
-    }
     function showFloatingText(text, x, y, color = '#fff') {
         floatingTexts.push({
             text, x, y,
@@ -6419,6 +6440,7 @@
      * Desenha o alcance de uma skill selecionada (PREMIUM STYLE - igual ao movimento)
      */
     function drawSkillRangeCells() {
+        if (window.__rpgPerf?.skip?.highlights) return;
         if (skillRangeCells.length === 0 || !selectedSkillForPreview) {
             // Debug temporário para verificar por que não desenha
             if (gameState.currentAction === 'skill' && gameState.selectedSkill) {
@@ -6473,7 +6495,7 @@
      * Desenha área de efeito da skill (PREMIUM STYLE - laranja/dourado)
      */
     function drawSkillAreaCells() {
-        if (skillAreaCells.length === 0) return;
+        if (window.__rpgPerf?.skip?.highlights || skillAreaCells.length === 0) return;
 
         const pulse = (Math.sin(animationFrame / 10) + 1) / 2;
         const scan = (animationFrame % 60) / 60;
@@ -6519,7 +6541,7 @@
      * Update and draw floating texts (MELHORADO 1000% - animação suave SEM GANGORRA)
      */
     function drawFloatingTexts() {
-        if (floatingTexts.length === 0) return;
+        if (window.__rpgPerf?.skip?.floatingTexts || floatingTexts.length === 0) return;
 
         ctx.save();
         ctx.textAlign = 'center';
@@ -6971,13 +6993,12 @@
             }
 
             let targets = [];
-            if (rangeType === 'ally') {
-                // Para skills ally, verificar se clicou em aliado ou na própria célula
+            if (rangeType === 'ally' || rangeType === 'heal') {
+                // Para skills ally/heal: alvo deve ser aliado ou a própria célula (auto)
                 const clickedUnit = unitAtCell;
-                if (clickedUnit && clickedUnit.type === 'player' && clickedUnit.hp > 0) {
+                if (clickedUnit && (clickedUnit.type === 'player' || clickedUnit.type === 'ally') && clickedUnit.hp > 0) {
                     targets = [clickedUnit];
                 } else if (x === caster.x && y === caster.y) {
-                    // Clicou na própria célula
                     targets = [caster];
                 } else {
                     returnToNormalSelection();
@@ -6985,10 +7006,10 @@
                 }
             } else {
                 const area = calculateSkillArea(skill, x, y, caster.x, caster.y);
-                const targetType = skill.type === 'ally' || skill.type === 'aoe_heal' ? 'player' : 'enemy';
+                const targetType = (skill.type === 'ally' || skill.type === 'aoe_heal' || skill.type === 'heal') ? 'player' : 'enemy';
                 targets = [...playerUnits, ...enemyUnits].filter(u =>
                     u.hp > 0 &&
-                    u.type === targetType &&
+                    (u.type === targetType || (targetType === 'player' && u.type === 'ally')) &&
                     area.some(cell => cell.x === u.x && cell.y === u.y)
                 );
             }
@@ -7358,6 +7379,14 @@
     // RENDERING
     // =====================================================
     function gameLoop() {
+        const _perfT0 = performance.now();
+        const now = _perfT0;
+        if (lastFrameTime !== undefined) {
+            const deltaMs = Math.min(now - lastFrameTime, 200);
+            animationTimeMs += deltaMs;
+        }
+        lastFrameTime = now;
+
         animationFrame++;
 
         // Smooth camera
@@ -7375,10 +7404,38 @@
         }
 
         if (needsRender || gameState.isAnimating || playerUnits.some(u => u.hp > 0)) {
-            updateParticles();
+            if (!window.__rpgPerf?.skip?.particles) updateParticles();
             render();
-            renderMinimap();
+            if (!window.__rpgPerf?.skip?.minimap) renderMinimap();
             needsRender = false;
+        }
+
+        // Performance monitor (menu de otimização) – baixo custo
+        if (window.__rpgPerf) {
+            window.__rpgPerf.frameTimeMs = performance.now() - _perfT0;
+            window.__rpgPerf.frameCount = (window.__rpgPerf.frameCount || 0) + 1;
+            window.__rpgPerf.loadedImagesCount = Object.keys(loadedImages).length;
+            window.__rpgPerf.spriteCacheSize = spriteCache.size;
+            let sf = 0;
+            for (const v of spriteCache.values()) {
+                for (const a of [v && v.idle, v && v.walk, v && v.atack]) {
+                    if (a && typeof a.frameCount === 'number') sf += a.frameCount;
+                }
+            }
+            window.__rpgPerf.spriteCacheFrames = sf;
+            window.__rpgPerf.floatingTexts = floatingTexts.length;
+            window.__rpgPerf.particles = particles.length;
+            window.__rpgPerf.units = playerUnits.filter(u => u.hp > 0).length + enemyUnits.filter(u => u.hp > 0).length;
+            window.__rpgPerf.highlightCells = reachableCells.length + attackableCells.length + (skillRangeCells || []).length + (skillAreaCells || []).length + (attackRangeCells || []).length;
+            window.__rpgPerf.animationFrame = animationFrame;
+            if (animationFrame % 120 === 0) {
+                let b = 0;
+                for (const k of Object.keys(loadedImages)) {
+                    const i = loadedImages[k];
+                    if (i && i.naturalWidth) b += i.naturalWidth * i.naturalHeight * 4;
+                }
+                window.__rpgPerf.loadedImagesApproxBytes = b;
+            }
         }
 
         requestAnimationFrame(gameLoop);
@@ -7406,20 +7463,15 @@
         ctx.scale(viewState.scale, viewState.scale);
 
         // Map background with Tactical Focus (desaturação quando mostrar área de ataque ou movimento)
-        if (loadedImages.map) {
+        if (loadedImages.map && !window.__rpgPerf?.skip?.map) {
             ctx.save();
             const hasFocus = reachableCells.length > 0 || attackableCells.length > 0 || attackPreviewCells.length > 0 || attackRangeCells.length > 0;
-
-            if (hasFocus) {
-                // Aplicar desaturação (preto e branco) no mapa
+            if (hasFocus && !window.__rpgPerf?.skip?.mapFilter) {
                 ctx.filter = 'grayscale(0.85) brightness(0.35)';
             }
             ctx.drawImage(loadedImages.map, 0, 0, MAP_WIDTH, MAP_HEIGHT);
             ctx.restore();
         }
-
-        // Grid (Subtle lines)
-        drawGrid();
 
         // Highlights (These must pop, so drawn AFTER map but potentially before entities)
         drawReachableCells();
@@ -7486,35 +7538,35 @@
         drawRulers();
     }
 
+    /** Fundo preto + blueprint (linhas em coords de tela apenas no fundo; o mapa é desenhado depois e cobre o centro). */
     function drawBlueprintBackground() {
-        // Dark blueprint base
         ctx.fillStyle = '#0d1117';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Blueprint grid pattern (subtle)
-        const gridSize = 32;
-        ctx.strokeStyle = 'rgba(30, 70, 120, 0.15)';
+        // Blueprint no fundo preto (margens) — em pixels de tela; o mapa desenhado depois cobre e esconde onde tem mapa
+        const grid = 32;
+        const major = 128;
+        ctx.strokeStyle = 'rgba(30, 70, 120, 0.18)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += gridSize) {
+        for (let x = 0; x <= canvas.width; x += grid) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, canvas.height);
             ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += gridSize) {
+        for (let y = 0; y <= canvas.height; y += grid) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(canvas.width, y);
             ctx.stroke();
         }
-        ctx.strokeStyle = 'rgba(40, 90, 150, 0.2)';
-        for (let x = 0; x < canvas.width; x += gridSize * 4) {
+        ctx.strokeStyle = 'rgba(40, 90, 150, 0.22)';
+        for (let x = 0; x <= canvas.width; x += major) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, canvas.height);
             ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += gridSize * 4) {
+        for (let y = 0; y <= canvas.height; y += major) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(canvas.width, y);
@@ -7559,6 +7611,7 @@
     }
 
     function drawRulers() {
+        if (window.__rpgPerf?.skip?.rulers) return;
         const rulerSize = CONFIG.RULER_SIZE;
         const cellSize = CONFIG.CELL_SIZE * viewState.scale;
 
@@ -7631,63 +7684,8 @@
         ctx.stroke();
     }
 
-    function drawGrid() {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
-
-        // Draw minimalist corner markers instead of full boxes for a cleaner map
-        const len = 4;
-        for (let x = 0; x <= CONFIG.GRID_COLS; x++) {
-            for (let y = 0; y <= CONFIG.GRID_ROWS; y++) {
-                const px = x * CONFIG.CELL_SIZE;
-                const py = y * CONFIG.CELL_SIZE;
-
-                ctx.beginPath();
-                ctx.moveTo(px - len, py); ctx.lineTo(px + len, py);
-                ctx.moveTo(px, py - len); ctx.lineTo(px, py + len);
-                ctx.stroke();
-            }
-        }
-
-        // Draw walls - APENAS EM DEBUG MODE (não renderizar durante jogo normal)
-        if (debugMode) {
-            // Draw todas as paredes em vermelho (fixas do config + novas adicionadas)
-            // Paredes fixas do config (em vermelho)
-            WALLS.forEach(wall => {
-                // Não desenhar se estiver na lista de removidas
-                const isRemoved = debugWallsRemoved.some(r => r.x === wall.x && r.y === wall.y);
-                if (isRemoved) return;
-
-                const x = (wall.x - 1) * CONFIG.CELL_SIZE;
-                const y = (wall.y - 1) * CONFIG.CELL_SIZE;
-                ctx.fillStyle = 'rgba(239, 68, 68, 0.5)'; // Vermelho semi-transparente
-                ctx.fillRect(x + 2, y + 2, CONFIG.CELL_SIZE - 4, CONFIG.CELL_SIZE - 4);
-
-                // Borda vermelha para destacar
-                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x + 2, y + 2, CONFIG.CELL_SIZE - 4, CONFIG.CELL_SIZE - 4);
-            });
-
-            // Draw debug walls (paredes novas adicionadas - também em vermelho)
-            if (debugWallsAdded.length > 0) {
-                debugWallsAdded.forEach(wall => {
-                    const x = (wall.x - 1) * CONFIG.CELL_SIZE;
-                    const y = (wall.y - 1) * CONFIG.CELL_SIZE;
-                    ctx.fillStyle = 'rgba(239, 68, 68, 0.5)'; // Vermelho semi-transparente
-                    ctx.fillRect(x + 2, y + 2, CONFIG.CELL_SIZE - 4, CONFIG.CELL_SIZE - 4);
-
-                    // Borda vermelha para destacar
-                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(x + 2, y + 2, CONFIG.CELL_SIZE - 4, CONFIG.CELL_SIZE - 4);
-                });
-            }
-        }
-    }
-
     function drawReachableCells() {
-        if (reachableCells.length === 0) return;
+        if (window.__rpgPerf?.skip?.highlights || reachableCells.length === 0) return;
 
         const pulse = (Math.sin(animationFrame / 15) + 1) / 2;
         const scan = (animationFrame % 80) / 80;
@@ -7727,7 +7725,7 @@
     }
 
     function drawAttackableCells() {
-        if (attackableCells.length === 0) return;
+        if (window.__rpgPerf?.skip?.highlights || attackableCells.length === 0) return;
 
         const pulse = (Math.sin(animationFrame / 8) + 1) / 2;
 
@@ -7902,7 +7900,7 @@
     }
 
     function drawPathPreview() {
-        if (pathPreview.length === 0) return;
+        if (window.__rpgPerf?.skip?.highlights || pathPreview.length === 0) return;
 
         const pulse = (Math.sin(animationFrame / 8) + 1) / 2;
         const steps = pathPreview.length;
@@ -8020,9 +8018,9 @@
         ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + pulse * 0.3})`;
         ctx.lineWidth = 1.5;
 
-        // Simple tactical corner markers
-        const s = CONFIG.CELL_SIZE * 0.45;
-        const l = 8;
+        // Cantos em L alinhados ao tamanho da célula (s = metade do CELL_SIZE)
+        const s = CONFIG.CELL_SIZE / 2;
+        const l = Math.max(6, CONFIG.CELL_SIZE * 0.125);
         ctx.beginPath();
         // Top Left
         ctx.moveTo(-s, -s + l); ctx.lineTo(-s, -s); ctx.lineTo(-s + l, -s);
@@ -8060,14 +8058,14 @@
 
     // Funções wrapper para o novo sistema de renderização em camadas
     function drawUnitSprite(unit, type) {
-        // Usa a função drawUnit mas marca para pular as barras
+        if (window.__rpgPerf?.skip?.sprites) return;
         unit._skipBars = true;
         drawUnit(unit, type);
         unit._skipBars = false;
     }
 
     function drawUnitBars(unit, type) {
-        // Desenha apenas as barras de HP/MP
+        if (window.__rpgPerf?.skip?.unitBars) return;
         if (unit.hp === undefined) return;
 
         const cx = (unit.renderX ?? (unit.x - 0.5) * CONFIG.CELL_SIZE) + (unit._stackOffsetX || 0);
@@ -8209,27 +8207,15 @@
         }
 
         // Obter estado de animação da unidade
-        // Se debug mode estiver ativo e tiver animação forçada, usar ela; senão usar forceAnimation da unidade
+        // Todos começam e voltam para idle; debug pode forçar idle/walk/atack.
         let animationState;
-        // Verificar se debug está ativo E se é para aplicar override apenas para a unidade selecionada
         const isDebugActive = window.MapDebug && window.MapDebug.isActive && window.MapDebug.isActive();
         const debugSelectedUnit = isDebugActive && window.MapDebug.getSelectedUnit ? window.MapDebug.getSelectedUnit() : null;
         const shouldApplyDebugAnimation = isDebugActive && debugSelectedUnit === unit;
 
         if (shouldApplyDebugAnimation) {
             const debugAnimationState = window.MapDebug.getAnimationState ? window.MapDebug.getAnimationState() : null;
-            if (debugAnimationState !== null && debugAnimationState !== 'auto') {
-                animationState = debugAnimationState; // Forçar estado no debug apenas para unidade selecionada
-            } else if (unit.forceAnimation && unit.forceAnimation !== 'auto') {
-                const active = unit.animationState || 'idle';
-                animationState = (active === 'walk' || active === 'atack') ? active : unit.forceAnimation;
-            } else {
-                animationState = unit.animationState || 'idle';
-            }
-        } else if (unit.forceAnimation && unit.forceAnimation !== 'auto') {
-            // forceAnimation não pode anular walk/atack (ex.: arqueira com forceAnimation "idle")
-            const active = unit.animationState || 'idle';
-            animationState = (active === 'walk' || active === 'atack') ? active : unit.forceAnimation;
+            animationState = (debugAnimationState !== null && debugAnimationState !== '') ? debugAnimationState : (unit.animationState || 'idle');
         } else {
             animationState = unit.animationState || 'idle';
         }
@@ -8295,27 +8281,20 @@
             ctx.arc(0, 0, radius + 3, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Tactical Sonar Pulse Ring
-            const ping = (animationFrame % 100) / 100;
-            const pulseRadius = ping * (unit.attackRange * CONFIG.CELL_SIZE);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 - ping * 0.6})`;
-            ctx.lineWidth = 2;
+            // Tactical Sonar Pulse Ring — só borda branca, fina e discreta; perto do fim some devagar
+            const cycle = 180;
+            const ping = (animationFrame % cycle) / cycle;
+            const range = unit.attackRange ?? 1;
+            const maxRadius = (range + 0.5) * CONFIG.CELL_SIZE;
+            const pulseRadius = ping * maxRadius;
+            // Fade só na reta final: até ~70% mantém; depois desce suave até 0 (não abrupto)
+            const alpha = ping < 0.7 ? 0.48 : 0.48 * (1 - (ping - 0.7) / 0.3);
+
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2);
             ctx.stroke();
-
-            // Check if Pulse hits enemies
-            enemyUnits.forEach(enemy => {
-                if (enemy.hp <= 0) return;
-                const enemyWorldX = (enemy.x - 0.5) * CONFIG.CELL_SIZE;
-                const enemyWorldY = (enemy.y - 0.5) * CONFIG.CELL_SIZE;
-                const dist = Math.sqrt(Math.pow(enemyWorldX - cx, 2) + Math.pow(enemyWorldY - cy, 2));
-
-                // If pulse is exactly passing over enemy (within a small margin)
-                if (Math.abs(dist - pulseRadius) < 10) {
-                    cellPulseImpact(enemy.x, enemy.y);
-                }
-            });
         }
 
         // Sistema de mira removido (mapCombat descontinuado)
@@ -8405,19 +8384,25 @@
                 const baseOffsetY = animConfig?.animationOffsetY !== undefined
                     ? animConfig.animationOffsetY
                     : (unit.animationOffsetY !== undefined ? unit.animationOffsetY : DEFAULT_SPRITE_OFFSET_Y);
+                // Quando facingRight: usar animationOffsetXWhenFacingRight da ficha se existir; senão espelhar -baseOffsetX.
+                // Os offsets na ficha devem compensar o flip: offsetX = esquerda, offsetXWhenFacingRight = direita.
+                const effOffsetX = unit.facingRight
+                    ? (animConfig?.animationOffsetXWhenFacingRight !== undefined ? animConfig.animationOffsetXWhenFacingRight : -baseOffsetX)
+                    : baseOffsetX;
                 if (useDebugOverrides && window.MapDebug && window.MapDebug.isActive && window.MapDebug.isActive()) {
                     const debugSelectedUnit = window.MapDebug.getSelectedUnit();
                     if (debugSelectedUnit === unit) {
-                        const offsetX = (unit.debugOffsetX !== undefined) ? unit.debugOffsetX : baseOffsetX;
+                        const dx = (unit.debugOffsetX !== undefined) ? unit.debugOffsetX : baseOffsetX;
+                        const offsetX = unit.facingRight ? -dx : dx;
                         const offsetY = (unit.debugOffsetY !== undefined) ? unit.debugOffsetY : baseOffsetY;
                         drawX += offsetX;
                         drawY += offsetY;
                     } else {
-                        drawX += baseOffsetX;
+                        drawX += effOffsetX;
                         drawY += baseOffsetY;
                     }
                 } else {
-                    drawX += baseOffsetX;
+                    drawX += effOffsetX;
                     drawY += baseOffsetY;
                 }
                 drawX += extraOffsetX;
@@ -8454,6 +8439,7 @@
                     if (unit.facingRight) {
                         ctx.save();
                         ctx.scale(-1, 1);
+                        // Flip horizontal: flippedDrawX preserva o centro do sprite (anchor 0.5) na mesma posição
                         const flippedDrawX = -drawX - scaledWidth;
                         ctx.drawImage(tempCanvas, flippedDrawX, drawY, scaledWidth, scaledHeight);
                         ctx.restore();
@@ -8465,6 +8451,7 @@
                     if (unit.facingRight) {
                         ctx.save();
                         ctx.scale(-1, 1);
+                        // Flip horizontal: flippedDrawX preserva o centro do sprite (anchor 0.5 = ponto de origem no meio)
                         const flippedDrawX = -drawX - scaledWidth;
                         ctx.drawImage(frame, flippedDrawX, drawY, scaledWidth, scaledHeight);
                         ctx.restore();
@@ -9026,6 +9013,7 @@
     }
 
     function drawParticles() {
+        if (window.__rpgPerf?.skip?.particles) return;
         ctx.save();
         particles.forEach(p => {
             ctx.globalAlpha = p.life * 0.6;

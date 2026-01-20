@@ -7,20 +7,20 @@
 
 window.effectsData = {
   // ---- STATUS / DEBUFFS ----
-  poison: { type: 'debuff', name: 'Poison', lucide: 'skull', png: 'assets/icons/skills/poison_arrow.png', desc: 'Taking damage every turn.' },
-  bleed: { type: 'debuff', name: 'Bleed', lucide: 'droplet', png: 'assets/icons/skills/crushing_blow.png', desc: 'Losing health over time.' },
-  burn: { type: 'debuff', name: 'Burn', lucide: 'flame', png: 'assets/icons/skills/2.png', desc: 'Taking fire damage.' },
-  freeze: { type: 'debuff', name: 'Freeze', lucide: 'snowflake', png: 'assets/icons/skills/2.png', desc: 'Cannot act while frozen.' },
-  stun: { type: 'debuff', name: 'Stun', lucide: 'lock', png: 'assets/icons/skills/shield_bash.png', desc: 'Cannot act.' },
-  paralyze: { type: 'debuff', name: 'Paralyze', lucide: 'zap', png: 'assets/icons/skills/3.png', desc: '50% chance to fail actions.' },
+  poison: { type: 'debuff', name: 'Poison', lucide: 'skull', png: 'assets/icons/skills/poison_arrow.webp', desc: 'Taking damage every turn.' },
+  bleed: { type: 'debuff', name: 'Bleed', lucide: 'droplet', png: 'assets/icons/skills/crushing_blow.webp', desc: 'Losing health over time.' },
+  burn: { type: 'debuff', name: 'Burn', lucide: 'flame', png: 'assets/icons/skills/2.webp', desc: 'Taking fire damage.' },
+  freeze: { type: 'debuff', name: 'Freeze', lucide: 'snowflake', png: 'assets/icons/skills/2.webp', desc: 'Cannot act while frozen.' },
+  stun: { type: 'debuff', name: 'Stun', lucide: 'lock', png: 'assets/icons/skills/shield_bash.webp', desc: 'Cannot act.' },
+  paralyze: { type: 'debuff', name: 'Paralyze', lucide: 'zap', png: 'assets/icons/skills/3.webp', desc: '50% chance to fail actions.' },
   slow: { type: 'debuff', name: 'Slow', lucide: 'snail', png: null, desc: 'Reduced speed.' },
   disease: { type: 'debuff', name: 'Disease', lucide: 'bug', png: null, desc: 'Reduces stats and causes damage over time.' },
 
   // ---- BUFFS ----
-  hunters_focus: { type: 'buff', name: "Hunter's Focus", lucide: 'eye', png: 'assets/icons/skills/hunters_focus.png', desc: 'Increases DEX, accuracy, crit and damage.' },
-  battle_focus: { type: 'buff', name: 'Battle Focus', lucide: 'zap', png: 'assets/icons/skills/battle_focus.png', desc: 'Increases damage and core stats.' },
-  defensive_wall: { type: 'buff', name: 'Defensive Wall', lucide: 'shield-check', png: 'assets/icons/skills/defensive_wall.png', desc: 'Reduces damage taken.' },
-  parry_stance: { type: 'buff', name: 'Parry Stance', lucide: 'shield', png: 'assets/icons/skills/parry_stance.png', desc: 'Chance to block attacks.' },
+  hunters_focus: { type: 'buff', name: "Hunter's Focus", lucide: 'eye', png: 'assets/icons/skills/hunters_focus.webp', desc: 'Increases DEX, accuracy, crit and damage.' },
+  battle_focus: { type: 'buff', name: 'Battle Focus', lucide: 'zap', png: 'assets/icons/skills/battle_focus.webp', desc: 'Increases damage and core stats.' },
+  defensive_wall: { type: 'buff', name: 'Defensive Wall', lucide: 'shield-check', png: 'assets/icons/skills/defensive_wall.webp', desc: 'Reduces damage taken.' },
+  parry_stance: { type: 'buff', name: 'Parry Stance', lucide: 'shield', png: 'assets/icons/skills/parry_stance.webp', desc: 'Chance to block attacks.' },
   mana_shield: { type: 'buff', name: 'Mana Shield', lucide: 'shield', png: null, desc: 'Reduces damage taken.' },
   arcane_focus: { type: 'buff', name: 'Arcane Focus', lucide: 'sparkles', png: null, desc: 'Increases magic damage and crit.' },
   bless: { type: 'buff', name: 'Blessing', lucide: 'sun', png: null, desc: 'Improves core stats.' },

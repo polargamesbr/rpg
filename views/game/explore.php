@@ -3972,6 +3972,7 @@
     </script>
     <script src="<?= asset('js/map-debug.js') ?>"></script>
     <script src="<?= asset('js/map-engine.js') ?>"></script>
+    <script src="<?= asset('js/performance-monitor.js') ?>"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();

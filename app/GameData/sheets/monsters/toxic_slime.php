@@ -11,11 +11,14 @@ return [
     'desc' => 'A poisonous slime creature that oozes through dark places. Their toxic touch can dissolve flesh and spread disease to those unfortunate enough to encounter them.',
     'base_level' => 5,
     'images' => [
-        'default' => 'assets/entities/toxic_slime/avatar.png',
+        'default' => 'assets/entities/toxic_slime/avatar.webp',
     ],
     'animations' => [
         'base' => 'entities',
-        'types' => ['idle'],
+        'types' => ['idle', 'walk', 'atack'],
+        'idle'  => ['animationFPS' => 7,    'animationScale' => 1,   'animationOffsetX' => -1, 'animationOffsetXWhenFacingRight' => 1, 'animationOffsetY' => 50],
+        'walk'  => ['animationFPS' => 7,    'animationScale' => 0.7, 'animationOffsetX' => 1,  'animationOffsetXWhenFacingRight' => -1, 'animationOffsetY' => 41],
+        'atack' => ['animationFPS' => 14,   'animationScale' => 0.9, 'animationOffsetX' => -1, 'animationOffsetXWhenFacingRight' => 1, 'animationOffsetY' => 45],
     ],
     'sounds' => [
         'death' => ['monster_death1', 'monster_death2'],

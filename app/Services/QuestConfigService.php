@@ -51,7 +51,7 @@ class QuestConfigService
                     'gridCols' => (int)($mapData['gridCols'] ?? 20),
                     'gridRows' => (int)($mapData['gridRows'] ?? 15),
                     'cellSize' => (int)($mapData['cellSize'] ?? 64),
-                    'mapImage' => $mapData['mapImage'] ?? ('/public/assets/img/maps/' . $mapId . '.png'),
+                    'mapImage' => $mapData['mapImage'] ?? ('/public/assets/img/maps/' . $mapId . '.webp'),
                 ];
                 $config['walls'] = is_array($mapData['walls'] ?? null) ? $mapData['walls'] : [];
             }
@@ -125,7 +125,7 @@ class QuestConfigService
         }
 
         if (!isset($config['map']['mapImage']) || $config['map']['mapImage'] === '') {
-            $config['map']['mapImage'] = '/public/assets/img/maps/' . $questId . '.png';
+            $config['map']['mapImage'] = '/public/assets/img/maps/' . $questId . '.webp';
         }
 
         $config['map']['gridCols'] = (int)($config['map']['gridCols'] ?? 20);

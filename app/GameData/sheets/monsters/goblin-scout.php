@@ -9,7 +9,7 @@ return [
     'desc' => 'A small goblin explorer that roams the wilderness, using basic magic to survive. Known for their quick attacks and tendency to flee when outnumbered.',
     'base_level' => 8,
     'images' => [
-        'default' => 'assets/img/mage-male.png',
+        'default' => 'assets/img/mage-male.webp',
     ],
     'attributes' => [
         'str' => 5,

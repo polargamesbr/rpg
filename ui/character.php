@@ -248,7 +248,7 @@ $activePage = 'character';
 
     <div class="background-city-container" style="left: 260px; width: calc(100% - 260px);">
         <!-- Darker cinematic background -->
-        <div class="background-city-img" style="background-image: url('assets/img/tavern-background.jpg'); filter: brightness(0.15) grayscale(40%) blur(4px);"></div>
+        <div class="background-city-img" style="background-image: url('assets/img/tavern-background.webp'); filter: brightness(0.15) grayscale(40%) blur(4px);"></div>
     </div>
 
     <!-- Main Content -->
@@ -368,7 +368,7 @@ $activePage = 'character';
                     <div class="hero-glow"></div>
                     
                     <!-- The Hero Image -->
-                    <img src="assets/img/archer-male.png" class="hero-img" alt="Hero">
+                    <img src="assets/img/archer-male.webp" class="hero-img" alt="Hero">
 
                     <!-- SLOTS: Positioned Relative to this container -->
                     

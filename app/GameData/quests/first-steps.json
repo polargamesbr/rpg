@@ -11,28 +11,7 @@
     "player_defaults": {
         "moveRange": 4,
         "attackRange": 1,
-        "scale": 1.7,
-        "animations": {
-            "idle": {
-                "animationFPS": 7,
-                "animationScale": 1.9,
-                "animationOffsetX": 1,
-                "animationOffsetY": 39
-            },
-            "walk": {
-                "animationFPS": 7,
-                "animationScale": 2,
-                "animationOffsetX": 1,
-                "animationOffsetY": 43
-            },
-            "atack": {
-                "animationFPS": 7,
-                "animationScale": 3.6,
-                "animationOffsetX": 3,
-                "animationOffsetY": 70
-            }
-        },
-        "forceAnimation": "auto"
+        "scale": 1.7
     },
     "allies": [
         {
@@ -51,28 +30,26 @@
             "defense": 4,
             "moveRange": 4,
             "attackRange": 4,
-            "scale": 1.7,
-            "animations": {
-                "idle": {
-                    "animationFPS": 7,
-                    "animationScale": 1.9,
-                    "animationOffsetX": 0,
-                    "animationOffsetY": 39
-                },
-                "walk": {
-                    "animationFPS": 7,
-                    "animationScale": 2,
-                    "animationOffsetX": 0,
-                    "animationOffsetY": 43
-                },
-                "atack": {
-                    "animationFPS": 7,
-                    "animationScale": 3.0,
-                    "animationOffsetX": 0,
-                    "animationOffsetY": 60
-                }
-            },
-            "forceAnimation": "auto"
+            "scale": 1.7
+        },
+        {
+            "id": "ally_acolyte_1",
+            "type": "player",
+            "name": "Acolyte",
+            "x": 12,
+            "y": 10,
+            "combat_key": "hero_acolyte",
+            "class": "acolyte",
+            "hp": 70,
+            "maxHp": 70,
+            "sp": 140,
+            "maxSp": 140,
+            "attack": 6,
+            "defense": 3,
+            "moveRange": 3,
+            "attackRange": 1,
+            "scale": 1.6,
+            "avatar": "/public/assets/entities/acolyte/avatar.webp"
         }
     ],
     "enemies": [
@@ -82,7 +59,7 @@
             "name": "Slime",
             "x": 24,
             "y": 10,
-            "avatar": "/public/assets/img/characters/slime.png",
+            "avatar": "/public/assets/img/characters/slime.webp",
             "combat_key": "toxic_slime",
             "hp": 30,
             "maxHp": 30,
@@ -91,12 +68,7 @@
             "moveRange": 2,
             "attackRange": 1,
             "behavior": "aggressive",
-            "scale": 1,
-            "animationFPS": 7,
-            "animationScale": 1,
-            "animationOffsetX": -1,
-            "animationOffsetY": 50,
-            "forceAnimation": "auto"
+            "scale": 1
         },
         {
             "id": "slime_2",
@@ -104,7 +76,7 @@
             "name": "Slime",
             "x": 40,
             "y": 9,
-            "avatar": "/public/assets/img/characters/slime.png",
+            "avatar": "/public/assets/img/characters/slime.webp",
             "combat_key": "toxic_slime",
             "hp": 30,
             "maxHp": 30,
@@ -113,12 +85,7 @@
             "moveRange": 2,
             "attackRange": 1,
             "behavior": "aggressive",
-            "scale": 1,
-            "animationFPS": 7,
-            "animationScale": 1,
-            "animationOffsetX": -1,
-            "animationOffsetY": 50,
-            "forceAnimation": "auto"
+            "scale": 1
         },
         {
             "id": "wolf_1",
@@ -126,7 +93,7 @@
             "name": "Wolf",
             "x": 45,
             "y": 8,
-            "avatar": "/public/assets/img/characters/wolf.png",
+            "avatar": "/public/assets/img/characters/wolf.webp",
             "combat_key": "wolf",
             "hp": 40,
             "maxHp": 40,
@@ -135,22 +102,7 @@
             "moveRange": 4,
             "attackRange": 1,
             "behavior": "aggressive",
-            "scale": 1,
-            "animations": {
-                "idle": {
-                    "animationFPS": 6,
-                    "animationScale": 2.1,
-                    "animationOffsetX": -1,
-                    "animationOffsetY": 58
-                },
-                "walk": {
-                    "animationFPS": 6,
-                    "animationScale": 1.8,
-                    "animationOffsetX": -1,
-                    "animationOffsetY": 53
-                }
-            },
-            "forceAnimation": "auto"
+            "scale": 1
         }
     ],
     "chests": [
