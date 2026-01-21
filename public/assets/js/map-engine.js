@@ -688,6 +688,13 @@
     let audioCtx = null;
     let currentBattleMusic = null;
 
+    // =====================================================
+    // MAP CACHE - OTIMIZAÇÃO DE PERFORMANCE
+    // =====================================================
+    let mapCacheCanvas = null;      // OffscreenCanvas ou canvas normal com mapa cacheado
+    let mapCacheDirty = true;       // Indica se o cache precisa ser regenerado
+    let mapCacheHasFocus = false;   // Estado anterior do filtro de foco
+
     // Estado de áudio
     let audioSettings = {
         musicEnabled: true,
@@ -747,7 +754,7 @@
         audio.volume = volume;
         audio.playbackRate = rate;
         audio.onerror = () => { playSfx(base, volume, rate); };
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
     }
 
     /** Hit/impacto GERAL (mp3): toda vez que atacar ou receber ataque */
@@ -908,7 +915,6 @@
     let isDragging = false;
     let dragStartPos = null;
     let lastMousePos = { x: 0, y: 0 }; // Coordenadas de janela (para drag)
-    let lastMouseCanvasPos = { x: 0, y: 0 }; // Coordenadas relativas ao canvas (para facing)
     let hoveredCell = null;
     let hoveredUnit = null; // Unidade sob o mouse (para z-index dinâmico)
     let reachableCells = [];
@@ -3086,6 +3092,9 @@
             return false;
         }
 
+        // Virar para o alvo
+        attacker.facingRight = (target.x > attacker.x) || (target.x === attacker.x && (attacker.facingRight ?? false));
+
         // Marcar batalha iniciada na primeira ação hostil
         if (!gameState.battleStarted) {
             gameState.battleStarted = true;
@@ -3298,6 +3307,11 @@
         }
 
         gameState.isAnimating = true;
+
+        // Virar para o alvo quando houver um (ataque, heal em aliado, etc.)
+        if (target && target.x != null) {
+            caster.facingRight = (target.x > caster.x) || (target.x === caster.x && (caster.facingRight ?? false));
+        }
 
         // Consumir MP
         caster.sp = Math.max(0, caster.sp - cost);
@@ -6458,6 +6472,9 @@
         const scan = (animationFrame % 80) / 80;
 
         skillRangeCells.forEach(cell => {
+            // OTIMIZAÇÃO: Viewport culling
+            if (!isCellVisible(cell.x, cell.y)) return;
+
             const x = (cell.x - 1) * CONFIG.CELL_SIZE;
             const y = (cell.y - 1) * CONFIG.CELL_SIZE;
 
@@ -6501,6 +6518,9 @@
         const scan = (animationFrame % 60) / 60;
 
         skillAreaCells.forEach(cell => {
+            // OTIMIZAÇÃO: Viewport culling
+            if (!isCellVisible(cell.x, cell.y)) return;
+
             const x = (cell.x - 1) * CONFIG.CELL_SIZE;
             const y = (cell.y - 1) * CONFIG.CELL_SIZE;
 
@@ -6550,6 +6570,13 @@
 
         for (let i = floatingTexts.length - 1; i >= 0; i--) {
             const ft = floatingTexts[i];
+
+            // OTIMIZAÇÃO: Viewport culling para floating texts
+            // Verificar antes de desenhar (após calcular posição)
+            const screenX = ft.x * viewState.scale + viewState.x;
+            const screenY = ft.y * viewState.scale + viewState.y;
+            const isVisible = screenX > -100 && screenX < canvas.width + 100 &&
+                screenY > -100 && screenY < canvas.height + 100;
 
             // Sistema de física PREMIUM estilo Ragnarok (parábola elegante)
             if (ft.usePhysics && ft.vx !== undefined && ft.vy !== undefined) {
@@ -6626,6 +6653,9 @@
                 floatingTexts.splice(i, 1);
                 continue;
             }
+
+            // OTIMIZAÇÃO: Pular desenho se fora da tela (física já foi calculada acima)
+            if (!isVisible) continue;
 
             // Escala: usa currentScale calculada para física, ou calcula para outros
             let scale;
@@ -6737,7 +6767,6 @@
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        lastMouseCanvasPos = { x: mouseX, y: mouseY };
         const world = screenToWorld(mouseX, mouseY);
         const col = Math.floor(world.x / CONFIG.CELL_SIZE) + 1;
         const row = Math.floor(world.y / CONFIG.CELL_SIZE) + 1;
@@ -7266,32 +7295,65 @@
     }
 
     // =====================================================
-    // SPRITE FACING DIRECTION
+    // VIEWPORT CULLING - OTIMIZAÇÃO DE PERFORMANCE
     // =====================================================
 
     /**
-     * Calcula se a unidade deve estar virada para direita baseado na posição do mouse
-     * Se o mouse estiver na mesma célula do personagem, mantém a pose atual
-     * @param {Object} unit - Unidade a verificar
-     * @param {number} mouseWorldX - Posição X do mouse em coordenadas de mundo
-     * @param {number} mouseWorldY - Posição Y do mouse em coordenadas de mundo
-     * @returns {boolean|null} true se deve estar virado para direita, false para esquerda, null para manter atual
+     * Verifica se uma célula do grid está visível na tela
+     * @param {number} cellX - Coordenada X da célula (1-indexed)
+     * @param {number} cellY - Coordenada Y da célula (1-indexed)
+     * @param {number} margin - Margem extra em pixels (para evitar pop-in)
+     * @returns {boolean} true se a célula está visível
      */
-    function calculateFacingFromMouse(unit, mouseWorldX, mouseWorldY) {
-        // Calcular célula do mouse
-        const mouseCellX = Math.floor(mouseWorldX / CONFIG.CELL_SIZE) + 1;
-        const mouseCellY = Math.floor(mouseWorldY / CONFIG.CELL_SIZE) + 1;
+    function isCellVisible(cellX, cellY, margin = 64) {
+        const worldX = (cellX - 1) * CONFIG.CELL_SIZE;
+        const worldY = (cellY - 1) * CONFIG.CELL_SIZE;
+        const screenX = worldX * viewState.scale + viewState.x;
+        const screenY = worldY * viewState.scale + viewState.y;
+        const cellScreenSize = CONFIG.CELL_SIZE * viewState.scale;
 
-        // Se o mouse está na mesma célula do personagem, manter pose atual
-        if (mouseCellX === unit.x && mouseCellY === unit.y) {
-            return null; // null = manter direção atual
-        }
-
-        // Se mouse está em célula diferente, calcular direção baseada na posição
-        const unitWorldX = (unit.x - 0.5) * CONFIG.CELL_SIZE;
-        // Se mouse está à direita do personagem, virar para direita
-        return mouseWorldX > unitWorldX;
+        return screenX + cellScreenSize + margin > 0 &&
+            screenX - margin < canvas.width &&
+            screenY + cellScreenSize + margin > 0 &&
+            screenY - margin < canvas.height;
     }
+
+    /**
+     * Verifica se uma unidade está visível na tela
+     * @param {Object} unit - Unidade a verificar
+     * @param {number} margin - Margem extra em pixels
+     * @returns {boolean} true se a unidade está visível
+     */
+    function isUnitVisible(unit, margin = 128) {
+        const worldX = (unit.renderX ?? (unit.x - 0.5) * CONFIG.CELL_SIZE);
+        const worldY = (unit.renderY ?? (unit.y - 0.5) * CONFIG.CELL_SIZE);
+        const screenX = worldX * viewState.scale + viewState.x;
+        const screenY = worldY * viewState.scale + viewState.y;
+
+        // Margem maior para unidades porque sprites podem ser maiores que a célula
+        return screenX + margin > 0 &&
+            screenX - margin < canvas.width &&
+            screenY + margin > 0 &&
+            screenY - margin < canvas.height;
+    }
+
+    /**
+     * Retorna os limites de células visíveis no viewport atual
+     * Útil para otimizar loops sobre células
+     * @returns {Object} {startCol, endCol, startRow, endRow}
+     */
+    function getVisibleCellBounds() {
+        const cellSize = CONFIG.CELL_SIZE * viewState.scale;
+        const startCol = Math.max(1, Math.floor(-viewState.x / cellSize));
+        const endCol = Math.min(CONFIG.GRID_COLS, Math.ceil((canvas.width - viewState.x) / cellSize) + 1);
+        const startRow = Math.max(1, Math.floor(-viewState.y / cellSize));
+        const endRow = Math.min(CONFIG.GRID_ROWS, Math.ceil((canvas.height - viewState.y) / cellSize) + 1);
+        return { startCol, endCol, startRow, endRow };
+    }
+
+    // =====================================================
+    // SPRITE FACING DIRECTION
+    // =====================================================
 
     /**
      * Calcula se a unidade deve estar virada para direita baseado na direção do movimento
@@ -7304,7 +7366,7 @@
         // Durante movimento, usar direção do movimento
         if (targetX > unit.x) return true; // Movendo para direita
         if (targetX < unit.x) return false; // Movendo para esquerda
-        // Se movimento vertical, manter direção atual ou usar mouse
+        // Se movimento vertical, manter direção atual
         return unit.facingRight || false;
     }
 
@@ -7403,7 +7465,24 @@
             needsRender = true;
         }
 
-        if (needsRender || gameState.isAnimating || playerUnits.some(u => u.hp > 0)) {
+        // OTIMIZAÇÃO: Só renderizar quando há atividade visual real
+        // Detectar se há animações de sprite rodando (idle sempre roda, então considerar sempre ativo se há unidades)
+        const hasActiveAnimations = playerUnits.some(u => u.hp > 0) || enemyUnits.some(u => u.hp > 0);
+        const hasParticles = particles.length > 0;
+        const hasFloatingTexts = floatingTexts.length > 0;
+        const hasScreenShake = screenShake.intensity > 0;
+        const hasHitFlash = hitFlash > 0;
+
+        // Renderizar se: flag needsRender, animações do jogo, ou elementos visuais ativos
+        const shouldRender = needsRender ||
+            gameState.isAnimating ||
+            hasActiveAnimations ||  // Sprites animados precisam atualizar
+            hasParticles ||
+            hasFloatingTexts ||
+            hasScreenShake ||
+            hasHitFlash;
+
+        if (shouldRender) {
             if (!window.__rpgPerf?.skip?.particles) updateParticles();
             render();
             if (!window.__rpgPerf?.skip?.minimap) renderMinimap();
@@ -7428,6 +7507,9 @@
             window.__rpgPerf.units = playerUnits.filter(u => u.hp > 0).length + enemyUnits.filter(u => u.hp > 0).length;
             window.__rpgPerf.highlightCells = reachableCells.length + attackableCells.length + (skillRangeCells || []).length + (skillAreaCells || []).length + (attackRangeCells || []).length;
             window.__rpgPerf.animationFrame = animationFrame;
+            // OTIMIZAÇÃO: Novas métricas de cache
+            window.__rpgPerf.mapCacheActive = !mapCacheDirty && mapCacheCanvas !== null;
+            window.__rpgPerf.renderSkipped = !shouldRender;
             if (animationFrame % 120 === 0) {
                 let b = 0;
                 for (const k of Object.keys(loadedImages)) {
@@ -7463,14 +7545,45 @@
         ctx.scale(viewState.scale, viewState.scale);
 
         // Map background with Tactical Focus (desaturação quando mostrar área de ataque ou movimento)
+        // OTIMIZAÇÃO: Sistema de cache do mapa
         if (loadedImages.map && !window.__rpgPerf?.skip?.map) {
-            ctx.save();
             const hasFocus = reachableCells.length > 0 || attackableCells.length > 0 || attackPreviewCells.length > 0 || attackRangeCells.length > 0;
-            if (hasFocus && !window.__rpgPerf?.skip?.mapFilter) {
-                ctx.filter = 'grayscale(0.85) brightness(0.35)';
+
+            // Se o estado de foco mudou, marcar cache como dirty
+            if (hasFocus !== mapCacheHasFocus) {
+                mapCacheDirty = true;
+                mapCacheHasFocus = hasFocus;
             }
-            ctx.drawImage(loadedImages.map, 0, 0, MAP_WIDTH, MAP_HEIGHT);
-            ctx.restore();
+
+            // Criar/regenerar cache se necessário
+            if (mapCacheDirty || !mapCacheCanvas) {
+                // Criar OffscreenCanvas se suportado, senão usar canvas normal
+                if (!mapCacheCanvas) {
+                    if (typeof OffscreenCanvas !== 'undefined') {
+                        mapCacheCanvas = new OffscreenCanvas(MAP_WIDTH, MAP_HEIGHT);
+                    } else {
+                        mapCacheCanvas = document.createElement('canvas');
+                        mapCacheCanvas.width = MAP_WIDTH;
+                        mapCacheCanvas.height = MAP_HEIGHT;
+                    }
+                }
+
+                const cacheCtx = mapCacheCanvas.getContext('2d');
+
+                // Aplicar filtro se necessário
+                if (hasFocus && !window.__rpgPerf?.skip?.mapFilter) {
+                    cacheCtx.filter = 'grayscale(0.85) brightness(0.35)';
+                } else {
+                    cacheCtx.filter = 'none';
+                }
+
+                cacheCtx.drawImage(loadedImages.map, 0, 0, MAP_WIDTH, MAP_HEIGHT);
+                cacheCtx.filter = 'none'; // Reset filter
+                mapCacheDirty = false;
+            }
+
+            // Desenhar mapa do cache (muito mais rápido que redesenhar toda vez)
+            ctx.drawImage(mapCacheCanvas, 0, 0);
         }
 
         // Highlights (These must pop, so drawn AFTER map but potentially before entities)
@@ -7496,11 +7609,14 @@
         const allUnits = [
             ...enemyUnits.filter(u => u.hp > 0).map(u => ({ unit: u, type: 'enemy' })),
             ...playerUnits.filter(u => u.hp > 0).map(u => ({ unit: u, type: 'player' }))
-        ].sort((a, b) => {
-            // Ordenação por Y: maior Y (mais abaixo) é desenhado por último = na frente (evita "pisando")
-            // Desempate por X para ordem determinística
-            return a.unit.y - b.unit.y || a.unit.x - b.unit.x;
-        });
+        ]
+            // OTIMIZAÇÃO: Viewport culling - filtrar unidades fora da tela
+            .filter(({ unit }) => isUnitVisible(unit))
+            .sort((a, b) => {
+                // Ordenação por Y: maior Y (mais abaixo) é desenhado por último = na frente (evita "pisando")
+                // Desempate por X para ordem determinística
+                return a.unit.y - b.unit.y || a.unit.x - b.unit.x;
+            });
 
         // Primeira passada: desenhar sprites (sem barras de HP)
         allUnits.forEach(({ unit, type }) => {
@@ -7691,6 +7807,9 @@
         const scan = (animationFrame % 80) / 80;
 
         reachableCells.forEach(cell => {
+            // OTIMIZAÇÃO: Viewport culling - pular células fora da tela
+            if (!isCellVisible(cell.x, cell.y)) return;
+
             const x = (cell.x - 1) * CONFIG.CELL_SIZE;
             const y = (cell.y - 1) * CONFIG.CELL_SIZE;
 
@@ -7730,6 +7849,9 @@
         const pulse = (Math.sin(animationFrame / 8) + 1) / 2;
 
         attackableCells.forEach(cell => {
+            // OTIMIZAÇÃO: Viewport culling
+            if (!isCellVisible(cell.x, cell.y)) return;
+
             const x = (cell.x - 1) * CONFIG.CELL_SIZE;
             const y = (cell.y - 1) * CONFIG.CELL_SIZE;
             const padding = 2;
@@ -8463,25 +8585,14 @@
                 ctx.globalAlpha = prevAlpha;
             };
 
-            // Calcular direção baseada no mouse (player) ou posição do player (inimigos)
+            // Calcular direção: player/aliados mantêm facing do movimento; inimigos viram para o player
             if (!gameState.isAnimating) {
-                const isPlayer = unit.type === 'player' || unit.id === 'player';
-
-                if (isPlayer && lastMouseCanvasPos) {
-                    // Player: vira para onde o mouse está
-                    const mouseWorld = screenToWorld(lastMouseCanvasPos.x, lastMouseCanvasPos.y);
-                    const facingFromMouse = calculateFacingFromMouse(unit, mouseWorld.x, mouseWorld.y);
-                    // Só atualizar se não for null (null = manter pose atual)
-                    if (facingFromMouse !== null) {
-                        unit.facingRight = facingFromMouse;
-                    }
-                } else if (!isPlayer && playerUnits.length > 0) {
-                    // Inimigos: sempre viram para onde o player está
+                const isEnemy = unit.type === 'enemy';
+                if (isEnemy && playerUnits.length > 0) {
                     const player = playerUnits[0];
                     if (player && player.hp > 0) {
                         const playerWorldX = (player.x - 0.5) * CONFIG.CELL_SIZE;
                         const unitWorldX = (unit.x - 0.5) * CONFIG.CELL_SIZE;
-                        // Se player está à direita do inimigo, inimigo vira para direita
                         unit.facingRight = playerWorldX > unitWorldX;
                     }
                 }
@@ -9016,6 +9127,14 @@
         if (window.__rpgPerf?.skip?.particles) return;
         ctx.save();
         particles.forEach(p => {
+            // OTIMIZAÇÃO: Viewport culling para partículas
+            const screenX = p.x * viewState.scale + viewState.x;
+            const screenY = p.y * viewState.scale + viewState.y;
+            if (screenX < -50 || screenX > canvas.width + 50 ||
+                screenY < -50 || screenY > canvas.height + 50) {
+                return; // Partícula fora da tela, pular
+            }
+
             ctx.globalAlpha = p.life * 0.6;
             ctx.shadowBlur = p.glow ? 10 : 5;
             ctx.shadowColor = p.color;

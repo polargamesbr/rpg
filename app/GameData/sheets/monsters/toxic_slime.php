@@ -15,10 +15,8 @@ return [
     ],
     'animations' => [
         'base' => 'entities',
-        'types' => ['idle', 'walk', 'atack'],
-        'idle'  => ['animationFPS' => 7,    'animationScale' => 1,   'animationOffsetX' => -1, 'animationOffsetXWhenFacingRight' => 1, 'animationOffsetY' => 50],
-        'walk'  => ['animationFPS' => 7,    'animationScale' => 0.7, 'animationOffsetX' => 1,  'animationOffsetXWhenFacingRight' => -1, 'animationOffsetY' => 41],
-        'atack' => ['animationFPS' => 14,   'animationScale' => 0.9, 'animationOffsetX' => -1, 'animationOffsetXWhenFacingRight' => 1, 'animationOffsetY' => 45],
+        'types' => ['idle'],
+        'idle'  => ['animationFPS' => 12, 'animationScale' => 0.7, 'animationOffsetX' => 1, 'animationOffsetXWhenFacingRight' => -1, 'animationOffsetY' => 39],
     ],
     'sounds' => [
         'death' => ['monster_death1', 'monster_death2'],

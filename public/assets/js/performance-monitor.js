@@ -114,6 +114,10 @@
                             <span>Frames (total)</span>
                             <strong id="perf-animframe" class="perf-value">—</strong>
                         </div>
+                        <div class="perf-row" title="Cache do mapa ativo = mapa não precisa ser redesenhado a cada frame">
+                            <span>Cache do Mapa</span>
+                            <strong id="perf-map-cache" class="perf-value">—</strong>
+                        </div>
                     </section>
                     <section class="perf-section perf-debug">
                         <h4>Debug de gargalo</h4>
@@ -196,6 +200,8 @@
         set('perf-units', p.units);
         set('perf-cells', p.highlightCells);
         set('perf-animframe', p.animationFrame);
+        // Nova métrica de otimização
+        set('perf-map-cache', p.mapCacheActive ? '✓ Ativo' : '✗ Rebuilding');
     }
 
     function tickFps() {
