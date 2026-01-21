@@ -695,6 +695,12 @@
     let mapCacheDirty = true;       // Indica se o cache precisa ser regenerado
     let mapCacheHasFocus = false;   // Estado anterior do filtro de foco
 
+    // =====================================================
+    // HITFLASH CANVAS - REUTILIZÁVEL (evita criar novo canvas a cada frame)
+    // =====================================================
+    let hitFlashCanvas = null;      // Canvas reutilizável para efeito hitFlash vermelho
+    let hitFlashCtx = null;         // Contexto do canvas de hitFlash
+
     // Estado de áudio
     let audioSettings = {
         musicEnabled: true,
@@ -8542,20 +8548,29 @@
                 ctx.globalAlpha = alpha;
 
                 // Efeito de flash vermelho - desenhar sprite com tint vermelho
+                // OTIMIZAÇÃO: Reutilizar canvas em vez de criar novo a cada frame
                 if (unit.hitFlash && unit.hitFlash > 0 && !isGhost) {
-                    // Criar canvas temporário para aplicar tint apenas nos pixels do sprite
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = frame.width;
-                    tempCanvas.height = frame.height;
-                    const tempCtx = tempCanvas.getContext('2d');
+                    // Garantir que o canvas reutilizável existe e tem tamanho suficiente
+                    const neededWidth = frame.width;
+                    const neededHeight = frame.height;
 
-                    // Desenhar sprite original
-                    tempCtx.drawImage(frame, 0, 0);
+                    if (!hitFlashCanvas || hitFlashCanvas.width < neededWidth || hitFlashCanvas.height < neededHeight) {
+                        // Criar ou redimensionar canvas (raro, só quando frame é maior que anterior)
+                        hitFlashCanvas = document.createElement('canvas');
+                        hitFlashCanvas.width = Math.max(neededWidth, hitFlashCanvas?.width || 0, 256);
+                        hitFlashCanvas.height = Math.max(neededHeight, hitFlashCanvas?.height || 0, 256);
+                        hitFlashCtx = hitFlashCanvas.getContext('2d');
+                    }
+
+                    // Limpar área usada e desenhar sprite original
+                    hitFlashCtx.globalCompositeOperation = 'source-over';
+                    hitFlashCtx.clearRect(0, 0, neededWidth, neededHeight);
+                    hitFlashCtx.drawImage(frame, 0, 0);
 
                     // Aplicar overlay vermelho apenas nos pixels não-transparentes
-                    tempCtx.globalCompositeOperation = 'source-atop';
-                    tempCtx.fillStyle = `rgba(255, 0, 0, ${unit.hitFlash * 0.5})`;
-                    tempCtx.fillRect(0, 0, frame.width, frame.height);
+                    hitFlashCtx.globalCompositeOperation = 'source-atop';
+                    hitFlashCtx.fillStyle = `rgba(255, 0, 0, ${unit.hitFlash * 0.5})`;
+                    hitFlashCtx.fillRect(0, 0, neededWidth, neededHeight);
 
                     // Desenhar o sprite com tint
                     if (unit.facingRight) {
@@ -8563,10 +8578,10 @@
                         ctx.scale(-1, 1);
                         // Flip horizontal: flippedDrawX preserva o centro do sprite (anchor 0.5) na mesma posição
                         const flippedDrawX = -drawX - scaledWidth;
-                        ctx.drawImage(tempCanvas, flippedDrawX, drawY, scaledWidth, scaledHeight);
+                        ctx.drawImage(hitFlashCanvas, 0, 0, neededWidth, neededHeight, flippedDrawX, drawY, scaledWidth, scaledHeight);
                         ctx.restore();
                     } else {
-                        ctx.drawImage(tempCanvas, drawX, drawY, scaledWidth, scaledHeight);
+                        ctx.drawImage(hitFlashCanvas, 0, 0, neededWidth, neededHeight, drawX, drawY, scaledWidth, scaledHeight);
                     }
                 } else {
                     // Desenhar sprite normal
