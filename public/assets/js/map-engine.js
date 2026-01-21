@@ -1445,6 +1445,19 @@
 
                 loadedImages['map'] = img;
                 mapLoaded = true;
+
+                // Inicializar WebGL Adapter se disponível
+                if (window.RpgPixiRenderer) {
+                    const container = document.getElementById('map-container');
+                    if (container) {
+                        window.RpgPixiRenderer.init(container).then(() => {
+                            window.RpgPixiRenderer.setMapImage(img);
+                            // Sincronizar viewState inicial
+                            window.RpgPixiRenderer.syncCamera(viewState);
+                        });
+                    }
+                }
+
                 resolve();
             };
             img.onerror = (err) => {
@@ -7577,6 +7590,25 @@
         const hasScreenShake = screenShake.intensity > 0;
         const hasHitFlash = hitFlash > 0;
 
+        // Calcular Screen Shake
+        let shakeX = 0;
+        let shakeY = 0;
+        if (hasScreenShake) {
+            shakeX = (Math.random() * 2 - 1) * screenShake.intensity;
+            shakeY = (Math.random() * 2 - 1) * screenShake.intensity;
+            screenShake.intensity *= screenShake.decay;
+            if (screenShake.intensity < 0.1) {
+                screenShake.intensity = 0;
+            }
+            needsRender = true;
+        }
+
+        // Sincronizar Pixi Camera
+        if (window.RpgPixiRenderer && window.RpgPixiRenderer.initialized) {
+            window.RpgPixiRenderer.syncCamera(viewState, { x: shakeX, y: shakeY });
+            window.RpgPixiRenderer.render(gameState);
+        }
+
         // Renderizar se: flag needsRender, animações do jogo, ou elementos visuais ativos
         const shouldRender = needsRender ||
             gameState.isAnimating ||
@@ -7588,7 +7620,10 @@
 
         if (shouldRender) {
             if (!window.__rpgPerf?.skip?.particles) updateParticles();
-            render();
+
+            // Passar shake para o render 2D (canvas antigo)
+            render(shakeX, shakeY);
+
             // OTIMIZAÇÃO: Minimap atualiza a cada N frames (não precisa ser em tempo real)
             if (!window.__rpgPerf?.skip?.minimap && minimapFrameCounter >= MINIMAP_UPDATE_INTERVAL) {
                 renderMinimap();
@@ -7631,30 +7666,24 @@
         requestAnimationFrame(gameLoop);
     }
 
-    function render() {
+    function render(shakeX = 0, shakeY = 0) {
         if (!ctx || !mapLoaded) return;
 
         // Clear with blueprint background
         drawBlueprintBackground();
 
         ctx.save();
-        let shakeX = 0;
-        let shakeY = 0;
-        if (screenShake.intensity > 0) {
-            shakeX = (Math.random() * 2 - 1) * screenShake.intensity;
-            shakeY = (Math.random() * 2 - 1) * screenShake.intensity;
-            screenShake.intensity *= screenShake.decay;
-            if (screenShake.intensity < 0.1) {
-                screenShake.intensity = 0;
-            }
-            needsRender = true;
-        }
+        /* Shake calculation moved to gameLoop */
+
         ctx.translate(viewState.x + shakeX, viewState.y + shakeY);
         ctx.scale(viewState.scale, viewState.scale);
 
         // Map background with Tactical Focus (desaturação quando mostrar área de ataque ou movimento)
         // OTIMIZAÇÃO: Sistema de cache do mapa
-        if (loadedImages.map && !window.__rpgPerf?.skip?.map) {
+        // SE PIXI ATIVO, NÃO DESENHAR MAPA 2D
+        const usePixi = window.RpgPixiRenderer && window.RpgPixiRenderer.initialized;
+
+        if (!usePixi && loadedImages.map && !window.__rpgPerf?.skip?.map) {
             const hasFocus = reachableCells.length > 0 || attackableCells.length > 0 || attackPreviewCells.length > 0 || attackRangeCells.length > 0;
 
             // Se o estado de foco mudou, marcar cache como dirty
@@ -7698,9 +7727,29 @@
         drawReachableCells();
         drawAttackableCells();
         // drawAttackPreviewCells(); // Sistema antigo desativado
-        drawSkillRangeCells(); // Purple skill range preview (tactical FFT-style)
-        drawSkillAreaCells(); // Orange AoE preview
-        drawAttackRange(); // Red attack range preview (tactical HUD)
+        // 2. Grid / Highlights
+        // OTIMIZAÇÃO: Só desenhar se houver células para destacar, evitando loop vazio
+        if (usePixi) {
+            const highlights = {
+                reachable: reachableCells,
+                attackable: attackableCells,
+                skillRange: skillRangeCells,
+                skillArea: skillAreaCells,
+                attackPreview: attackPreviewCells,
+                attackRange: (typeof attackRangeCells !== 'undefined' && attackRangeCells.length > 0) ? attackRangeCells : null
+            };
+            // Se atacar preview tiver conteúdo, talvez precise de animação (blink). Pixi adapter pode tratar.
+            window.RpgPixiRenderer.updateHighlights(highlights, CONFIG.CELL_SIZE);
+        } else {
+            if (reachableCells.length > 0) drawReachableCells();
+            if (attackableCells.length > 0) drawAttackableCells();
+            if (attackRangeCells && attackRangeCells.length > 0) drawAttackRange(); // Range fixa da skill/ataque
+            if (skillRangeCells && skillRangeCells.length > 0) drawSkillRangeCells();
+            if (skillAreaCells && skillAreaCells.length > 0) drawSkillAreaCells();
+            if (attackPreviewCells.length > 0) drawAttackPreviewCells();
+        }
+
+        // drawPathPreview e drawWallsOverlay permanecem no Canvas 2D por enquanto (complexidade menor)
         drawPathPreview();
         drawWallsOverlay(); // Desenhar paredes se o debug de paredes estiver ativo
 
@@ -7764,6 +7813,13 @@
 
     /** Fundo preto + blueprint (linhas em coords de tela apenas no fundo; o mapa é desenhado depois e cobre o centro). */
     function drawBlueprintBackground() {
+        // Se Pixi estiver ativo, o fundo é renderizado por ele (ou transparente).
+        // Precisamos limpar o Canvas 2D para não obstruir a visão.
+        if (window.RpgPixiRenderer && window.RpgPixiRenderer.initialized) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
+
         ctx.fillStyle = '#0d1117';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         // Blueprint no fundo preto (margens) — em pixels de tela; o mapa desenhado depois cobre e esconde onde tem mapa
