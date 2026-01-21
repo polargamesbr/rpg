@@ -696,10 +696,31 @@
     let mapCacheHasFocus = false;   // Estado anterior do filtro de foco
 
     // =====================================================
+    // FPS THROTTLE - Limita renderização a 80 FPS
+    // =====================================================
+    const TARGET_FPS = 80;
+    const FRAME_DURATION_MS = 1000 / TARGET_FPS;
+    let lastGameLoopTime = 0;
+
+    // =====================================================
+    // MINIMAP CACHE - OffscreenCanvas com atualização reduzida
+    // =====================================================
+    let minimapCacheCanvas = null;   // OffscreenCanvas para minimap cacheado
+    let minimapCacheCtx = null;      // Contexto do cache
+    let minimapFrameCounter = 0;     // Contador de frames para atualização
+    const MINIMAP_UPDATE_INTERVAL = 5; // Atualizar minimap a cada N frames
+
+    // =====================================================
     // HITFLASH CANVAS - REUTILIZÁVEL (evita criar novo canvas a cada frame)
     // =====================================================
     let hitFlashCanvas = null;      // Canvas reutilizável para efeito hitFlash vermelho
     let hitFlashCtx = null;         // Contexto do canvas de hitFlash
+
+    // =====================================================
+    // SHADOW CACHE - Sombra oval pré-renderizada (evita criar gradients por unidade)
+    // =====================================================
+    let unitShadowCache = null;     // Canvas com sombra pré-renderizada
+    let unitShadowCacheSize = 0;    // Tamanho atual do cache
 
     // Estado de áudio
     let audioSettings = {
@@ -941,6 +962,66 @@
     let floatingTexts = [];
     let particles = []; // Sistema de partículas (movido para cima para inicialização do MapSFX)
     let portalPromptShown = false;
+
+    // =====================================================
+    // OBJECT POOLING - Reutilização de objetos (evita GC spikes)
+    // =====================================================
+    const particlePool = [];      // Pool de partículas reutilizáveis
+    const floatingTextPool = [];  // Pool de floating texts reutilizáveis
+    const MAX_POOL_SIZE = 100;    // Limite do pool para evitar memory leak
+
+    /**
+     * Obtém uma partícula do pool ou cria nova
+     * @param {Object} props - Propriedades da partícula
+     * @returns {Object} Partícula configurada
+     */
+    function getParticle(props) {
+        let p = particlePool.pop();
+        if (p) {
+            // Limpar propriedades antigas e aplicar novas
+            Object.keys(p).forEach(k => delete p[k]);
+            Object.assign(p, props);
+        } else {
+            p = { ...props };
+        }
+        return p;
+    }
+
+    /**
+     * Devolve partícula ao pool para reutilização
+     * @param {Object} p - Partícula a devolver
+     */
+    function releaseParticle(p) {
+        if (particlePool.length < MAX_POOL_SIZE) {
+            particlePool.push(p);
+        }
+    }
+
+    /**
+     * Obtém um floating text do pool ou cria novo
+     * @param {Object} props - Propriedades do floating text
+     * @returns {Object} Floating text configurado
+     */
+    function getFloatingText(props) {
+        let ft = floatingTextPool.pop();
+        if (ft) {
+            Object.keys(ft).forEach(k => delete ft[k]);
+            Object.assign(ft, props);
+        } else {
+            ft = { ...props };
+        }
+        return ft;
+    }
+
+    /**
+     * Devolve floating text ao pool para reutilização
+     * @param {Object} ft - Floating text a devolver
+     */
+    function releaseFloatingText(ft) {
+        if (floatingTextPool.length < MAX_POOL_SIZE) {
+            floatingTextPool.push(ft);
+        }
+    }
 
     // =====================================================
     // DEBUG MODE
@@ -1282,7 +1363,7 @@
         if (!data) return combatKeys;
 
         function add(u) {
-            const k = u && (u.combatKey || u.combat_key);
+            const k = u && (u.combatKey || u.combat_key || u.entity_id);
             if (k) combatKeys.add(k);
         }
 
@@ -1642,12 +1723,15 @@
             unitsActed: Array.from(gameState.unitsActedThisTurn || [])
         });
 
-        if (player) {
+        if (player && (player.hp == null || player.hp > 0)) {
             // Carregar atributos da entity sheet se disponível
-            const combatKey = player.combatKey || player.combat_key || null;
+            const combatKey = player.combatKey || player.combat_key || player.entity_id || null;
             let entityDef = null;
             if (combatKey && window.TacticalDataLoader?.entityCache) {
                 entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            }
+            if (!entityDef && player.entity_id && window.TacticalDataLoader?.entityCache) {
+                entityDef = window.TacticalDataLoader.entityCache[player.entity_id];
             }
 
             const playerUnit = {
@@ -1701,18 +1785,18 @@
         // Process allies from session data
         const allies = Array.isArray(data.allies) ? data.allies : [];
         allies.forEach((ally, index) => {
+            if (ally.hp != null && ally.hp <= 0) return;
             console.log(`[DEBUG][initEntities] Processando aliado ${index + 1}:`, ally);
 
             // Carregar atributos da entity sheet se disponível
-            // O combat_key padrão é 'hero_archer' (não 'archer')
-            let combatKey = ally.combatKey || ally.combat_key || 'hero_archer';
-            // Se for 'archer', tentar 'hero_archer'
-            if (combatKey === 'archer') {
-                combatKey = 'hero_archer';
-            }
+            let combatKey = ally.combatKey || ally.combat_key || ally.entity_id || 'hero_archer';
+            if (combatKey === 'archer') combatKey = 'hero_archer';
             let entityDef = null;
             if (combatKey && window.TacticalDataLoader?.entityCache) {
                 entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            }
+            if (!entityDef && ally.entity_id && window.TacticalDataLoader?.entityCache) {
+                entityDef = window.TacticalDataLoader.entityCache[ally.entity_id];
             }
 
             const allyUnit = {
@@ -1764,18 +1848,21 @@
         });
 
         enemies.forEach((enemy, index) => {
+            if (enemy.hp != null && enemy.hp <= 0) return;
             console.log(`[DEBUG][initEntities] Processando inimigo ${index + 1}:`, enemy);
 
-            const unitCombatKey = (enemy.combatKey || enemy.combat_key || '').toLowerCase();
+            const combatKey = enemy.combatKey || enemy.combat_key || enemy.entity_id || null;
+            const unitCombatKey = (combatKey || '').toLowerCase();
             const isSlime = unitCombatKey === 'toxic_slime' || unitCombatKey === 'slime' || (enemy.name && enemy.name.toLowerCase().includes('slime'));
 
             console.log(`[DEBUG][initEntities] Inimigo ${index + 1} - combatKey: ${unitCombatKey}, isSlime: ${isSlime}, x: ${enemy.x}, y: ${enemy.y}`);
 
-            // Carregar atributos da entity sheet se disponível
-            const combatKey = enemy.combatKey || enemy.combat_key || null;
             let entityDef = null;
             if (combatKey && window.TacticalDataLoader?.entityCache) {
                 entityDef = window.TacticalDataLoader.entityCache[combatKey];
+            }
+            if (!entityDef && enemy.entity_id && window.TacticalDataLoader?.entityCache) {
+                entityDef = window.TacticalDataLoader.entityCache[enemy.entity_id];
             }
 
             const unit = {
@@ -3981,12 +4068,13 @@
     function persistSessionState() {
         if (!sessionUid) return;
 
-        const p0 = playerUnits[0];
-        const allies = playerUnits.slice(1);
+        const alive = playerUnits.filter(u => u.hp > 0);
+        const p0 = alive[0];
+        const allies = alive.slice(1);
         const payload = {
             state: {
                 player: p0 ? {
-                    id: p0.id,
+                    id: 'player',
                     entity_id: p0.entity_id,
                     x: p0.x,
                     y: p0.y,
@@ -6656,7 +6744,8 @@
             }
 
             if (ft.life <= 0) {
-                floatingTexts.splice(i, 1);
+                // OTIMIZAÇÃO: Devolver floating text ao pool ao invés de destruir
+                releaseFloatingText(floatingTexts.splice(i, 1)[0]);
                 continue;
             }
 
@@ -7446,7 +7535,15 @@
     // =====================================================
     // RENDERING
     // =====================================================
-    function gameLoop() {
+    function gameLoop(timestamp) {
+        // FPS CAP: Pular frame se ainda não passou tempo suficiente
+        const elapsed = timestamp - lastGameLoopTime;
+        if (elapsed < FRAME_DURATION_MS) {
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+        lastGameLoopTime = timestamp - (elapsed % FRAME_DURATION_MS);
+
         const _perfT0 = performance.now();
         const now = _perfT0;
         if (lastFrameTime !== undefined) {
@@ -7456,6 +7553,7 @@
         lastFrameTime = now;
 
         animationFrame++;
+        minimapFrameCounter++;
 
         // Smooth camera
         if (cameraTarget) {
@@ -7491,7 +7589,11 @@
         if (shouldRender) {
             if (!window.__rpgPerf?.skip?.particles) updateParticles();
             render();
-            if (!window.__rpgPerf?.skip?.minimap) renderMinimap();
+            // OTIMIZAÇÃO: Minimap atualiza a cada N frames (não precisa ser em tempo real)
+            if (!window.__rpgPerf?.skip?.minimap && minimapFrameCounter >= MINIMAP_UPDATE_INTERVAL) {
+                renderMinimap();
+                minimapFrameCounter = 0;
+            }
             needsRender = false;
         }
 
@@ -7812,6 +7914,10 @@
         const pulse = (Math.sin(animationFrame / 15) + 1) / 2;
         const scan = (animationFrame % 80) / 80;
 
+        // OTIMIZAÇÃO: Pré-calcular cores fora do loop (evita criar gradients por célula)
+        const fillAlpha = 0.25 + pulse * 0.1;
+        const strokeAlpha = 0.5 + pulse * 0.5;
+
         reachableCells.forEach(cell => {
             // OTIMIZAÇÃO: Viewport culling - pular células fora da tela
             if (!isCellVisible(cell.x, cell.y)) return;
@@ -7819,11 +7925,8 @@
             const x = (cell.x - 1) * CONFIG.CELL_SIZE;
             const y = (cell.y - 1) * CONFIG.CELL_SIZE;
 
-            // 1. Crystal Surface (High Contrast)
-            const baseGrad = ctx.createLinearGradient(x, y, x + CONFIG.CELL_SIZE, y + CONFIG.CELL_SIZE);
-            baseGrad.addColorStop(0, `rgba(59, 130, 246, ${0.3 + pulse * 0.1})`);
-            baseGrad.addColorStop(1, `rgba(37, 99, 235, 0.1)`);
-            ctx.fillStyle = baseGrad;
+            // 1. Crystal Surface - cor sólida em vez de gradient (muito mais rápido)
+            ctx.fillStyle = `rgba(59, 130, 246, ${fillAlpha})`;
             ctx.fillRect(x + 1, y + 1, CONFIG.CELL_SIZE - 2, CONFIG.CELL_SIZE - 2);
 
             // 2. Scanline Animation
@@ -7836,7 +7939,7 @@
             ctx.restore();
 
             // 3. Neon Frame
-            ctx.strokeStyle = `rgba(96, 165, 250, ${0.5 + pulse * 0.5})`;
+            ctx.strokeStyle = `rgba(96, 165, 250, ${strokeAlpha})`;
             ctx.lineWidth = 2;
             ctx.strokeRect(x + 2, y + 2, CONFIG.CELL_SIZE - 4, CONFIG.CELL_SIZE - 4);
 
@@ -7854,36 +7957,32 @@
 
         const pulse = (Math.sin(animationFrame / 8) + 1) / 2;
 
+        // OTIMIZAÇÃO: Pré-calcular cores e valores fora do loop
+        const fillAlpha = 0.18 + pulse * 0.12;
+        const strokeAlpha = 0.6 + pulse * 0.4;
+        const reticleAlpha = 0.3 + pulse * 0.3;
+        const padding = 2;
+
         attackableCells.forEach(cell => {
             // OTIMIZAÇÃO: Viewport culling
             if (!isCellVisible(cell.x, cell.y)) return;
 
             const x = (cell.x - 1) * CONFIG.CELL_SIZE;
             const y = (cell.y - 1) * CONFIG.CELL_SIZE;
-            const padding = 2;
 
-            // Fill
-            const gradient = ctx.createRadialGradient(
-                x + CONFIG.CELL_SIZE / 2, y + CONFIG.CELL_SIZE / 2, 0,
-                x + CONFIG.CELL_SIZE / 2, y + CONFIG.CELL_SIZE / 2, CONFIG.CELL_SIZE / 1.5
-            );
-            gradient.addColorStop(0, `rgba(239, 68, 68, ${0.2 + pulse * 0.15})`);
-            gradient.addColorStop(1, `rgba(239, 68, 68, ${0.05})`);
-            ctx.fillStyle = gradient;
+            // Fill - cor sólida em vez de gradient radial (muito mais rápido)
+            ctx.fillStyle = `rgba(239, 68, 68, ${fillAlpha})`;
             ctx.fillRect(x + padding, y + padding, CONFIG.CELL_SIZE - padding * 2, CONFIG.CELL_SIZE - padding * 2);
 
-            // Border
-            ctx.shadowColor = 'rgba(239, 68, 68, 0.9)';
-            ctx.shadowBlur = 10;
-            ctx.strokeStyle = `rgba(248, 113, 113, ${0.6 + pulse * 0.4})`;
+            // Border - SEM shadowBlur (muito caro)
+            ctx.strokeStyle = `rgba(248, 113, 113, ${strokeAlpha})`;
             ctx.lineWidth = 3;
             ctx.strokeRect(x + padding, y + padding, CONFIG.CELL_SIZE - padding * 2, CONFIG.CELL_SIZE - padding * 2);
-            ctx.shadowBlur = 0;
 
             // Target reticle
             const cx = x + CONFIG.CELL_SIZE / 2;
             const cy = y + CONFIG.CELL_SIZE / 2;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + pulse * 0.3})`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${reticleAlpha})`;
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(cx, cy, 15, 0, Math.PI * 2);
@@ -8429,38 +8528,56 @@
 
         // 2. Base Square REMOVIDO (usuário solicitou remover o quadrado azul)
 
-        // Desenhar sombra oval premium sob o personagem
-        ctx.save();
+        // OTIMIZAÇÃO: Sombra oval pré-renderizada em cache (evita criar gradients por unidade)
+        // Usamos baseHalf para determinar tamanho da sombra
+        const shadowSize = Math.ceil(baseHalf * 2.5); // Tamanho do canvas de sombra
 
-        // Sombra principal - elipse grande e suave
-        // Y recuado para cima para parecer mais "no chão"
-        const shadowCenterY = baseHalf * 0.30; // Recuado ainda mais para cima
-        const shadowRadiusX = baseHalf * 1.15;  // Expandido nas laterais
-        const shadowRadiusY = baseHalf * 0.38;  // Proporção
+        // Criar/atualizar cache se necessário
+        if (!unitShadowCache || unitShadowCacheSize < shadowSize) {
+            unitShadowCacheSize = shadowSize;
+            unitShadowCache = document.createElement('canvas');
+            unitShadowCache.width = shadowSize * 2;
+            unitShadowCache.height = shadowSize;
+            const sctx = unitShadowCache.getContext('2d');
 
-        // Gradiente radial para sombra suave - MAIS INTENSO
-        const shadowGrad = ctx.createRadialGradient(0, shadowCenterY, 0, 0, shadowCenterY, shadowRadiusX);
-        shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
-        shadowGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.35)');
-        shadowGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)');
-        shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            // Centro do canvas de sombra
+            const cx = shadowSize;
+            const cy = shadowSize * 0.5;
+            const radiusX = shadowSize * 0.92;
+            const radiusY = shadowSize * 0.304;
 
-        ctx.fillStyle = shadowGrad;
-        ctx.beginPath();
-        ctx.ellipse(0, shadowCenterY, shadowRadiusX, shadowRadiusY, 0, 0, Math.PI * 2);
-        ctx.fill();
+            // Sombra principal
+            const shadowGrad = sctx.createRadialGradient(cx, cy, 0, cx, cy, radiusX);
+            shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
+            shadowGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.35)');
+            shadowGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)');
+            shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            sctx.fillStyle = shadowGrad;
+            sctx.beginPath();
+            sctx.ellipse(cx, cy, radiusX, radiusY, 0, 0, Math.PI * 2);
+            sctx.fill();
 
-        // Sombra interna mais escura (núcleo) - MAIS FORTE
-        const innerShadowGrad = ctx.createRadialGradient(0, shadowCenterY, 0, 0, shadowCenterY, shadowRadiusX * 0.35);
-        innerShadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
-        innerShadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            // Sombra interna
+            const innerGrad = sctx.createRadialGradient(cx, cy, 0, cx, cy, radiusX * 0.35);
+            innerGrad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+            innerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            sctx.fillStyle = innerGrad;
+            sctx.beginPath();
+            sctx.ellipse(cx, cy, radiusX * 0.45, radiusY * 0.55, 0, 0, Math.PI * 2);
+            sctx.fill();
+        }
 
-        ctx.fillStyle = innerShadowGrad;
-        ctx.beginPath();
-        ctx.ellipse(0, shadowCenterY, shadowRadiusX * 0.45, shadowRadiusY * 0.55, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
+        // Desenhar sombra do cache (muito mais rápido que criar gradients)
+        const shadowDrawWidth = baseHalf * 2.3;
+        const shadowDrawHeight = baseHalf * 0.76;
+        const shadowOffsetY = baseHalf * 0.30;
+        ctx.drawImage(
+            unitShadowCache,
+            -shadowDrawWidth / 2,
+            shadowOffsetY - shadowDrawHeight / 2,
+            shadowDrawWidth,
+            shadowDrawHeight
+        );
 
         // 3. Unit Sprite or Avatar Circle (desenhar DEPOIS do quadrado para ficar em cima)
         // Variável para armazenar topo do sprite (usado para posicionar barras)
@@ -8951,12 +9068,14 @@
     }
 
     function drawChests() {
+        // Proporção original do ícone: 651×512 (não achatar)
+        const CHEST_ASPECT = 651 / 512;
+
         chests.forEach(chest => {
             if (chest.opened) return;
 
             const cx = (chest.x - 0.5) * CONFIG.CELL_SIZE;
             const cy = (chest.y - 0.5) * CONFIG.CELL_SIZE;
-            const size = CONFIG.CELL_SIZE * 0.5;
             const pulse = (Math.sin(animationFrame / 20) + 1) / 2;
 
             ctx.save();
@@ -8966,8 +9085,12 @@
 
             const img = loadedImages.chest;
             if (img) {
-                ctx.drawImage(img, -size / 2, -size / 2, size, size);
+                // Desenhar com proporção correta: largura 85% da célula, altura proporcional
+                const drawWidth = CONFIG.CELL_SIZE * 0.85;
+                const drawHeight = drawWidth / CHEST_ASPECT;
+                ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
             } else {
+                const size = CONFIG.CELL_SIZE * 0.5;
                 ctx.fillStyle = '#eab308';
                 ctx.fillRect(-size / 2, -size / 2, size, size);
             }
@@ -9096,12 +9219,12 @@
     }
 
     // =====================================================
-    // ATMospheric particles
+    // ATMospheric particles (OTIMIZADO com Object Pooling)
     // =====================================================
     function updateParticles() {
-        // Ember Spawning
+        // Ember Spawning - usa Object Pooling
         if (particles.length < 30) {
-            particles.push({
+            particles.push(getParticle({
                 type: 'ember',
                 x: Math.random() * MAP_WIDTH,
                 y: Math.random() * MAP_HEIGHT,
@@ -9110,7 +9233,7 @@
                 size: Math.random() * 2 + 1,
                 life: 1,
                 color: Math.random() > 0.5 ? '#f97316' : '#fbbf24'
-            });
+            }));
         }
 
         for (let i = particles.length - 1; i >= 0; i--) {
@@ -9132,7 +9255,8 @@
             }
 
             if (p.life <= 0) {
-                particles.splice(i, 1);
+                // OTIMIZAÇÃO: Devolver partícula ao pool ao invés de destruir
+                releaseParticle(particles.splice(i, 1)[0]);
             }
         }
         if (particles.length > 0) needsRender = true;

@@ -387,11 +387,18 @@ class QuestService
      */
     public static function mergeStateInput(array $state, array $stateInput): array
     {
-        $allowPlayer = ['x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight'];
-        if (isset($stateInput['player']) && is_array($stateInput['player']) && isset($state['player'])) {
-            foreach ($allowPlayer as $k) {
-                if (array_key_exists($k, $stateInput['player'])) {
-                    $state['player'][$k] = $stateInput['player'][$k];
+        $allowPlayer = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight'];
+        if (array_key_exists('player', $stateInput)) {
+            if ($stateInput['player'] === null) {
+                $state['player'] = null;
+            } elseif (is_array($stateInput['player'])) {
+                if (!isset($state['player']) || !is_array($state['player'])) {
+                    $state['player'] = [];
+                }
+                foreach ($allowPlayer as $k) {
+                    if (array_key_exists($k, $stateInput['player'])) {
+                        $state['player'][$k] = $stateInput['player'][$k];
+                    }
                 }
             }
         }

@@ -20,7 +20,7 @@ return [
         'types' => ['idle', 'walk', 'atack'],
         'idle'  => ['animationFPS' => 12.5, 'animationScale' => 1.2, 'animationOffsetX' => -8, 'animationOffsetXWhenFacingRight' => 8,  'animationOffsetY' => 34],
         'walk'  => ['animationFPS' => 9,    'animationScale' => 1.5, 'animationOffsetX' => -6, 'animationOffsetXWhenFacingRight' => 6,  'animationOffsetY' => 39],
-        'atack' => ['animationFPS' => 14,   'animationScale' => 2,   'animationOffsetX' => 0,  'animationOffsetXWhenFacingRight' => 0,  'animationOffsetY' => 50],
+        'atack'  => ['animationFPS' => 12.5, 'animationScale' => 1.2, 'animationOffsetX' => -8, 'animationOffsetXWhenFacingRight' => 8,  'animationOffsetY' => 34]
     ],
     'sounds' => [
         'weapon' => 'staff',
