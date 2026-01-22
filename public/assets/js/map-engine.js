@@ -1722,7 +1722,7 @@
             gameState.phase = data.phase;
         }
         if (Array.isArray(data.unitsActed)) {
-            gameState.unitsActedThisTurn = new Set(data.unitsActed);
+            gameState.unitsActedThisTurn = new Set(data.unitsActed.map(id => String(id)));
         }
         gameState.isAnimating = false;
 
@@ -1749,7 +1749,7 @@
             }
 
             const playerUnit = {
-                id: player.id || 'player',
+                id: player.id ? String(player.id) : 'player',
                 name: player.name || entityDef?.name || 'Hero',
                 type: 'player',
                 element: player.element || entityDef?.element || 'neutral',
@@ -1814,7 +1814,7 @@
             }
 
             const allyUnit = {
-                id: ally.id || `ally_${index + 1}`,
+                id: ally.id ? String(ally.id) : `ally_${index + 1}`,
                 name: ally.name || entityDef?.name || 'Ally',
                 type: 'player', // Allies are player units
                 element: ally.element || entityDef?.element || 'neutral',
@@ -1880,7 +1880,7 @@
             }
 
             const unit = {
-                id: enemy.id || `enemy_${Math.random().toString(36).slice(2, 8)}`,
+                id: enemy.id ? String(enemy.id) : `enemy_${Math.random().toString(36).slice(2, 8)}`,
                 name: enemy.name || entityDef?.name || 'Enemy',
                 type: 'enemy',
                 level: enemy.level || entityDef?.level || entityDef?.base_level || 1,
@@ -2128,9 +2128,9 @@
 
         // Close all menus/popups
         hideActionMenu();
-        // REMOVIDO: hideAttackConfirmPopup() - função antiga deletada
+        hideAttackPreview();
+        hideSkillPreview();
         attackPreviewCells = [];
-        pendingAttack = null;
 
         // unitsActedThisTurn is NOT cleared here so player units keep their 'check' icon
         clearHighlights();
@@ -2438,9 +2438,11 @@
     }
 
     function canUnitAct(unit) {
+        if (!unit) return false;
         if (gameState.debugFreeControl || gameState.debugControlEnemy)
             return unit.hp > 0;
-        return unit.hp > 0 && !gameState.unitsActedThisTurn.has(unit.id);
+        // Normalizar ID para string para evitar mismatch com Set do restore
+        return unit.hp > 0 && !gameState.unitsActedThisTurn.has(String(unit.id));
     }
 
     // =====================================================
@@ -2545,6 +2547,9 @@
         clearHighlights();
         hideActionMenu();
         hideTacticalHUD(); // Esconder HUD tática
+        hideAttackPreview();
+        hideSkillPreview();
+
         updateUI();
         needsRender = true;
 
@@ -3517,11 +3522,24 @@
      * Confirm and execute the pending attack
      */
     async function confirmAttack() {
+        if (gameState.isAnimating) return;
+
         const pending = gameState.pendingAttack;
         if (!pending) return;
 
+        // VALIDAÇÃO: Garantir que o atacante ainda é a unidade selecionada e ainda pode agir
+        const attacker = pending.attacker;
+        const canAct = (gameState.debugFreeControl || gameState.debugControlEnemy) ? true : !gameState.unitsActedThisTurn.has(attacker.id);
+
+        if (attacker !== gameState.selectedUnit || !canAct) {
+            console.warn("[confirmAttack] Bloqueado: atacante inválido ou já agiu.");
+            hideAttackPreview();
+            return;
+        }
+
         // Clean up
         hideAttackPreview();
+        hideTacticalHUD();
 
         // Execute attack
         attackRangeCells = [];
@@ -3849,10 +3867,23 @@
      * Confirm and execute the pending skill
      */
     async function confirmSkillAttack() {
+        if (gameState.isAnimating) return;
+
         const pending = gameState.pendingSkill;
         if (!pending) return;
 
+        // VALIDAÇÃO: Garantir que o conjurador ainda é a unidade selecionada e ainda pode agir
+        const caster = pending.caster;
+        const canAct = (gameState.debugFreeControl || gameState.debugControlEnemy) ? true : !gameState.unitsActedThisTurn.has(caster.id);
+
+        if (caster !== gameState.selectedUnit || !canAct) {
+            console.warn("[confirmSkillAttack] Bloqueado: conjurador inválido ou já agiu.");
+            hideSkillPreview();
+            return;
+        }
+
         hideSkillPreview();
+        hideTacticalHUD();
 
         skillRangeCells = [];
         skillAreaCells = [];
@@ -4681,7 +4712,8 @@
             }
         } else if (skill.type === 'summon') {
             // Summon: criar unidade aliada
-            const summonEntityId = skill.summonEntity || 'wolf';
+            const summonEntityId = skill.summonEntity || skill.summon_entity || 'wolf';
+            console.log(`[SUMMON] Invoking entity: ${summonEntityId}`, skill);
 
             // Encontrar posição livre para spawnar o summon
             // Prioridade: abaixo (y+1), depois espiral ao redor do caster
@@ -4827,16 +4859,18 @@
                 summonedBy: caster.id,
             };
 
-            // Usar o sistema automático de cálculo de stats por level
+            // Recalculate stats immediately to ensure top-level properties are set
             if (window.TacticalSkillEngine && window.TacticalSkillEngine.recalculateStats) {
                 window.TacticalSkillEngine.recalculateStats(summonUnit);
-                console.log(`[SUMMON] Stats recalculated - HP: ${summonUnit.maxHp}, ATK: ${summonUnit.attack}, DEF: ${summonUnit.defense}`);
+                console.log(`[SUMMON] Recalculated stats for ${summonUnit.id} (${summonUnit.combatKey}) - Level ${summonUnit.level}: HP ${summonUnit.maxHp}, ATK ${summonUnit.attack}`);
             }
 
             // Setar HP e SP ao máximo após recalcular
             summonUnit.hp = summonUnit.maxHp;
-            summonUnit.sp = summonUnit.maxSp;
+            summonUnit.sp = summonUnit.maxSp || summonUnit.maxMana;
             summonUnit.mana = summonUnit.maxMana;
+
+            console.log(`[SUMMON] HP Initialized: ${summonUnit.hp}/${summonUnit.maxHp}`);
 
             // Carregar animações
             if (entityDef.animations) {
@@ -5409,7 +5443,7 @@
             const neighbors = getNeighbors(current.x, current.y);
             for (const n of neighbors) {
                 if (isWall(n.x, n.y)) continue;
-                if (isOccupied(n.x, n.y) && !(n.x === end.x && n.y === end.y)) continue;
+                if (isOccupied(n.x, n.y)) continue;
                 if (closedList.find(c => c.x === n.x && c.y === n.y)) continue;
 
                 const g = current.g + 1;
@@ -5757,7 +5791,7 @@
         if (!hud || !unit) return;
 
         // Habilitar/desabilitar bot�es baseado no estado
-        const hasActed = (gameState.debugFreeControl || gameState.debugControlEnemy) ? false : gameState.unitsActedThisTurn.has(unit.id);
+        const hasActed = (gameState.debugFreeControl || gameState.debugControlEnemy) ? false : gameState.unitsActedThisTurn.has(String(unit.id));
         const skills = getUnitSkills(unit);
 
         const moveBtn = document.getElementById('tactical-move');
@@ -5772,6 +5806,27 @@
         if (attackBtn) {
             attackBtn.disabled = hasActed;
             attackBtn.classList.toggle('active', gameState.currentAction === 'attack');
+
+            // Calculate enemies in attack range and show badge
+            const attackRange = unit.attackRange || 1;
+            const enemiesInRange = enemyUnits.filter(e =>
+                e.hp > 0 &&
+                Math.max(Math.abs(unit.x - e.x), Math.abs(unit.y - e.y)) <= attackRange
+            ).length;
+
+            let badge = attackBtn.querySelector('.enemy-count-badge');
+            if (enemiesInRange > 0 && !hasActed) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'enemy-count-badge';
+                    badge.style.cssText = 'position: absolute; top: -6px; left: -6px; background: #0f172a; color: #f8fafc; font-size: 9.5px; font-weight: 900; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.6); z-index: 10;';
+                    attackBtn.style.position = 'relative';
+                    attackBtn.appendChild(badge);
+                }
+                badge.textContent = enemiesInRange;
+            } else if (badge) {
+                badge.remove();
+            }
         }
         if (skillsBtn) {
             skillsBtn.disabled = hasActed || skills.length === 0;
@@ -6761,21 +6816,24 @@
 
         const canControlUnit = (u) => u && ((u.type === 'player' || u.type === 'ally') || (gameState.debugControlEnemy && u.type === 'enemy'));
         document.getElementById('tactical-move')?.addEventListener('click', () => {
-            if (canControlUnit(gameState.selectedUnit)) {
+            if (gameState.isAnimating) return;
+            if (canControlUnit(gameState.selectedUnit) && canUnitAct(gameState.selectedUnit)) {
                 setAction('move');
                 hideTacticalHUD();
             }
         });
 
         document.getElementById('tactical-attack')?.addEventListener('click', () => {
-            if (canControlUnit(gameState.selectedUnit)) {
+            if (gameState.isAnimating) return;
+            if (canControlUnit(gameState.selectedUnit) && canUnitAct(gameState.selectedUnit)) {
                 showAttackRange(gameState.selectedUnit);
                 showTacticalHUD(gameState.selectedUnit); // Atualizar estado ativo do botão
             }
         });
 
         document.getElementById('tactical-skills')?.addEventListener('click', async () => {
-            if (canControlUnit(gameState.selectedUnit)) {
+            if (gameState.isAnimating) return;
+            if (canControlUnit(gameState.selectedUnit) && canUnitAct(gameState.selectedUnit)) {
                 await showSkillMenu(gameState.selectedUnit);
             }
         });
@@ -9627,9 +9685,19 @@
         const rot = animationFrame / 40;
 
         const unitAtCell = getUnitAt(hoveredCell.x, hoveredCell.y);
-        const isEnemyHover = unitAtCell && unitAtCell.type === 'enemy' && gameState.selectedUnit && canUnitAct(gameState.selectedUnit);
 
-        const themeColor = isEnemyHover ? '#ef4444' : '#60a5fa'; // Red for attack, Blue for move/hover
+        // Define color based on context
+        let themeColor = '#60a5fa'; // Default: Blue
+
+        const isReachable = typeof reachableCells !== 'undefined' && reachableCells.some(c => c.x === hoveredCell.x && c.y === hoveredCell.y);
+        const isAttackable = typeof attackRangeCells !== 'undefined' && attackRangeCells.some(c => c.x === hoveredCell.x && c.y === hoveredCell.y);
+        const isSkillRange = typeof skillRangeCells !== 'undefined' && skillRangeCells.some(c => c.x === hoveredCell.x && c.y === hoveredCell.y);
+
+        if (isAttackable) themeColor = '#ef4444'; // Red for attack
+        else if (isSkillRange) themeColor = '#a855f7'; // Purple for skill
+        else if (isReachable) themeColor = '#22c55e'; // Green for movement
+        else if (unitAtCell && unitAtCell.type === 'enemy') themeColor = '#ef4444'; // Red for enemies even if not in range
+        else if (isWall(hoveredCell.x, hoveredCell.y)) themeColor = '#94a3b8'; // Gray for walls/invalid
 
         // 1. Hover Highlight (Simpler, cleaner)
         ctx.save();
@@ -9806,6 +9874,17 @@
             ctx.shadowBlur = 0;
         }
 
+        // Enemy Indicator (Skull icon)
+        if (type === 'enemy') {
+            ctx.font = 'bold 10px Arial';
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const skullX = bx + barW + 5;
+            const skullY = barY + barH / 2 + 1;
+            ctx.fillText('💀', skullX, skullY);
+        }
+
         ctx.restore();
     }
 
@@ -9814,7 +9893,8 @@
         const cy = unit.renderY ?? (unit.y - 0.5) * CONFIG.CELL_SIZE;
 
         const isSelected = gameState.selectedUnit === unit;
-        const hasActed = gameState.unitsActedThisTurn.has(unit.id);
+        // Normalizar hasActed para refletir se a unidade pode ou não agir (considerando debug)
+        const hasActed = (gameState.debugFreeControl || gameState.debugControlEnemy) ? false : gameState.unitsActedThisTurn.has(String(unit.id));
         const isCurrentPhase = gameState.phase === type;
         const canStillAct = unit.hp > 0 && !hasActed;
 
@@ -10336,12 +10416,22 @@
                 ctx.fill();
             }
 
-            // Border frame
             ctx.strokeStyle = 'rgba(255,255,255,0.15)';
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.roundRect(bx, by, barW, barH, barRadius);
             ctx.stroke();
+
+            // 5b. Enemy Indicator (Skull icon)
+            if (type === 'enemy') {
+                ctx.font = 'bold 10px Arial';
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                const skullX = bx + barW + 5;
+                const skullY = by + barH / 2 + 1;
+                ctx.fillText('💀', skullX, skullY);
+            }
 
             // SP Bar (only for heroes)
             if (type === 'player' && unit.sp !== undefined) {

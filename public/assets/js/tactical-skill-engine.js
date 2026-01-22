@@ -486,6 +486,14 @@ class TacticalSkillEngine {
         entity.buffedTauntChance = tauntChance;
         entity.buffedSkillRangeBonus = skillRangeBonus || 0;
 
+        // Sync top-level properties for compatibility with UI/Debug panels
+        entity.attack = stats.atk;
+        entity.matk = stats.matk;
+        entity.attackRanged = stats.atkRanged;
+        entity.defense = stats.def;
+        entity.mdef = stats.mdef;
+        entity.atk = stats.atk;
+
         // Store current attributes (after buffs/debuffs) for overlay display
         entity.currentAttributes = { ...attributes };
 

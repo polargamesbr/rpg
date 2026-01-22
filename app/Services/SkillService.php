@@ -114,7 +114,10 @@ class SkillService
         // Copy optional fields if present
         $optionalFields = [
             'img', 'range', 'rangeType', 'aoe', 'gridVisual', 
-            'hits', 'effect', 'buff', 'ultimate'
+            'hits', 'effect', 'effects', 'buff', 'debuff', 'ultimate', 
+            'summonEntity', 'summon_entity', 'aoeShape', 
+            'healPct', 'healMatk', 'power', 'critBonus', 'sound',
+            'stealPercent'
         ];
 
         foreach ($optionalFields as $field) {

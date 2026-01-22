@@ -95,6 +95,12 @@ return [
             'x' => 24,
             'y' => 14,
         ],
+        [
+            'id' => 'hawk_1',
+            'combat_key' => 'hawk',
+            'x' => 36,
+            'y' => 9,
+        ],
     ],
     
     // Treasure chests

@@ -15,10 +15,8 @@ return [
     ],
     'animations' => [
         'base' => 'entities',
-        'types' => ['idle', 'walk', 'atack'],
+        'types' => ['idle'],
         'idle'  => ['animationFPS' => 12, 'animationScale' => 1.4, 'animationOffsetX' => -2, 'animationOffsetXWhenFacingRight' => 2,  'animationOffsetY' => 30],
-        'walk'  => ['animationFPS' => 10, 'animationScale' => 1.5, 'animationOffsetX' => -3, 'animationOffsetXWhenFacingRight' => 3,  'animationOffsetY' => 32],
-        'atack' => ['animationFPS' => 13, 'animationScale' => 1.8, 'animationOffsetX' => -4, 'animationOffsetXWhenFacingRight' => 4, 'animationOffsetY' => 35],
     ],
     'sounds' => [
         'hit' => ['bow1', 'bow2', 'bow3'],
