@@ -14,7 +14,7 @@ class HomeController
             $character = \App\Models\Character::findByUser($userId);
             
             if ($character) {
-                redirect('/city-hub');
+                redirect('/game/city-hub');
             } else {
                 redirect('/character/create');
             }
@@ -39,7 +39,7 @@ class HomeController
         $character = \App\Models\Character::findByUser($userId);
         
         if ($character) {
-            redirect('/city-hub');
+            redirect('/game/city-hub');
         } else {
             redirect('/character/create');
         }

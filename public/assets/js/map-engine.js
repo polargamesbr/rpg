@@ -45,7 +45,9 @@
         gameOver: false,
         victory: false,
         freeExplore: false,
-        battleStarted: false // Flag para banner de batalha na primeira ação hostil
+        battleStarted: false, // Flag para banner de batalha na primeira ação hostil
+        debugFreeControl: false,
+        debugControlEnemy: false
     };
 
     // Expose gameState globally for TacticalSkillEngine to access turn count
@@ -63,6 +65,7 @@
     let portal = null;
     let loadedImages = {};
     let lastTimelineSignature = '';
+    let lastTimelineBuffSignature = '';
 
     // =====================================================
     // SPRITE SHEET SYSTEM
@@ -293,7 +296,8 @@
     function calculateSkillRange(unit, skill) {
         if (!unit || !skill) return [];
 
-        const range = getSkillRange(skill);
+        const baseRange = getSkillRange(skill);
+        const range = baseRange + (unit.buffedSkillRangeBonus || 0);
         const rangeType = getSkillRangeType(skill);
         const reachable = [];
 
@@ -359,12 +363,15 @@
             return area;
         }
 
-        if (rangeType === 'aoe' && (skill.aoe || 0) > 0) {
+        if ((rangeType === 'aoe' || rangeType === 'area') && (skill.aoe || 0) > 0) {
             const aoeRange = skill.aoe || 1;
+            const useSquare = skill.aoeShape === 'square';
             for (let dx = -aoeRange; dx <= aoeRange; dx++) {
                 for (let dy = -aoeRange; dy <= aoeRange; dy++) {
-                    const dist = Math.abs(dx) + Math.abs(dy);
-                    if (dist <= aoeRange) {
+                    const inArea = useSquare
+                        ? (Math.max(Math.abs(dx), Math.abs(dy)) <= aoeRange)
+                        : (Math.abs(dx) + Math.abs(dy) <= aoeRange);
+                    if (inArea) {
                         const x = targetX + dx;
                         const y = targetY + dy;
                         if (isValidCell(x, y)) {
@@ -1156,6 +1163,10 @@
                 updateTurnTimeline: updateTurnTimeline,
                 playerUnits: () => playerUnits,
                 enemyUnits: () => enemyUnits,
+                selectUnit: selectUnit,
+                deselectUnit: deselectUnit,
+                activateFreeControl: activateFreeControl,
+                deactivateFreeControl: deactivateFreeControl,
                 getWalls: () => {
                     const effectiveWalls = WALLS.filter(w => !debugWallsRemoved.some(rw => rw.x === w.x && rw.y === w.y));
                     return [...effectiveWalls, ...debugWallsAdded];
@@ -1319,9 +1330,10 @@
             } else if (gameState.phase === 'player' && unitsReady) {
                 setTimeout(async () => {
                     await showTurnBanner('player');
-                    // Sempre selecionar o primeiro personagem vivo no início do turno
-                    const firstAlive = playerUnits.find(p => p.hp > 0 && !gameState.unitsActedThisTurn.has(p.id));
-                    if (firstAlive && !gameState.selectedUnit) {
+                    // Primeiro personagem por ASPD/AGI (mais rápido age primeiro)
+                    const firstAlive = getFirstPlayerUnitBySpeed(gameState.unitsActedThisTurn);
+                    // Se não há unidade selecionada OU a unidade selecionada já agiu, selecionar próxima disponível
+                    if (firstAlive && (!gameState.selectedUnit || !canUnitAct(gameState.selectedUnit))) {
                         selectUnit(firstAlive);
                         animateCameraToUnit(firstAlive);
                     }
@@ -2081,9 +2093,24 @@
     // =====================================================
     // TURN SYSTEM
     // =====================================================
+    function getUnitSpeed(u) {
+        return u.aspd ?? u.agi ?? (u.attributes && u.attributes.agi) ?? 0;
+    }
+    function getFirstPlayerUnitBySpeed(actedSet) {
+        const list = playerUnits.filter(p => p.hp > 0 && !actedSet.has(p.id));
+        if (list.length === 0) return null;
+        list.sort((a, b) => (getUnitSpeed(b) - getUnitSpeed(a)) || (String(a.id || '').localeCompare(String(b.id || ''))));
+        return list[0];
+    }
+
+    let isEndingTurn = false; // Flag para prevenir múltiplos cliques
+
     async function endPlayerTurn() {
         if (gameState.freeExplore) return;
         if (gameState.phase !== 'player' || gameState.isAnimating) return;
+        if (isEndingTurn) return; // Prevenir múltiplos cliques
+
+        isEndingTurn = true; // Bloquear novos cliques
 
         gameState.selectedUnit = null;
         gameState.currentAction = null;
@@ -2093,7 +2120,9 @@
             phase: gameState.phase,
             unitsActed: Array.from(gameState.unitsActedThisTurn || [])
         });
-        persistSessionState();
+
+        // Persistir de forma assíncrona sem bloquear a UI
+        persistSessionState().catch(() => { });
 
         // Close all menus/popups
         hideActionMenu();
@@ -2115,7 +2144,10 @@
         needsRender = true;
 
         await showTurnBanner('enemy');
-        setTimeout(() => processEnemyTurn(), 500);
+        setTimeout(() => {
+            processEnemyTurn();
+            isEndingTurn = false; // Liberar após iniciar o turno inimigo
+        }, 500);
     }
 
     async function resumeEnemyTurnFromRestore() {
@@ -2394,8 +2426,8 @@
         // Auto-save progress at start of each player turn
         saveCameraState();
 
-        // Sempre manter unidade do player selecionada e HUD ativa
-        const firstAlive = playerUnits.find(p => p.hp > 0);
+        // Primeiro por ASPD/AGI (mais rápido age primeiro)
+        const firstAlive = getFirstPlayerUnitBySpeed(gameState.unitsActedThisTurn);
         if (firstAlive) {
             // Focar câmera no herói
             await animateCameraToUnit(firstAlive);
@@ -2404,6 +2436,8 @@
     }
 
     function canUnitAct(unit) {
+        if (gameState.debugFreeControl || gameState.debugControlEnemy)
+            return unit.hp > 0;
         return unit.hp > 0 && !gameState.unitsActedThisTurn.has(unit.id);
     }
 
@@ -2411,10 +2445,10 @@
     // SELECTION & ACTIONS
     // =====================================================
     function selectUnit(unit) {
-        if (!unit || unit.type !== 'player') {
-            deselectUnit();
-            return;
-        }
+        if (!unit) { deselectUnit(); return; }
+        const allowed = (unit.type === 'player' || unit.type === 'ally') ||
+            (gameState.debugControlEnemy && unit.type === 'enemy');
+        if (!allowed) { deselectUnit(); return; }
         // Unidade que já agiu: manter selecionada (não desselecionar no turno do jogador)
         if (!canUnitAct(unit)) {
             gameState.selectedUnit = unit;
@@ -2466,6 +2500,29 @@
             showTacticalHUD(gameState.selectedUnit);
         }
         updateUI();
+        needsRender = true;
+    }
+
+    /** Ativa Free Control para a unidade (chamado pelo painel de debug). Garante que as flags sejam setadas no gameState do engine. */
+    function activateFreeControl(unit) {
+        if (!unit) return;
+        if (unit.type === 'enemy') {
+            gameState.debugControlEnemy = true;
+            gameState.debugFreeControl = false;
+        } else {
+            gameState.debugFreeControl = true;
+            gameState.debugControlEnemy = false;
+            if (gameState.unitsActedThisTurn) gameState.unitsActedThisTurn.delete(unit.id);
+        }
+        selectUnit(unit);
+        needsRender = true;
+    }
+
+    /** Desativa Free Control (chamado pelo painel de debug ao escolher Off). */
+    function deactivateFreeControl() {
+        gameState.debugFreeControl = false;
+        gameState.debugControlEnemy = false;
+        deselectUnit(true);
         needsRender = true;
     }
 
@@ -2630,6 +2687,11 @@
             // Mark unit as having moved this turn
             unit.hasMoved = true;
 
+            // Free Control: permitir mover de novo (turno não avança, ações ilimitadas)
+            if (gameState.debugFreeControl || gameState.debugControlEnemy) {
+                unit.hasMoved = false;
+            }
+
             // Limpar ação atual para permitir ataque/skill
             gameState.currentAction = null;
             attackRangeCells = [];
@@ -2640,7 +2702,7 @@
             reachableCells = [];
             attackableCells = [];
 
-            // Mostrar HUD tática após mover (com Mover desabilitado)
+            // Mostrar HUD tática após mover
             showTacticalHUD(unit);
 
         } finally {
@@ -2653,10 +2715,12 @@
             }
             updateUI();
             saveCameraState(); // Auto-save after movement
-            if (sessionUid && unit.type === 'player') {
+            // persistMoveSession só para player principal (id === 'player'), não allies
+            // Allies são salvos via persistSessionState
+            if (sessionUid && unit.id === 'player') {
                 persistMoveSession(startPos, { x: unit.x, y: unit.y });
             }
-            // REMOVIDO: persistSessionState() - será chamado ao final do turno
+            if (sessionUid) await persistSessionState(true); // Imediato após movimento
             needsRender = true;
         }
     }
@@ -2719,7 +2783,9 @@
             }
             updateUI();
             saveCameraState();
-            if (sessionUid && unit.type === 'player') {
+            // persistMoveSession só para player principal (id === 'player'), não allies
+            // Allies são salvos via persistSessionState
+            if (sessionUid && unit.id === 'player') {
                 persistMoveSession(startPos, { x: unit.x, y: unit.y });
             }
             // REMOVIDO: persistSessionState() - será chamado ao final do turno
@@ -3057,6 +3123,29 @@
     }
 
     /**
+     * Mostra texto "PARRY" (defesa bem-sucedida por buffedParryChance)
+     */
+    function showParryText(unit) {
+        if (!unit) return;
+        const cellSize = CONFIG.CELL_SIZE || 64;
+        const top = getUnitTopPosition(unit);
+        const baseX = top.x + (Math.random() - 0.5) * 8;
+        const baseY = top.y + 50;
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.4;
+        const speed = 2.5 + Math.random() * 1;
+        floatingTexts.push({
+            text: 'PARRY',
+            x: baseX, y: baseY,
+            vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+            gravity: -0.02, friction: 0.97, life: 1.0,
+            color: '#60a5fa', size: 32, baseSize: 32,
+            usePhysics: true, startTime: performance.now(), duration: 0.8,
+            stroke: true, strokeColor: '#1e3a8a'
+        });
+        needsRender = true;
+    }
+
+    /**
      * Mostra número de mana (azul)
      */
     function showManaNumber(x, y, amount, offsetX = 0, offsetY = 0) {
@@ -3154,6 +3243,8 @@
         if (gameState.battleStarted) return;
 
         gameState.battleStarted = true;
+        // Zoom 4x (como 4 scrolls pra cima) na primeira vez que a batalha começa
+        zoom(4 * CONFIG.ZOOM_STEP, canvas.width / 2, canvas.height / 2);
 
         // REMOVIDO: Banner de início de batalha (vai direto para ação)
 
@@ -3191,7 +3282,8 @@
         // Marcar batalha iniciada na primeira ação hostil
         if (!gameState.battleStarted) {
             gameState.battleStarted = true;
-
+            // Zoom 4x (como 4 scrolls pra cima) na primeira vez que a batalha começa
+            zoom(4 * CONFIG.ZOOM_STEP, canvas.width / 2, canvas.height / 2);
             // Tocar música de batalha
             if (audioSettings.musicEnabled && !currentBattleMusic) {
                 currentBattleMusic = playSfx('battle.mp3', 0.4, 1.0);
@@ -3263,6 +3355,22 @@
             }
         }
 
+        // PARRY: ataques físicos (executeAttack é sempre físico). buffedParryChance vem de Parry Stance etc.
+        const parryChance = target.buffedParryChance ?? 0;
+        if (parryChance > 0 && Math.random() < parryChance) {
+            const targetPxX = (target.x - 0.5) * CONFIG.CELL_SIZE;
+            const targetPxY = (target.y - 0.5) * CONFIG.CELL_SIZE;
+            if (window.MapSFX?.spawnParrySpark) window.MapSFX.spawnParrySpark(targetPxX, targetPxY, 1);
+            playSfx('parry1.mp3', 0.5, 1.0);
+            showParryText(target);
+            addLogEntry('attack', `<span class="target">${target.name}</span> defendeu o ataque!`);
+            await sleep(400);
+            gameState.isAnimating = false;
+            await finishUnitTurn(attacker);
+            needsRender = true;
+            return true;
+        }
+
         target.hp = Math.max(0, target.hp - damage);
 
         // Atualizar HUD se o alvo for a unidade selecionada
@@ -3289,7 +3397,7 @@
         const attackerSprite = _aid.includes('slime') ? 'slime' : _aid.includes('wolf') ? 'wolf' : _aid.includes('sword') || _aid === 'hero_swordman' ? 'swordman' : _aid.includes('archer') || _aid === 'hero_archer' ? 'archer' : _aid.includes('acolyte') || _aid === 'hero_acolyte' ? 'acolyte' : _aid.includes('mage') || _aid === 'hero_mage' ? 'mage' : null;
 
         // Determinar tipo de unidade atacante para efeito apropriado
-        const isWarrior = attacker.class === 'warrior' || attacker.class === 'swordman' || attackerSprite === 'swordman';
+        const isWarrior = attacker.class === 'warrior' || attacker.class === 'swordman' || attacker.class === 'swordsman' || attackerSprite === 'swordman';
         const isArcher = attacker.class === 'archer' || attackerSprite === 'archer';
         const isMage = attacker.class === 'mage' || attackerSprite === 'mage';
         const isAcolyte = attacker.class === 'acolyte' || attackerSprite === 'acolyte';
@@ -3350,7 +3458,7 @@
             // Show kill banner
             showKillBanner(target.name || 'Inimigo');
 
-            await sleep(600);
+            await sleep(900);
 
             if (target.type === 'enemy') {
                 enemyUnits = enemyUnits.filter(u => u.id !== target.id);
@@ -3363,10 +3471,84 @@
         }
 
         gameState.isAnimating = false;
-        finishUnitTurn(attacker);
+        await finishUnitTurn(attacker);
         needsRender = true;
 
         return true;
+    }
+
+    /**
+     * Executa um hit de skill com dano DEFERIDO até o "ponto forte" da animação (ex.: Holy Bolt 850ms, Supernova 700ms).
+     * Spawna o efeito no início, aguarda effectImpactMs, depois aplica dano, números, hit effect e morte.
+     */
+    async function runDeferredSkillImpact(o) {
+        const { caster, targetsToHit, skill, hit, numHits, dmgMult, baseDamage, critChance, isMagic, isPhysical, casterEntityId, effectImpactMs } = o;
+        if (hit === 0) {
+            const archerSkills = ['quick_shot', 'poison_arrow', 'focused_shot', 'piercing_arrow', 'multishot', 'tactical_retreat', 'rain_of_arrows', 'crippling_shot', 'deadly_aim'];
+            const swordsmanSkills = ['quick_slash', 'shield_bash', 'berserk_mode', 'power_thrust', 'provoke', 'double_attack', 'sword_mastery', 'war_cry', 'bash', 'heavy_slash', 'champions_slash', 'relentless_strike', 'life_steal', 'crushing_blow', 'guarded_strike', 'cleave'];
+            if (casterEntityId === 'wolf') playClawSfx(casterEntityId);
+            else if (casterEntityId === 'toxic_slime') playSlimeSfx(casterEntityId);
+            else if (archerSkills.includes(skill.id)) playBowSfx(casterEntityId, false);
+            else if (swordsmanSkills.includes(skill.id) || isPhysical) playSwordSfx(casterEntityId, false);
+            else if (isMagic) playMagicSfx(false);
+        }
+        if (numHits > 1) showHitCombo(hit + 1);
+        const deferred = [];
+        for (const t of targetsToHit) {
+            if (!t || t.hp <= 0) continue;
+            const variance = 0.9 + Math.random() * 0.2;
+            const isCrit = Math.random() * 100 < critChance;
+            const hitDmgMult = dmgMult / numHits;
+            let damage = Math.max(1, Math.floor(baseDamage * hitDmgMult * variance * (isCrit ? 1.5 : 1)));
+            if (isMagic) damage = Math.max(1, damage - Math.floor((t.mdef || 0) * 0.25));
+            else damage = Math.max(1, damage - Math.floor((t.defense || 0) * 0.3));
+            if (caster.buffedDamageDealt) damage = Math.floor(damage * caster.buffedDamageDealt);
+            if (t.buffedDamageTaken) damage = Math.floor(damage * t.buffedDamageTaken);
+            const attEl = (skill.element || caster.element || (window.TacticalDataLoader?.entityCache?.[caster.combatKey || caster.combat_key]?.element)) || 'neutral';
+            const tgtEl = t.element || (window.TacticalDataLoader?.entityCache?.[t.combatKey || t.combat_key]?.element) || 'neutral';
+            if (window.elementalData) { const elMult = window.elementalData.getMultiplier(attEl, tgtEl); damage = Math.floor(damage * elMult); if (hit === 0 && elMult !== 1.0) console.log(`[MAP-ENGINE] ${skill.name} (${attEl}) vs ${t.name} (${tgtEl}): ${window.elementalData.getEffectivenessCategory(elMult)} (${elMult}x)`); }
+            const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE, targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
+            // PARRY: só ataques físicos (skills com effectImpactMs como holy_bolt/supernova são magia, mas ficam cobertas se alguma física tiver)
+            if (isPhysical && (t.buffedParryChance || 0) > 0 && Math.random() < t.buffedParryChance) {
+                if (window.MapSFX?.spawnParrySpark) window.MapSFX.spawnParrySpark(targetX, targetY, 1);
+                playSfx('parry1.mp3', 0.5, 1.0);
+                showParryText(t);
+                addLogEntry('attack', `<span class="target">${t.name}</span> defendeu o ataque!`);
+                continue;
+            }
+            let skillEffectHandled = false;
+            if (window.MapSFX) {
+                const sId = skill.id, dx = t.x - caster.x, dy = t.y - caster.y, angle = Math.atan2(dy, dx);
+                if (sId === 'holy_bolt' && window.MapSFX.spawnDivineJudgment) { window.MapSFX.spawnDivineJudgment(targetX, targetY, 1); skillEffectHandled = true; }
+                else if (sId === 'supernova' && window.MapSFX.spawnSupernova) { window.MapSFX.spawnSupernova(targetX, targetY, 1); skillEffectHandled = true; }
+                else if (sId === 'quick_shot' && window.MapSFX.spawnImpactBurst) { window.MapSFX.spawnImpactBurst(targetX, targetY, '#fbbf24'); skillEffectHandled = true; }
+                else if (sId === 'poison_arrow' && window.MapSFX.spawnPoisonCloud) { window.MapSFX.spawnPoisonCloud(targetX, targetY, 1); skillEffectHandled = true; }
+                else if (sId === 'piercing_arrow' && window.MapSFX.spawnLaserBeam) { window.MapSFX.spawnLaserBeam(targetX, targetY, 1, angle); skillEffectHandled = true; }
+                else if (sId === 'multishot' && window.MapSFX.spawnSwordCombo) { window.MapSFX.spawnSwordCombo(targetX, targetY, 1); skillEffectHandled = true; }
+                else if (sId === 'rain_of_arrows' && window.MapSFX.spawnBloodSplash) { window.MapSFX.spawnBloodSplash(targetX, targetY, 1); skillEffectHandled = true; }
+                else if (sId === 'crippling_shot' && window.MapSFX.spawnLifeDrain) { window.MapSFX.spawnLifeDrain(targetX, targetY, 1); skillEffectHandled = true; }
+                else if (sId === 'deadly_aim' && window.MapSFX.spawnNovaExplosion) { window.MapSFX.spawnNovaExplosion(targetX, targetY, 1); triggerScreenShake(15); skillEffectHandled = true; }
+            }
+            if (!skillEffectHandled) {
+                if (isPhysical || ['bash', 'sword_mastery', 'heavy_slash'].includes(skill.id)) spawnSwordSlashEffect(targetX, targetY);
+                else if (isMagic) { const c = { fire: '#ef4444', ice: '#60a5fa', lightning: '#fbbf24', holy: '#fef3c7', dark: '#6b21a8' }[skill.element] || '#a855f7'; spawnMagicEffect(targetX, targetY, c); }
+                else spawnImpactBurst(targetX, targetY, '#ef4444', isCrit ? 1.5 : 1);
+            }
+            deferred.push({ t, damage, isCrit });
+        }
+        await sleep(effectImpactMs);
+        playHitImpactSfx(deferred.some(d => d.isCrit));
+        for (const { t, damage, isCrit } of deferred) {
+            t.hp = Math.max(0, t.hp - damage);
+            if (gameState.selectedUnit && (gameState.selectedUnit.id === t.id || gameState.selectedUnit === t)) showTacticalHUD(t);
+            showDamageNumber(t.x, t.y, damage, isCrit, 0, 0, t, hit);
+            applyHitEffect(t, isCrit ? 1.3 : 0.8);
+            const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE, targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
+            if (dmgMult > 1.2 || isCrit || numHits > 1) triggerScreenShake(isCrit ? 12 : (numHits > 1 ? 6 : 8));
+            if (t.hp <= 0) { spawnDeathEffect(targetX, targetY); showKillBanner(t.name); if (t.type === 'enemy') enemyUnits = enemyUnits.filter(u => u.id !== t.id); else playerUnits = playerUnits.filter(u => u.id !== t.id); }
+        }
+        if (deferred.some(({ t }) => t.hp <= 0)) await sleep(900);
+        if (typeof updateTurnTimeline === 'function') updateTurnTimeline();
     }
 
     /**
@@ -3389,7 +3571,8 @@
         // Marcar batalha iniciada na primeira ação hostil
         if (!gameState.battleStarted && skill.type !== 'heal') {
             gameState.battleStarted = true;
-
+            // Zoom 4x (como 4 scrolls pra cima) na primeira vez que a batalha começa
+            zoom(4 * CONFIG.ZOOM_STEP, canvas.width / 2, canvas.height / 2);
             // Tocar música de batalha
             if (audioSettings.musicEnabled && !currentBattleMusic) {
                 currentBattleMusic = playSfx('battle.mp3', 0.4, 1.0);
@@ -3400,6 +3583,7 @@
         }
 
         gameState.isAnimating = true;
+        let skillAnyKill = false;
 
         // Virar para o alvo quando houver um (ataque, heal em aliado, etc.)
         if (target && target.x != null) {
@@ -3487,6 +3671,11 @@
             }
         }
 
+        // Acolyte: efeito de magia no caster ao soltar skill (heal, bless, holy_bolt, etc.)
+        if (casterEntityId === 'acolyte') {
+            spawnMagicEffect(casterPxX, casterPxY, '#fef3c7');
+        }
+
         if (casterSpriteAnims && casterSpriteAnims.atack && casterSpriteAnims.atack.loaded) {
             caster.animationState = 'atack';
             caster.animationStartTimeMs = animationTimeMs;
@@ -3514,8 +3703,58 @@
         const numHits = skill.hits || 1;
         const hitDelay = 200; // ms entre cada hit
 
+        // Atraso (ms) até o "ponto forte" da animação (explosão/impacto). Dano e números aplicados nesse momento.
+        // skill.effectImpactMs na sheet sobrescreve. Ex.: Holy Bolt=850 (Divine Judgment explode), Supernova=700.
+        const SKILL_EFFECT_IMPACT_MS = { holy_bolt: 850, supernova: 700 };
+
         // Aplicar efeito baseado no tipo
         if (['damage', 'attack', 'single', 'aoe', 'pierce', 'line', 'target'].includes(skill.type)) {
+            // Intimidating Roar: aplicar debuff em todos os inimigos na área
+            if (skill.id === 'intimidating_roar') {
+                const area = calculateSkillArea(skill, caster.x, caster.y, caster.x, caster.y);
+                const enemiesInArea = enemyUnits.filter(e =>
+                    e.hp > 0 && area.some(cell => cell.x === e.x && cell.y === e.y)
+                );
+
+                for (const enemy of enemiesInArea) {
+                    if (skill.debuff && window.TacticalSkillEngine) {
+                        window.TacticalSkillEngine.applyDebuff(enemy, skill.debuff, caster, skill.id);
+                        console.log(`[MAP-ENGINE] Debuff aplicado: ${skill.name} em ${enemy.name}`, skill.debuff);
+                        playDebuffApplySfx();
+                        const enemyX = (enemy.x - 0.5) * CONFIG.CELL_SIZE;
+                        const enemyY = (enemy.y - 0.5) * CONFIG.CELL_SIZE;
+                        showFloatingText('Intimidated!', enemyX, enemyY, '#ef4444');
+                        spawnMagicEffect(enemyX, enemyY, '#ef4444');
+                    }
+                }
+                gameState.isAnimating = false;
+                await finishUnitTurn(caster);
+                needsRender = true;
+                return true;
+            }
+            // Tactical Retreat: troca de posição com o inimigo (sem dano)
+            if (skill.id === 'tactical_retreat' && targetsToHit.length > 0) {
+                const swapTarget = targetsToHit[0];
+                if (swapTarget && swapTarget.type === 'enemy') {
+                    const cx = caster.x, cy = caster.y;
+                    caster.x = swapTarget.x;
+                    caster.y = swapTarget.y;
+                    swapTarget.x = cx;
+                    swapTarget.y = cy;
+                    const casterPxX = (caster.x - 0.5) * CONFIG.CELL_SIZE;
+                    const casterPxY = (caster.y - 0.5) * CONFIG.CELL_SIZE;
+                    const targetPxX = (swapTarget.x - 0.5) * CONFIG.CELL_SIZE;
+                    const targetPxY = (swapTarget.y - 0.5) * CONFIG.CELL_SIZE;
+                    if (window.MapSFX && window.MapSFX.spawnTimeWarp) {
+                        window.MapSFX.spawnTimeWarp(casterPxX, casterPxY, 1);
+                        window.MapSFX.spawnTimeWarp(targetPxX, targetPxY, 1);
+                    }
+                    gameState.isAnimating = false;
+                    await finishUnitTurn(caster);
+                    needsRender = true;
+                    return true;
+                }
+            }
             if (targetsToHit.length === 0) {
                 gameState.isAnimating = false;
                 return false;
@@ -3537,171 +3776,202 @@
             for (let hit = 0; hit < numHits; hit++) {
                 if (hit > 0) await sleep(hitDelay);
 
-                // Impacto GERAL em todo hit; no 1º hit também arma por entidade do caster
-                playHitImpactSfx(false);
-                if (hit === 0) {
-                    const archerSkills = ['quick_shot', 'poison_arrow', 'focused_shot', 'piercing_arrow',
-                        'multishot', 'tactical_retreat', 'rain_of_arrows', 'crippling_shot', 'deadly_aim'];
-                    const swordsmanSkills = ['quick_slash', 'shield_bash', 'berserk_mode', 'power_thrust',
-                        'provoke', 'double_attack', 'sword_mastery', 'war_cry', 'bash', 'heavy_slash',
-                        'champions_slash', 'relentless_strike', 'life_steal', 'crushing_blow', 'guarded_strike', 'cleave'];
+                const effectImpactMs = SKILL_EFFECT_IMPACT_MS[skill.id] ?? skill.effectImpactMs ?? 0;
 
-                    if (casterEntityId === 'wolf') {
-                        playClawSfx(casterEntityId);
-                    } else if (casterEntityId === 'toxic_slime') {
-                        playSlimeSfx(casterEntityId);
-                    } else if (archerSkills.includes(skill.id)) {
-                        playBowSfx(casterEntityId, false);
-                    } else if (swordsmanSkills.includes(skill.id) || isPhysical) {
-                        playSwordSfx(casterEntityId, false);
-                    } else if (isMagic) {
-                        playMagicSfx(false);
-                    }
-                }
+                if (effectImpactMs > 0) {
+                    await runDeferredSkillImpact({ caster, targetsToHit, skill, hit, numHits, dmgMult, baseDamage, critChance, isMagic, isPhysical, casterEntityId, effectImpactMs });
+                } else {
+                    // Impacto GERAL em todo hit; no 1º hit também arma por entidade do caster
+                    playHitImpactSfx(false);
+                    if (hit === 0) {
+                        const archerSkills = ['quick_shot', 'poison_arrow', 'focused_shot', 'piercing_arrow',
+                            'multishot', 'tactical_retreat', 'rain_of_arrows', 'crippling_shot', 'deadly_aim'];
+                        const swordsmanSkills = ['quick_slash', 'shield_bash', 'berserk_mode', 'power_thrust',
+                            'provoke', 'double_attack', 'sword_mastery', 'war_cry', 'bash', 'heavy_slash',
+                            'champions_slash', 'relentless_strike', 'life_steal', 'crushing_blow', 'guarded_strike', 'cleave'];
 
-                // Mostrar combo indicator para multi-hit
-                if (numHits > 1) {
-                    showHitCombo(hit + 1);
-                }
-
-                for (const t of targetsToHit) {
-                    if (!t || t.hp <= 0) continue;
-
-                    const variance = 0.9 + Math.random() * 0.2;
-                    const isCrit = Math.random() * 100 < critChance;
-                    // Dano dividido pelos hits para balanceamento
-                    const hitDmgMult = dmgMult / numHits;
-                    let damage = Math.max(1, Math.floor(baseDamage * hitDmgMult * variance * (isCrit ? 1.5 : 1)));
-
-                    // Redução por DEF (físico) ou MDEF (magia) do alvo
-                    if (isMagic) {
-                        damage = Math.max(1, damage - Math.floor((t.mdef || 0) * 0.25));
-                    } else {
-                        damage = Math.max(1, damage - Math.floor((t.defense || 0) * 0.3));
-                    }
-
-                    // Aplicar multiplicadores de dano de buffs/debuffs
-                    if (caster.buffedDamageDealt) damage = Math.floor(damage * caster.buffedDamageDealt);
-                    if (t.buffedDamageTaken) damage = Math.floor(damage * t.buffedDamageTaken);
-
-                    // Aplicar multiplicador de elemento (skill element ou caster element)
-                    const skillElement = skill.element || null;
-                    const attackerElement = skillElement || caster.element || (window.TacticalDataLoader?.entityCache?.[caster.combatKey || caster.combat_key]?.element) || 'neutral';
-                    const targetElement = t.element || (window.TacticalDataLoader?.entityCache?.[t.combatKey || t.combat_key]?.element) || 'neutral';
-                    if (window.elementalData) {
-                        const elementMult = window.elementalData.getMultiplier(attackerElement, targetElement);
-                        damage = Math.floor(damage * elementMult);
-                        // Log de efetividade para debug (apenas primeiro hit para evitar spam)
-                        if (hit === 0 && elementMult !== 1.0) {
-                            const category = window.elementalData.getEffectivenessCategory(elementMult);
-                            console.log(`[MAP-ENGINE] ${skill.name} (${attackerElement}) vs ${t.name} (${targetElement}): ${category} (${elementMult}x)`);
-                        }
-                    }
-
-                    t.hp = Math.max(0, t.hp - damage);
-
-                    // Atualizar HUD se o alvo for a unidade selecionada
-                    if (gameState.selectedUnit && (gameState.selectedUnit.id === t.id || gameState.selectedUnit === t)) {
-                        showTacticalHUD(t);
-                    }
-
-                    // Número de dano com sistema de cascata
-                    showDamageNumber(t.x, t.y, damage, isCrit, 0, 0, t, hit);
-
-                    // Efeito de impacto no personagem (shake + flash)
-                    applyHitEffect(t, isCrit ? 1.3 : 0.8);
-
-                    const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE;
-                    const targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
-
-                    // SKILL IMPACT EFFECTS - Efeitos específicos por skill.id com cálculo de ângulo
-                    let skillEffectHandled = false;
-                    if (window.MapSFX) {
-                        const sId = skill.id;
-                        // Calcular ângulo do caster para o target
-                        const dx = t.x - caster.x;
-                        const dy = t.y - caster.y;
-                        const angle = Math.atan2(dy, dx); // Ângulo em radianos
-
-                        if (sId === 'quick_shot' && window.MapSFX.archerQuickShotImpact) {
-                            window.MapSFX.archerQuickShotImpact(targetX, targetY);
-                            skillEffectHandled = true;
-                        } else if (sId === 'poison_arrow' && window.MapSFX.archerPoisonArrowImpact) {
-                            window.MapSFX.archerPoisonArrowImpact(targetX, targetY);
-                            skillEffectHandled = true;
-                        } else if (sId === 'focused_shot' && window.MapSFX.archerFocusedShotImpact) {
-                            window.MapSFX.archerFocusedShotImpact(targetX, targetY);
-                            skillEffectHandled = true;
-                        } else if (sId === 'piercing_arrow' && window.MapSFX.archerPiercingArrowImpact) {
-                            // Piercing usa o ângulo calculado para efeito direcional!
-                            window.MapSFX.archerPiercingArrowImpact(targetX, targetY, angle);
-                            skillEffectHandled = true;
-                        } else if (sId === 'multishot' && window.MapSFX.archerMultishotImpact) {
-                            window.MapSFX.archerMultishotImpact(targetX, targetY);
-                            skillEffectHandled = true;
-                        } else if (sId === 'tactical_retreat' && window.MapSFX.archerTacticalRetreatImpact) {
-                            window.MapSFX.archerTacticalRetreatImpact(targetX, targetY);
-                            skillEffectHandled = true;
-                        } else if (sId === 'rain_of_arrows' && window.MapSFX.archerRainOfArrowsImpact) {
-                            window.MapSFX.archerRainOfArrowsImpact(targetX, targetY);
-                            skillEffectHandled = true;
-                        } else if (sId === 'crippling_shot' && window.MapSFX.archerCripplingShotImpact) {
-                            window.MapSFX.archerCripplingShotImpact(targetX, targetY);
-                            skillEffectHandled = true;
-                        } else if (sId === 'deadly_aim' && window.MapSFX.archerDeadlyAimImpact) {
-                            window.MapSFX.archerDeadlyAimImpact(targetX, targetY);
-                            triggerScreenShake(15); // Extra shake para ultimate
-                            skillEffectHandled = true;
-                        }
-                    }
-
-                    // Efeitos visuais fallback se skill não teve efeito específico
-                    if (!skillEffectHandled) {
-                        if (isPhysical || skill.id === 'bash' || skill.id === 'sword_mastery' || skill.id === 'heavy_slash') {
-                            spawnSwordSlashEffect(targetX, targetY);
+                        if (casterEntityId === 'wolf') {
+                            playClawSfx(casterEntityId);
+                        } else if (casterEntityId === 'toxic_slime') {
+                            playSlimeSfx(casterEntityId);
+                        } else if (archerSkills.includes(skill.id)) {
+                            playBowSfx(casterEntityId, false);
+                        } else if (swordsmanSkills.includes(skill.id) || isPhysical) {
+                            playSwordSfx(casterEntityId, false);
                         } else if (isMagic) {
-                            const magicColor = skill.element === 'fire' ? '#ef4444' :
-                                skill.element === 'ice' ? '#60a5fa' :
-                                    skill.element === 'lightning' ? '#fbbf24' :
-                                        skill.element === 'holy' ? '#fef3c7' :
-                                            skill.element === 'dark' ? '#6b21a8' : '#a855f7';
-                            spawnMagicEffect(targetX, targetY, magicColor);
-                        } else {
-                            spawnImpactBurst(targetX, targetY, '#ef4444', isCrit ? 1.5 : 1);
+                            playMagicSfx(false);
                         }
                     }
 
-                    // Efeito visual de tremor para skills fortes
-                    if (dmgMult > 1.2 || isCrit || numHits > 1) {
-                        triggerScreenShake(isCrit ? 12 : (numHits > 1 ? 6 : 8));
+                    // Mostrar combo indicator para multi-hit
+                    if (numHits > 1) {
+                        showHitCombo(hit + 1);
                     }
 
-                    if (t.hp <= 0) {
-                        spawnDeathEffect(targetX, targetY);
-                        showKillBanner(t.name);
-                        if (t.type === 'enemy') {
-                            enemyUnits = enemyUnits.filter(u => u.id !== t.id);
+                    for (const t of targetsToHit) {
+                        if (!t || t.hp <= 0) continue;
+
+                        const variance = 0.9 + Math.random() * 0.2;
+                        const isCrit = Math.random() * 100 < critChance;
+                        // Dano dividido pelos hits para balanceamento
+                        const hitDmgMult = dmgMult / numHits;
+                        let damage = Math.max(1, Math.floor(baseDamage * hitDmgMult * variance * (isCrit ? 1.5 : 1)));
+
+                        // Redução por DEF (físico) ou MDEF (magia) do alvo
+                        if (isMagic) {
+                            damage = Math.max(1, damage - Math.floor((t.mdef || 0) * 0.25));
                         } else {
-                            playerUnits = playerUnits.filter(u => u.id !== t.id);
+                            damage = Math.max(1, damage - Math.floor((t.defense || 0) * 0.3));
+                        }
+
+                        // Aplicar multiplicadores de dano de buffs/debuffs
+                        if (caster.buffedDamageDealt) damage = Math.floor(damage * caster.buffedDamageDealt);
+                        if (t.buffedDamageTaken) damage = Math.floor(damage * t.buffedDamageTaken);
+
+                        // Aplicar multiplicador de elemento (skill element ou caster element)
+                        const skillElement = skill.element || null;
+                        const attackerElement = skillElement || caster.element || (window.TacticalDataLoader?.entityCache?.[caster.combatKey || caster.combat_key]?.element) || 'neutral';
+                        const targetElement = t.element || (window.TacticalDataLoader?.entityCache?.[t.combatKey || t.combat_key]?.element) || 'neutral';
+                        if (window.elementalData) {
+                            const elementMult = window.elementalData.getMultiplier(attackerElement, targetElement);
+                            damage = Math.floor(damage * elementMult);
+                            // Log de efetividade para debug (apenas primeiro hit para evitar spam)
+                            if (hit === 0 && elementMult !== 1.0) {
+                                const category = window.elementalData.getEffectivenessCategory(elementMult);
+                                console.log(`[MAP-ENGINE] ${skill.name} (${attackerElement}) vs ${t.name} (${targetElement}): ${category} (${elementMult}x)`);
+                            }
+                        }
+
+                        // PARRY: só ataques físicos; buffedParryChance (ex.: Parry Stance)
+                        if (isPhysical && (t.buffedParryChance || 0) > 0 && Math.random() < t.buffedParryChance) {
+                            const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE, targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
+                            if (window.MapSFX?.spawnParrySpark) window.MapSFX.spawnParrySpark(targetX, targetY, 1);
+                            playSfx('parry1.mp3', 0.5, 1.0);
+                            showParryText(t);
+                            addLogEntry('attack', `<span class="target">${t.name}</span> defendeu o ataque!`);
+                            continue;
+                        }
+
+                        t.hp = Math.max(0, t.hp - damage);
+
+                        // Atualizar HUD se o alvo for a unidade selecionada
+                        if (gameState.selectedUnit && (gameState.selectedUnit.id === t.id || gameState.selectedUnit === t)) {
+                            showTacticalHUD(t);
+                        }
+
+                        // Número de dano com sistema de cascata
+                        showDamageNumber(t.x, t.y, damage, isCrit, 0, 0, t, hit);
+
+                        // Efeito de impacto no personagem (shake + flash)
+                        applyHitEffect(t, isCrit ? 1.3 : 0.8);
+
+                        const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE;
+                        const targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
+
+                        // SKILL IMPACT EFFECTS - Efeitos específicos por skill.id com cálculo de ângulo
+                        let skillEffectHandled = false;
+                        if (window.MapSFX) {
+                            const sId = skill.id;
+                            // Calcular ângulo do caster para o target
+                            const dx = t.x - caster.x;
+                            const dy = t.y - caster.y;
+                            const angle = Math.atan2(dy, dx); // Ângulo em radianos
+
+                            if (sId === 'quick_shot' && window.MapSFX.spawnImpactBurst) {
+                                window.MapSFX.spawnImpactBurst(targetX, targetY, '#fbbf24');
+                                skillEffectHandled = true;
+                            } else if (sId === 'poison_arrow' && window.MapSFX.spawnPoisonCloud) {
+                                window.MapSFX.spawnPoisonCloud(targetX, targetY, 1);
+                                skillEffectHandled = true;
+                            } else if (sId === 'piercing_arrow' && window.MapSFX.spawnLaserBeam) {
+                                window.MapSFX.spawnLaserBeam(targetX, targetY, 1, angle);
+                                skillEffectHandled = true;
+                            } else if (sId === 'multishot' && window.MapSFX.spawnSwordCombo) {
+                                window.MapSFX.spawnSwordCombo(targetX, targetY, 1);
+                                skillEffectHandled = true;
+                            } else if (sId === 'rain_of_arrows' && window.MapSFX.spawnBloodSplash) {
+                                window.MapSFX.spawnBloodSplash(targetX, targetY, 1);
+                                skillEffectHandled = true;
+                            } else if (sId === 'crippling_shot' && window.MapSFX.spawnLifeDrain) {
+                                window.MapSFX.spawnLifeDrain(targetX, targetY, 1);
+                                skillEffectHandled = true;
+                            } else if (sId === 'deadly_aim' && window.MapSFX.spawnNovaExplosion) {
+                                window.MapSFX.spawnNovaExplosion(targetX, targetY, 1);
+                                triggerScreenShake(15);
+                                skillEffectHandled = true;
+                            } else if (sId === 'holy_bolt' && window.MapSFX.spawnDivineJudgment) {
+                                window.MapSFX.spawnDivineJudgment(targetX, targetY, 1);
+                                skillEffectHandled = true;
+                            }
+                        }
+
+                        // Efeitos visuais fallback se skill não teve efeito específico
+                        if (!skillEffectHandled) {
+                            if (isPhysical || skill.id === 'bash' || skill.id === 'sword_mastery' || skill.id === 'heavy_slash') {
+                                spawnSwordSlashEffect(targetX, targetY);
+                            } else if (isMagic) {
+                                const magicColor = skill.element === 'fire' ? '#ef4444' :
+                                    skill.element === 'ice' ? '#60a5fa' :
+                                        skill.element === 'lightning' ? '#fbbf24' :
+                                            skill.element === 'holy' ? '#fef3c7' :
+                                                skill.element === 'dark' ? '#6b21a8' : '#a855f7';
+                                spawnMagicEffect(targetX, targetY, magicColor);
+                            } else {
+                                spawnImpactBurst(targetX, targetY, '#ef4444', isCrit ? 1.5 : 1);
+                            }
+                        }
+
+                        // Efeito visual de tremor para skills fortes
+                        if (dmgMult > 1.2 || isCrit || numHits > 1) {
+                            triggerScreenShake(isCrit ? 12 : (numHits > 1 ? 6 : 8));
+                        }
+
+                        if (t.hp <= 0) {
+                            spawnDeathEffect(targetX, targetY);
+                            showKillBanner(t.name);
+                            skillAnyKill = true;
+                            if (t.type === 'enemy') {
+                                enemyUnits = enemyUnits.filter(u => u.id !== t.id);
+                            } else {
+                                playerUnits = playerUnits.filter(u => u.id !== t.id);
+                            }
                         }
                     }
                 }
             }
         } else if (skill.type === 'heal' || skill.type === 'aoe_heal') {
-            for (const t of targetsToHit) {
-                if (!t || t.hp <= 0) continue;
-                let healing = 0;
-                if (skill.healPct != null) {
-                    healing += Math.floor((t.maxHp || 0) * skill.healPct);
-                } else {
-                    healing += Math.floor(skill.power || 30);
+            // Wild Instinct: aplicar buff em todos os aliados (não é heal)
+            if (skill.id === 'wild_instinct' && skill.buff && window.TacticalSkillEngine) {
+                const allAllies = playerUnits.filter(u => u.hp > 0);
+                for (const ally of allAllies) {
+                    window.TacticalSkillEngine.applyBuff(ally, skill.buff, caster, skill.id);
+                    console.log(`[MAP-ENGINE] Buff aplicado: ${skill.name} em ${ally.name}`, skill.buff);
+                    playBuffApplySfx();
+                    const allyX = (ally.x - 0.5) * CONFIG.CELL_SIZE;
+                    const allyY = (ally.y - 0.5) * CONFIG.CELL_SIZE;
+                    showFloatingText(skill.name, allyX, allyY, '#a855f7');
+                    spawnMagicEffect(allyX, allyY, '#fbbf24');
                 }
-                // Cura escala com MATK do curador (MATK vem de INT) — estilo Ragnarok
-                healing += Math.floor((caster.matk || 0) * (skill.healMatk ?? 0.5));
-                healing = Math.max(1, healing);
-                t.hp = Math.min(t.maxHp, t.hp + healing);
-                showHealNumber(t.x, t.y, healing);
-                spawnHealEffect((t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE);
+                if (typeof updateTurnTimeline === 'function') {
+                    updateTurnTimeline();
+                }
+            } else {
+                // Cura normal
+                for (const t of targetsToHit) {
+                    if (!t || t.hp <= 0) continue;
+                    let healing = 0;
+                    if (skill.healPct != null) {
+                        healing += Math.floor((t.maxHp || 0) * skill.healPct);
+                    } else {
+                        healing += Math.floor(skill.power || 30);
+                    }
+                    // Cura escala com MATK do curador (MATK vem de INT) — estilo Ragnarok
+                    healing += Math.floor((caster.matk || 0) * (skill.healMatk ?? 0.5));
+                    healing = Math.max(1, healing);
+                    t.hp = Math.min(t.maxHp, t.hp + healing);
+                    showHealNumber(t.x, t.y, healing);
+                    spawnHealEffect((t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE);
+                }
             }
         } else if (skill.type === 'self' || skill.type === 'ally' || skill.type === 'buff') {
             // Efeitos de Buff/Debuff com visual premium
@@ -3713,6 +3983,20 @@
                     window.TacticalSkillEngine.applyBuff(t, skill.buff, caster, skill.id);
                     console.log(`[MAP-ENGINE] Buff aplicado: ${skill.name} em ${t.name}`, skill.buff);
                     playBuffApplySfx();
+
+                    // Pack Leader: aplicar automaticamente em todos os summons quando o Beast Tamer usa
+                    if (skill.id === 'pack_leader' && skill.buff) {
+                        playerUnits.forEach(unit => {
+                            if (unit.id !== t.id &&
+                                unit.combatKey &&
+                                (unit.combatKey === 'wolf' || unit.combatKey === 'hawk' || unit.id.startsWith('summon_'))) {
+                                const hasPackLeader = unit.activeBuffs?.find(b => b.data?.id === 'pack_leader');
+                                if (!hasPackLeader) {
+                                    window.TacticalSkillEngine.applyBuff(unit, skill.buff, caster, skill.id);
+                                }
+                            }
+                        });
+                    }
 
                     // Efeito visual especial para berserk_mode
                     if (skill.id === 'berserk_mode' && window.MapSFX && window.MapSFX.spawnBerserkAura) {
@@ -3731,7 +4015,12 @@
                 }
 
                 showFloatingText(skill.name, (t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#a855f7');
-                spawnMagicEffect((t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#fbbf24');
+                const tx = (t.x - 0.5) * CONFIG.CELL_SIZE, ty = (t.y - 0.5) * CONFIG.CELL_SIZE;
+                if (skill.id === 'focused_shot' && window.MapSFX && window.MapSFX.spawnPhoenixRise) {
+                    window.MapSFX.spawnPhoenixRise(tx, ty, 1);
+                } else {
+                    spawnMagicEffect(tx, ty, '#fbbf24');
+                }
 
                 if (skill.effect && skill.effect.id === 'stun') {
                     if (Math.random() < (skill.effect.chance || 0)) {
@@ -3752,10 +4041,236 @@
             if (typeof updateTurnTimeline === 'function') {
                 updateTurnTimeline();
             }
+        } else if (skill.type === 'summon') {
+            // Summon: criar unidade aliada
+            const summonEntityId = skill.summonEntity || 'wolf';
+
+            // Encontrar posição livre para spawnar o summon
+            // Prioridade: abaixo (y+1), depois espiral ao redor do caster
+            let spawnX = caster.x;
+            let spawnY = caster.y;
+
+            // Ordenar direções: priorizar abaixo (y+1), depois lados, depois diagonais
+            const prioritizedDirections = [
+                { x: 0, y: 1 },   // Abaixo (prioridade máxima)
+                { x: 1, y: 1 },   // Diagonal inferior direita
+                { x: -1, y: 1 },  // Diagonal inferior esquerda
+                { x: 1, y: 0 },   // Direita
+                { x: -1, y: 0 },  // Esquerda
+                { x: 0, y: -1 },  // Acima
+                { x: 1, y: -1 },  // Diagonal superior direita
+                { x: -1, y: -1 }, // Diagonal superior esquerda
+            ];
+
+            // Busca em espiral: primeiro adjacente, depois raio 2, raio 3...
+            let found = false;
+            const maxRadius = 5; // Limite para não gastar muita memória
+
+            for (let radius = 1; radius <= maxRadius && !found; radius++) {
+                if (radius === 1) {
+                    // Raio 1: usar direções priorizadas
+                    for (const dir of prioritizedDirections) {
+                        const testX = caster.x + dir.x;
+                        const testY = caster.y + dir.y;
+                        if (isValidCell(testX, testY) && !isWall(testX, testY) && !getUnitAt(testX, testY)) {
+                            spawnX = testX;
+                            spawnY = testY;
+                            found = true;
+                            break;
+                        }
+                    }
+                } else {
+                    // Raio 2+: buscar todas as células nesse raio, priorizando y maior (abaixo)
+                    const candidates = [];
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        for (let dy = -radius; dy <= radius; dy++) {
+                            // Só células no perímetro do raio
+                            if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
+                                candidates.push({ x: caster.x + dx, y: caster.y + dy, dy });
+                            }
+                        }
+                    }
+                    // Ordenar por dy decrescente (abaixo primeiro)
+                    candidates.sort((a, b) => b.dy - a.dy);
+
+                    for (const c of candidates) {
+                        if (isValidCell(c.x, c.y) && !isWall(c.x, c.y) && !getUnitAt(c.x, c.y)) {
+                            spawnX = c.x;
+                            spawnY = c.y;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!found) {
+                showNotification('Não há espaço para invocar!', 'warning');
+                gameState.isAnimating = false;
+                return false;
+            }
+
+            // Carregar definição da entidade do summon
+            let entityDef = null;
+            if (window.TacticalDataLoader) {
+                try {
+                    entityDef = await window.TacticalDataLoader.getEntity(summonEntityId);
+                } catch (error) {
+                    console.warn('[MAP-ENGINE] Failed to load summon entity:', error);
+                }
+            }
+
+            if (!entityDef) {
+                showNotification('Entidade de summon não encontrada: ' + summonEntityId, 'error');
+                gameState.isAnimating = false;
+                return false;
+            }
+
+            // === EFEITOS NO CASTER (Beast Tamer) ===
+            const casterPxX = (caster.x - 0.5) * CONFIG.CELL_SIZE;
+            const casterPxY = (caster.y - 0.5) * CONFIG.CELL_SIZE;
+
+            // Som de invocação - uivo de lobo temático para Beast Tamer
+            playSfx('howling_wolf.mp3', 0.6, 1.0);
+
+            // Efeito fx-penta no caster
+            if (window.MapSFX && window.MapSFX.spawnPenta) {
+                window.MapSFX.spawnPenta(casterPxX, casterPxY, 1);
+            } else {
+                spawnMagicEffect(casterPxX, casterPxY, '#fbbf24');
+            }
+
+            // Criar unidade do summon com stats da entity sheet
+            const summonId = `summon_${summonEntityId}_${Date.now()}`;
+
+            // Level do summon = level do invocador (Beast Tamer)
+            const summonLevel = caster.level || 1;
+
+            console.log(`[SUMMON] Creating ${entityDef.name} at level ${summonLevel}`);
+
+            const summonUnit = {
+                id: summonId,
+                name: entityDef.name || entityDef.display_name || 'Summon',
+                type: 'player', // Summons são aliados controláveis
+                element: entityDef.element || 'neutral',
+                x: spawnX,
+                y: spawnY,
+                level: summonLevel,
+                baseLevel: entityDef.base_level || entityDef.baseLevel || 1,
+                // Atributos base da entity sheet
+                attributes: entityDef.attributes ? { ...entityDef.attributes } : { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
+                baseAttributes: entityDef.attributes ? { ...entityDef.attributes } : { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
+                // Valores temporários - serão recalculados pelo TacticalSkillEngine
+                hp: 1,
+                maxHp: entityDef.maxHp || 50,
+                sp: entityDef.maxSp || 30,
+                maxSp: entityDef.maxSp || 30,
+                mana: entityDef.maxSp || 30,
+                maxMana: entityDef.maxSp || 30,
+                attack: entityDef.attack || 8,
+                defense: entityDef.defense || 3,
+                // Stats de movimento da entity
+                moveRange: entityDef.moveRange || 3,
+                attackRange: entityDef.attackRange || 1,
+                // Visual
+                avatar: entityDef.images ? '/public/' + (entityDef.images.default || Object.values(entityDef.images || {})[0] || 'assets/img/characters/swordman.webp') : '/public/assets/img/characters/swordman.webp',
+                class: entityDef.class || entityDef.id || summonEntityId,
+                scale: entityDef.scale || 1.0,
+                combatKey: summonEntityId,
+                entity_id: entityDef.id || summonEntityId,
+                animationState: 'idle',
+                hasMoved: false,
+                facingRight: caster.facingRight ?? false,
+                activeBuffs: [],
+                activeDebuffs: [],
+                statusEffects: [],
+                // Marcar como summon
+                isSummon: true,
+                summonedBy: caster.id,
+            };
+
+            // Usar o sistema automático de cálculo de stats por level
+            if (window.TacticalSkillEngine && window.TacticalSkillEngine.recalculateStats) {
+                window.TacticalSkillEngine.recalculateStats(summonUnit);
+                console.log(`[SUMMON] Stats recalculated - HP: ${summonUnit.maxHp}, ATK: ${summonUnit.attack}, DEF: ${summonUnit.defense}`);
+            }
+
+            // Setar HP e SP ao máximo após recalcular
+            summonUnit.hp = summonUnit.maxHp;
+            summonUnit.sp = summonUnit.maxSp;
+            summonUnit.mana = summonUnit.maxMana;
+
+            // Carregar animações
+            if (entityDef.animations) {
+                summonUnit.animations = {};
+                for (const k of ['idle', 'walk', 'atack']) {
+                    if (entityDef.animations[k]) {
+                        summonUnit.animations[k] = { ...entityDef.animations[k] };
+                    }
+                }
+            }
+            summonUnit.forceAnimation = entityDef.forceAnimation ?? 'idle';
+
+            // Adicionar ao array de playerUnits
+            playerUnits.push(summonUnit);
+
+            // === EFEITOS NO SUMMON (monstro que nasce) ===
+            const spawnPxX = (spawnX - 0.5) * CONFIG.CELL_SIZE;
+            const spawnPxY = (spawnY - 0.5) * CONFIG.CELL_SIZE;
+
+            // Efeito fx-impact no summon
+            if (window.MapSFX && window.MapSFX.spawnImpact) {
+                window.MapSFX.spawnImpact(spawnPxX, spawnPxY, 1);
+            } else if (window.MapSFX && window.MapSFX.spawnImpactBurst) {
+                window.MapSFX.spawnImpactBurst(spawnPxX, spawnPxY, '#10b981');
+            } else {
+                spawnMagicEffect(spawnPxX, spawnPxY, '#10b981');
+            }
+
+            showFloatingText(`${entityDef.name || 'Summon'} Invocado!`, spawnPxX, spawnPxY, '#10b981');
+            showNotification(`${entityDef.name || 'Summon'} foi invocado!`, 'success');
+
+            // Aplicar Pack Leader buff se o caster tiver (aplica em todos os summons)
+            if (window.TacticalSkillEngine) {
+                // Verificar se o caster tem Pack Leader ativo
+                const packLeaderBuff = caster.activeBuffs?.find(b => b.data?.id === 'pack_leader');
+                if (packLeaderBuff && packLeaderBuff.data) {
+                    // Aplicar no novo summon
+                    window.TacticalSkillEngine.applyBuff(summonUnit, packLeaderBuff.data, caster, 'pack_leader');
+
+                    // Aplicar em todos os outros summons existentes que não têm o buff
+                    playerUnits.forEach(unit => {
+                        if (unit.id !== summonUnit.id &&
+                            unit.id !== caster.id &&
+                            unit.combatKey &&
+                            (unit.combatKey === 'wolf' || unit.combatKey === 'hawk' || unit.id.startsWith('summon_'))) {
+                            const hasPackLeader = unit.activeBuffs?.find(b => b.data?.id === 'pack_leader');
+                            if (!hasPackLeader) {
+                                window.TacticalSkillEngine.applyBuff(unit, packLeaderBuff.data, caster, 'pack_leader');
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Carregar sprites do summon
+            if (window.TacticalDataLoader && summonEntityId) {
+                try {
+                    await window.TacticalDataLoader.loadEntities([summonEntityId]);
+                    await loadSpriteAnimations(summonEntityId);
+                } catch (error) {
+                    console.warn('[MAP-ENGINE] Failed to load summon sprites:', error);
+                }
+            }
+
+            // Atualizar UI
+            updateUI();
+            needsRender = true;
         }
 
+        if (skillAnyKill) await sleep(900);
         gameState.isAnimating = false;
-        finishUnitTurn(caster);
+        await finishUnitTurn(caster);
         needsRender = true;
 
         return true;
@@ -4019,9 +4534,10 @@
             console.log('[DEBUG][handleBattleResult] Auto-ending turn...');
             endPlayerTurn();
         } else if (gameState.phase === 'player') {
-            // UX: Se ainda houver unidades que não agiram, selecionar a próxima
-            const nextUnit = playerUnits.find(u => u.hp > 0 && !gameState.unitsActedThisTurn.has(u.id));
+            // UX: Próxima unidade por ASPD/AGI
+            const nextUnit = getFirstPlayerUnitBySpeed(gameState.unitsActedThisTurn);
             if (nextUnit && !gameState.selectedUnit) {
+                await sleep(1000); // pausa para ver resultado antes da câmera ir pro próximo
                 selectUnit(nextUnit);
                 animateCameraToUnit(nextUnit);
             }
@@ -4065,12 +4581,32 @@
         }
     }
 
-    function persistSessionState() {
-        if (!sessionUid) return;
+    // Debounce para persistSessionState - evita múltiplas chamadas
+    let persistTimeout = null;
+    let isPersisting = false;
+
+    function persistSessionState(immediate = false) {
+        if (!sessionUid) return Promise.resolve();
+
+        // Se já está persistindo e não é imediato, agendar para depois
+        if (isPersisting && !immediate) {
+            if (persistTimeout) clearTimeout(persistTimeout);
+            persistTimeout = setTimeout(() => persistSessionState(true), 100);
+            return Promise.resolve();
+        }
+
+        // Limpar timeout anterior se existir
+        if (persistTimeout) {
+            clearTimeout(persistTimeout);
+            persistTimeout = null;
+        }
+
+        isPersisting = true;
 
         const alive = playerUnits.filter(u => u.hp > 0);
-        const p0 = alive[0];
-        const allies = alive.slice(1);
+        // Identificar player principal pelo id, não pela posição no array
+        const p0 = alive.find(u => u.id === 'player') || alive[0];
+        const allies = alive.filter(u => u.id !== 'player');
         const payload = {
             state: {
                 player: p0 ? {
@@ -4118,11 +4654,15 @@
             unitsActed: payload.state.unitsActed
         });
 
-        fetch(`/game/explore/state?session=${encodeURIComponent(sessionUid)}`, {
+        return fetch(`/game/explore/state?session=${encodeURIComponent(sessionUid)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        }).catch(() => { });
+        }).then(() => {
+            isPersisting = false;
+        }).catch(() => {
+            isPersisting = false;
+        });
     }
 
     function areEnemiesCleared() {
@@ -4193,10 +4733,10 @@
             const targetY = -(unit.y - 0.5) * CONFIG.CELL_SIZE * viewState.scale + canvas.height / 2;
 
             cameraTarget = { x: targetX, y: targetY, scale: viewState.scale };
-            cameraFollowEase = 0.3; // mais rápido que o padrão 0.1
+            cameraFollowEase = 0.2; // transição mais suave (era 0.3)
 
-            // Tempo menor para a câmera assentar
-            setTimeout(resolve, 280);
+            // Tempo para a câmera assentar (era 280ms; aumentado para transição menos abrupta)
+            setTimeout(resolve, 420);
         });
     }
 
@@ -4509,19 +5049,36 @@
         );
     }
 
-    function finishUnitTurn(unit) {
+    async function finishUnitTurn(unit) {
         if (!unit) return;
+        if (gameState.debugFreeControl || gameState.debugControlEnemy) {
+            unit.hasMoved = false;
+            deselectUnit(true);
+            selectUnit(unit);
+            needsRender = true;
+            return;
+        }
         gameState.unitsActedThisTurn.add(unit.id);
+        await persistSessionState(true); // Imediato após unidade agir
+
+        const allActed = playerUnits.every(u => u.hp <= 0 || gameState.unitsActedThisTurn.has(u.id));
+        const hasNext = !allActed && playerUnits.some(u => u.hp > 0 && !gameState.unitsActedThisTurn.has(u.id));
+
+        // Pausa para o jogador ver dano/número e morte antes da câmera ir pro próximo
+        if (hasNext) {
+            await sleep(1100);
+        } else if (allActed) {
+            await sleep(700);
+        }
 
         // Clear visuals and check for end of complete phase
         deselectUnit(true);
-        const allActed = playerUnits.every(u => u.hp <= 0 || gameState.unitsActedThisTurn.has(u.id));
 
         if (allActed) {
             endPlayerTurn();
         } else {
-            // UX: Se ainda houver unidades que não agiram, selecionar a próxima automaticamente
-            const nextUnit = playerUnits.find(u => u.hp > 0 && !gameState.unitsActedThisTurn.has(u.id));
+            // UX: Próxima unidade por ASPD/AGI (mais rápido age primeiro)
+            const nextUnit = getFirstPlayerUnitBySpeed(gameState.unitsActedThisTurn);
             if (nextUnit) {
                 selectUnit(nextUnit);
                 animateCameraToUnit(nextUnit);
@@ -4562,7 +5119,7 @@
         if (!hud || !unit) return;
 
         // Habilitar/desabilitar bot�es baseado no estado
-        const hasActed = gameState.unitsActedThisTurn.has(unit.id);
+        const hasActed = (gameState.debugFreeControl || gameState.debugControlEnemy) ? false : gameState.unitsActedThisTurn.has(unit.id);
         const skills = getUnitSkills(unit);
 
         const moveBtn = document.getElementById('tactical-move');
@@ -4584,6 +5141,44 @@
         }
         if (endTurnBtn) {
             endTurnBtn.disabled = false;
+            const labelSpan = endTurnBtn.querySelectorAll('span')[1];
+            if (labelSpan) labelSpan.textContent = (gameState.debugFreeControl || gameState.debugControlEnemy) ? 'Sair CL' : 'Pass';
+            // Restaurar ícone se estava com spinner
+            const btnIcon = endTurnBtn.querySelector('.btn-icon');
+            if (btnIcon && btnIcon.querySelector('.spinner')) {
+                btnIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="forward" class="lucide lucide-forward"><path d="m15 17 5-5-5-5"></path><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
+            }
+        }
+
+        // Mostrar nome do aliado no topo da HUD (se for aliado)
+        const isAlly = unit.id !== 'player' && (unit.type === 'player' || unit.type === 'ally');
+        const hudInner = document.querySelector('.tactical-hud-inner');
+        let allyNameEl = document.getElementById('tactical-ally-name');
+        if (isAlly && hudInner) {
+            if (!allyNameEl) {
+                allyNameEl = document.createElement('div');
+                allyNameEl.id = 'tactical-ally-name';
+                allyNameEl.style.cssText = 'position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #fbbf24; font-size: 14px; font-weight: 600; text-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 2px 4px rgba(0,0,0,0.5); cursor: pointer; pointer-events: auto; white-space: nowrap; letter-spacing: 0.5px; transition: all 0.2s;';
+                allyNameEl.addEventListener('mouseenter', () => {
+                    allyNameEl.style.color = '#fcd34d';
+                    allyNameEl.style.textShadow = '0 0 15px rgba(252, 211, 77, 1), 0 2px 4px rgba(0,0,0,0.5)';
+                });
+                allyNameEl.addEventListener('mouseleave', () => {
+                    allyNameEl.style.color = '#fbbf24';
+                    allyNameEl.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.8), 0 2px 4px rgba(0,0,0,0.5)';
+                });
+                allyNameEl.addEventListener('click', () => {
+                    if (unit) {
+                        animateCameraToUnit(unit);
+                    }
+                });
+                hudInner.style.position = 'relative';
+                hudInner.appendChild(allyNameEl);
+            }
+            allyNameEl.textContent = unit.name || 'Ally';
+            allyNameEl.style.display = 'block';
+        } else if (allyNameEl) {
+            allyNameEl.style.display = 'none';
         }
 
         // Renderizar painel de buffs/debuffs
@@ -4755,6 +5350,9 @@
                 if (data.damageTaken !== undefined && data.damageTaken < 1) {
                     modifiers.push({ label: 'Dano Recebido', value: `${Math.round((data.damageTaken - 1) * 100)}%`, positive: false });
                 }
+                if (data.skillRangeBonus !== undefined && data.skillRangeBonus > 0) {
+                    modifiers.push({ label: 'Range', value: `+${data.skillRangeBonus}`, positive: true });
+                }
             });
         }
 
@@ -4836,6 +5434,16 @@
         skillRangeCells = [];
         skillAreaCells = [];
         const range = unit.attackRange || 1;
+        let targets;
+        if (unit.type === 'enemy') {
+            // Debug: inimigo controlando pode atacar player/ally OU outros inimigos
+            if (gameState.debugControlEnemy)
+                targets = [...playerUnits, ...enemyUnits].filter(t => t.id !== unit.id && t.hp > 0);
+            else
+                targets = playerUnits;
+        } else {
+            targets = enemyUnits;
+        }
 
         // Calcular células no alcance (Chebyshev - inclui diagonais)
         for (let dx = -range; dx <= range; dx++) {
@@ -4845,8 +5453,8 @@
                     const x = unit.x + dx;
                     const y = unit.y + dy;
                     if (isValidCell(x, y)) {
-                        // Verificar se há inimigo nesta célula
-                        const enemyHere = enemyUnits.find(e => e.x === x && e.y === y && e.hp > 0);
+                        // Verificar se há alvo (inimigo do atacante) nesta célula
+                        const enemyHere = targets.find(t => t.x === x && t.y === y && t.hp > 0);
                         attackRangeCells.push({
                             x, y,
                             hasEnemy: !!enemyHere,
@@ -5479,8 +6087,8 @@
                 await showSkillMenu(gameState.selectedUnit);
             }
         });
-        document.getElementById('action-finish')?.addEventListener('click', () => {
-            if (gameState.selectedUnit) finishUnitTurn(gameState.selectedUnit);
+        document.getElementById('action-finish')?.addEventListener('click', async () => {
+            if (gameState.selectedUnit) await finishUnitTurn(gameState.selectedUnit);
         });
         document.getElementById('action-cancel')?.addEventListener('click', () => { if (gameState.selectedUnit) returnToNormalSelection(); });
 
@@ -5513,29 +6121,69 @@
             });
         });
 
+        const canControlUnit = (u) => u && ((u.type === 'player' || u.type === 'ally') || (gameState.debugControlEnemy && u.type === 'enemy'));
         document.getElementById('tactical-move')?.addEventListener('click', () => {
-            if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
+            if (canControlUnit(gameState.selectedUnit)) {
                 setAction('move');
                 hideTacticalHUD();
             }
         });
 
         document.getElementById('tactical-attack')?.addEventListener('click', () => {
-            if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
+            if (canControlUnit(gameState.selectedUnit)) {
                 showAttackRange(gameState.selectedUnit);
                 showTacticalHUD(gameState.selectedUnit); // Atualizar estado ativo do botão
             }
         });
 
         document.getElementById('tactical-skills')?.addEventListener('click', async () => {
-            if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
+            if (canControlUnit(gameState.selectedUnit)) {
                 await showSkillMenu(gameState.selectedUnit);
             }
         });
 
-        document.getElementById('tactical-endturn')?.addEventListener('click', () => {
-            if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
-                finishUnitTurn(gameState.selectedUnit);
+        document.getElementById('tactical-endturn')?.addEventListener('click', async () => {
+            const endTurnBtn = document.getElementById('tactical-endturn');
+            const moveBtn = document.getElementById('tactical-move');
+            const attackBtn = document.getElementById('tactical-attack');
+            const skillsBtn = document.getElementById('tactical-skills');
+
+            // Mostrar spinner e bloquear botões
+            if (endTurnBtn) {
+                endTurnBtn.disabled = true;
+                const btnIcon = endTurnBtn.querySelector('.btn-icon');
+                if (btnIcon) {
+                    btnIcon.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: currentColor; border-radius: 50%; animation: spin 0.6s linear infinite;"></div>';
+                }
+            }
+            if (moveBtn) moveBtn.disabled = true;
+            if (attackBtn) attackBtn.disabled = true;
+            if (skillsBtn) skillsBtn.disabled = true;
+
+            try {
+                if (gameState.debugFreeControl || gameState.debugControlEnemy) {
+                    const u = gameState.selectedUnit;
+                    const wasPlayerOrAlly = u && (u.type === 'player' || u.type === 'ally');
+                    gameState.debugFreeControl = false;
+                    gameState.debugControlEnemy = false;
+                    if (wasPlayerOrAlly && u) gameState.unitsActedThisTurn.add(u.id);
+                    deselectUnit(true);
+                    if (wasPlayerOrAlly) {
+                        const next = getFirstPlayerUnitBySpeed(gameState.unitsActedThisTurn);
+                        if (next) selectUnit(next);
+                    }
+                    if (typeof updateTurnTimeline === 'function') updateTurnTimeline();
+                    needsRender = true;
+                    return;
+                }
+                if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
+                    await finishUnitTurn(gameState.selectedUnit);
+                }
+            } finally {
+                // Restaurar botão após processamento (será atualizado por showTacticalHUD)
+                if (gameState.selectedUnit) {
+                    showTacticalHUD(gameState.selectedUnit);
+                }
             }
         });
 
@@ -6167,19 +6815,23 @@
         const label = timeline.querySelector('.timeline-label');
         if (label) label.textContent = `Turn: ${gameState.turn || 1}`;
 
-        // Get all units in order
+        // Get all units in order (por ASPD/AGI: mais rápido primeiro)
         const allUnits = [];
         const currentUnits = gameState.phase === 'player' ? playerUnits : enemyUnits;
         const nextUnits = gameState.phase === 'player' ? enemyUnits : playerUnits;
+        const bySpeed = (a, b) => (getUnitSpeed(b) - getUnitSpeed(a)) || (String(a.id || '').localeCompare(String(b.id || '')));
+        const curr = currentUnits.filter(u => u.hp > 0).sort(bySpeed);
+        const next = nextUnits.filter(u => u.hp > 0).sort(bySpeed);
 
-        currentUnits.filter(u => u.hp > 0).forEach(u => allUnits.push({ ...u, isCurrent: true }));
-        if (nextUnits.filter(u => u.hp > 0).length > 0) {
+        curr.forEach(u => allUnits.push({ ...u, isCurrent: true }));
+        if (next.length > 0) {
             allUnits.push({ separator: true });
-            nextUnits.filter(u => u.hp > 0).forEach(u => allUnits.push({ ...u, isCurrent: false }));
+            next.forEach(u => allUnits.push({ ...u, isCurrent: false }));
         }
 
         const sig = allUnits.map(x => x.separator ? '|' : x.id).join(',');
-        if (sig === lastTimelineSignature) {
+        const buffSig = allUnits.filter(u => !u.separator).map(u => `${u.id}:b${(u.activeBuffs || []).length}d${(u.activeDebuffs || []).length}s${(u.statusEffects || []).length}`).join(';');
+        if (sig === lastTimelineSignature && buffSig === lastTimelineBuffSignature) {
             // Light update: só barras, classes e filtro da img — não recria <img> nem altera .src
             const cards = timeline.querySelectorAll('.timeline-unit-card');
             cards.forEach(card => {
@@ -6208,8 +6860,9 @@
             return;
         }
         lastTimelineSignature = sig;
+        lastTimelineBuffSignature = buffSig;
 
-        // Full rebuild: limpar e recriar cards (e seus <img>) só quando a lista de unidades mudar
+        // Full rebuild: limpar e recriar cards (e seus <img>) só quando a lista de unidades ou buffs mudar
         timeline.innerHTML = '';
         if (label) timeline.appendChild(label);
 
@@ -6382,6 +7035,9 @@
                     const percent = Math.round(data.tauntChance * 100);
                     modifiers.push(`Taunt +${percent}%`);
                 }
+                if (data.skillRangeBonus !== undefined && data.skillRangeBonus > 0) {
+                    modifiers.push(`Skill Range +${data.skillRangeBonus}`);
+                }
 
                 if (modifiers.length > 0) {
                     parts.push(`Modifiers: ${modifiers.join(', ')}`);
@@ -6429,6 +7085,9 @@
                 }
                 if (buffData.skipTurn) {
                     modifiers.push(`Skip Turn`);
+                }
+                if (buffData.skillRangeBonus !== undefined && buffData.skillRangeBonus > 0) {
+                    modifiers.push(`Skill Range +${buffData.skillRangeBonus}`);
                 }
 
                 if (modifiers.length > 0) {
@@ -7118,9 +7777,13 @@
 
             let targets = [];
             if (rangeType === 'ally' || rangeType === 'heal') {
-                // Para skills ally/heal: alvo deve ser aliado ou a própria célula (auto)
+                // Para skills ally/heal: alvo deve ser aliado (ou a própria célula para auto)
                 const clickedUnit = unitAtCell;
-                if (clickedUnit && (clickedUnit.type === 'player' || clickedUnit.type === 'ally') && clickedUnit.hp > 0) {
+                const isAlly = clickedUnit && clickedUnit.hp > 0 && (
+                    (caster.type === 'enemy' && clickedUnit.type === 'enemy') ||
+                    ((caster.type === 'player' || caster.type === 'ally') && (clickedUnit.type === 'player' || clickedUnit.type === 'ally'))
+                );
+                if (isAlly) {
                     targets = [clickedUnit];
                 } else if (x === caster.x && y === caster.y) {
                     targets = [caster];
@@ -7130,11 +7793,17 @@
                 }
             } else {
                 const area = calculateSkillArea(skill, x, y, caster.x, caster.y);
-                const targetType = (skill.type === 'ally' || skill.type === 'aoe_heal' || skill.type === 'heal') ? 'player' : 'enemy';
+                let targetType;
+                if (skill.type === 'ally' || skill.type === 'aoe_heal' || skill.type === 'heal')
+                    targetType = (caster.type === 'enemy') ? 'enemy' : 'player';
+                else
+                    targetType = (caster.type === 'enemy') ? 'player' : 'enemy';
+                // Debug: inimigo controlando pode usar skill de dano em player/ally OU em outros inimigos
+                const isDamageTarget = (u) =>
+                    u.type === targetType || (targetType === 'player' && u.type === 'ally') ||
+                    (gameState.debugControlEnemy && caster.type === 'enemy' && u.type === 'enemy' && u.id !== caster.id);
                 targets = [...playerUnits, ...enemyUnits].filter(u =>
-                    u.hp > 0 &&
-                    (u.type === targetType || (targetType === 'player' && u.type === 'ally')) &&
-                    area.some(cell => cell.x === u.x && cell.y === u.y)
+                    u.hp > 0 && isDamageTarget(u) && area.some(cell => cell.x === u.x && cell.y === u.y)
                 );
             }
 
@@ -7173,7 +7842,7 @@
             }
 
             // Click another ally -> Switch selection (only if haven't moved yet)
-            if (unitAtCell && unitAtCell.type === 'player' && canUnitAct(unitAtCell)) {
+            if (unitAtCell && ((unitAtCell.type === 'player' || unitAtCell.type === 'ally') || (gameState.debugControlEnemy && unitAtCell.type === 'enemy')) && canUnitAct(unitAtCell)) {
                 if (!unit.hasMoved) {
                     selectUnit(unitAtCell);
                     return;
@@ -7183,9 +7852,13 @@
                 }
             }
 
-            // Click an enemy -> orientar uso do botão Atacar/Skills (mensagem no topo)
-            // NOVO: Se estiver em range, habilitar modo de ataque automaticamente
-            if (unitAtCell && unitAtCell.type === 'enemy') {
+            // Click on attack target: player/ally vs enemy; enemy vs player/ally; ou (debug) inimigo vs outro inimigo
+            const isAttackTarget = unitAtCell && (
+                ((unit.type === 'player' || unit.type === 'ally') && unitAtCell.type === 'enemy') ||
+                (unit.type === 'enemy' && (unitAtCell.type === 'player' || unitAtCell.type === 'ally')) ||
+                (gameState.debugControlEnemy && unit.type === 'enemy' && unitAtCell.type === 'enemy' && unitAtCell.id !== unit.id)
+            );
+            if (isAttackTarget) {
                 const dist = Math.max(Math.abs(unit.x - unitAtCell.x), Math.abs(unit.y - unitAtCell.y));
                 if (dist <= (unit.attackRange || 1)) {
                     showAttackRange(unit);
@@ -7201,13 +7874,28 @@
             returnToNormalSelection();
         } else {
             // 2. Nada selecionado ou seleção que não pode agir: tentar selecionar aliado com ação
-            if (unitAtCell && unitAtCell.type === 'player' && canUnitAct(unitAtCell)) {
-                selectUnit(unitAtCell);
+            if (unitAtCell && (unitAtCell.type === 'player' || unitAtCell.type === 'ally')) {
+                // Só permitir selecionar se a unidade pode agir
+                if (canUnitAct(unitAtCell)) {
+                    selectUnit(unitAtCell);
+                } else {
+                    // Unidade já agiu: mostrar notificação e selecionar próxima disponível
+                    showGlobalNotification('Esta unidade já agiu neste turno!', 'warning', 'alert-circle');
+                    const nextAvailable = getFirstPlayerUnitBySpeed(gameState.unitsActedThisTurn);
+                    if (nextAvailable) {
+                        selectUnit(nextAvailable);
+                        animateCameraToUnit(nextAvailable);
+                    }
+                }
             } else if (gameState.selectedUnit) {
                 returnToNormalSelection();
             } else {
-                const first = playerUnits.find(u => u.hp > 0);
-                if (first) selectUnit(first);
+                // Nenhuma unidade selecionada: selecionar automaticamente a próxima disponível
+                const first = getFirstPlayerUnitBySpeed(gameState.unitsActedThisTurn);
+                if (first) {
+                    selectUnit(first);
+                    animateCameraToUnit(first);
+                }
             }
         }
     }
@@ -7311,7 +7999,7 @@
             case 'f':
                 // Atalho para Flee/Pass (Finalizar Turno da Unidade)
                 if (gameState.selectedUnit && gameState.selectedUnit.type === 'player') {
-                    finishUnitTurn(gameState.selectedUnit);
+                    await finishUnitTurn(gameState.selectedUnit);
                 }
                 break;
             case 'e':
@@ -8342,10 +9030,10 @@
             // Aplicar offset de renderização global (knockback etc)
             if (unit.renderOffsetY !== undefined) drawY += unit.renderOffsetY;
 
-            // Posicionar barra acima do sprite + margem negativa solicitada (-20px para baixo da borda)
-            barY = drawY + 2; // +2px em vez de -18px para aproximar do personagem conforme solicitado
+            // Posicionar barra acima do sprite (subir 20px a mais)
+            barY = drawY - 18;
         } else {
-            barY = -radius - 16;
+            barY = -radius - 36;
         }
 
         ctx.save();
@@ -8868,14 +9556,14 @@
             const barH = 6;
             const barRadius = 3;
             const bx = -barW / 2;
-            // Se tiver sprite, posicionar barras acima do sprite, senão usar posição padrão
+            // Se tiver sprite, posicionar barras acima do sprite, senão usar posição padrão (subir 20px a mais)
             let by;
             if (spriteTopY !== null && spriteTopY < 0) {
                 // Posicionar acima do sprite (spriteTopY é negativo, então subtrair mais para ficar acima)
-                by = spriteTopY - 20;
+                by = spriteTopY - 40;
             } else {
                 // Posição padrão acima do círculo
-                by = -radius - 16;
+                by = -radius - 36;
             }
             const hpPct = Math.max(0, unit.hp / unit.maxHp);
 
@@ -9001,11 +9689,11 @@
             // Calcular posição acima das barras HP (usando a mesma lógica das barras)
             let arrowY;
             if (spriteTopY !== null && spriteTopY < 0) {
-                // Barras estão em spriteTopY - 20, então seta fica 15px acima das barras
-                arrowY = spriteTopY - 35;
+                // Barras estão em spriteTopY - 40, então seta fica 15px acima das barras
+                arrowY = spriteTopY - 55;
             } else {
-                // Barras estão em -radius - 16, então seta fica acima
-                arrowY = -radius - 35;
+                // Barras estão em -radius - 36, então seta fica acima
+                arrowY = -radius - 55;
             }
 
             ctx.translate(0, arrowY + bounce);

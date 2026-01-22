@@ -94,7 +94,7 @@ window.combatData = {
             attributes: { str: 10, agi: 12, vit: 8, int: 2, dex: 10, luk: 3 },
             maxHp: 1, maxMana: 1, baseLevel: 4,
             exp: 15, gold: 12,
-            skills: ['savage_bite', 'pack_howl', 'lunge', 'feral_claws', 'blood_frenzy', 'lunar_rampage'],
+            skills: ['savage_bite', 'lunge'],
             inventory: { potion_hp: 1 }
         },
         orc: {
@@ -112,7 +112,7 @@ window.combatData = {
             attributes: { str: 8, agi: 3, vit: 12, int: 6, dex: 3, luk: 5 },
             maxHp: 1, maxMana: 1, baseLevel: 2,
             exp: 8, gold: 5,
-            skills: ['dissolve', 'bounce', 'slime_split', 'toxic_spit']
+            skills: ['dissolve', 'bounce']
         },
         goblin: {
             name: 'Goblin Scout', type: 'monster', element: 'earth', img: 'assets/img/goblin.png',

@@ -530,6 +530,14 @@
                 <div id="debug-walls-copied" style="font-size: 9px; color: #22c55e; margin-top: 4px; text-align: center; display: none;">✓ JSON copiado para a área de transferência!</div>
             </div>
             
+            <div style="margin-bottom: 15px; padding-top: 10px; border-top: 1px solid #333;">
+                <div style="font-size: 10px; color: #a78bfa; margin-bottom: 6px; font-weight: bold;">Free Control (Testing):</div>
+                <div style="font-size: 9px; color: #666; margin-bottom: 4px;">Escolha a unidade aqui para controle total: mover, atacar, skills — o turno <strong>não</strong> avança. Use &quot;Sair CL&quot; na HUD ou Off para sair.</div>
+                <select id="debug-free-control" style="width: 100%; padding: 6px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 4px; font-size: 11px;">
+                    <option value="off">-- Off --</option>
+                </select>
+            </div>
+            
             <div style="font-size: 9px; color: #4b5563; text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #333;">
                 Pressione D para fechar
             </div>
@@ -539,6 +547,30 @@
 
         // Setup event listeners
         setupEventListeners();
+    }
+
+    function updateFreeControlDropdown() {
+        const sel = document.getElementById('debug-free-control');
+        if (!sel || !mapEngineRef) return;
+        sel.innerHTML = '';
+        const offOpt = document.createElement('option');
+        offOpt.value = 'off';
+        offOpt.textContent = '-- Off --';
+        sel.appendChild(offOpt);
+        const players = (mapEngineRef.playerUnits && mapEngineRef.playerUnits()) || [];
+        const enemies = (mapEngineRef.enemyUnits && mapEngineRef.enemyUnits()) || [];
+        players.filter(u => u.hp > 0).forEach((u, i) => {
+            const o = document.createElement('option');
+            o.value = 'player:' + u.id;
+            o.textContent = u.name || u.combatKey || u.combat_key || ('Ally ' + (i + 1));
+            sel.appendChild(o);
+        });
+        enemies.filter(u => u.hp > 0).forEach((u, i) => {
+            const o = document.createElement('option');
+            o.value = 'enemy:' + u.id;
+            o.textContent = u.name || u.combatKey || u.combat_key || ('Enemy ' + (i + 1));
+            sel.appendChild(o);
+        });
     }
 
     /**
@@ -1717,6 +1749,56 @@
                 // Último recurso: mostrar em prompt
                 prompt('Copie o JSON abaixo:', json);
             });
+        });
+
+        // === FREE CONTROL (TESTING) ===
+        updateFreeControlDropdown();
+        document.getElementById('debug-free-control')?.addEventListener('change', (e) => {
+            const v = e.target.value;
+            if (!mapEngineRef) return;
+            if (v === 'off') {
+                if (mapEngineRef.deactivateFreeControl) mapEngineRef.deactivateFreeControl();
+                else if (mapEngineRef.gameState) {
+                    mapEngineRef.gameState.debugFreeControl = false;
+                    mapEngineRef.gameState.debugControlEnemy = false;
+                    if (mapEngineRef.deselectUnit) mapEngineRef.deselectUnit(true);
+                }
+                if (mapEngineRef.triggerRender) mapEngineRef.triggerRender();
+                return;
+            }
+            const parts = v.split(':');
+            const kind = parts[0];
+            const id = parts[1];
+            if (!id) return;
+            if (kind === 'player') {
+                const unit = (mapEngineRef.playerUnits && mapEngineRef.playerUnits()).find(u => String(u.id) === String(id));
+                if (!unit || unit.hp <= 0) return;
+                if (mapEngineRef.activateFreeControl) mapEngineRef.activateFreeControl(unit);
+                else {
+                    if (mapEngineRef.gameState) {
+                        mapEngineRef.gameState.debugFreeControl = true;
+                        mapEngineRef.gameState.debugControlEnemy = false;
+                        if (mapEngineRef.gameState.unitsActedThisTurn) mapEngineRef.gameState.unitsActedThisTurn.delete(unit.id);
+                    }
+                    if (mapEngineRef.selectUnit) mapEngineRef.selectUnit(unit);
+                }
+            } else if (kind === 'enemy') {
+                if (mapEngineRef.gameState && mapEngineRef.gameState.phase !== 'player') {
+                    console.warn('[MAP-DEBUG] Controle de inimigo só na fase do jogador.');
+                    return;
+                }
+                const unit = (mapEngineRef.enemyUnits && mapEngineRef.enemyUnits()).find(u => String(u.id) === String(id));
+                if (!unit || unit.hp <= 0) return;
+                if (mapEngineRef.activateFreeControl) mapEngineRef.activateFreeControl(unit);
+                else {
+                    if (mapEngineRef.gameState) {
+                        mapEngineRef.gameState.debugControlEnemy = true;
+                        mapEngineRef.gameState.debugFreeControl = false;
+                    }
+                    if (mapEngineRef.selectUnit) mapEngineRef.selectUnit(unit);
+                }
+            }
+            if (mapEngineRef.triggerRender) mapEngineRef.triggerRender();
         });
 
         // Atualizar contador de paredes inicialmente

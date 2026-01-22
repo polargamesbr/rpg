@@ -20,8 +20,9 @@ return [
         'types' => ['idle', 'walk', 'atack'],
         'idle'  => ['animationFPS' => 12.5, 'animationScale' => 1.2, 'animationOffsetX' => -8, 'animationOffsetXWhenFacingRight' => 8,  'animationOffsetY' => 34],
         'walk'  => ['animationFPS' => 9,    'animationScale' => 1.5, 'animationOffsetX' => -6, 'animationOffsetXWhenFacingRight' => 6,  'animationOffsetY' => 39],
-        'atack'  => ['animationFPS' => 12.5, 'animationScale' => 1.2, 'animationOffsetX' => -8, 'animationOffsetXWhenFacingRight' => 8,  'animationOffsetY' => 34]
+        'atack' => ['animationFPS' => 12.5, 'animationScale' => 3.5, 'animationOffsetX' => -10, 'animationOffsetXWhenFacingRight' => 10, 'animationOffsetY' => 41],
     ],
+    'forceAnimation' => 'atack',
     'sounds' => [
         'weapon' => 'staff',
         'skill_start' => ['acolyte_skill_prepare', 'acolyte_skill_prepare2', 'acolyte_skill_prepare3', 'acolyte_skill_prepare4'],
@@ -82,10 +83,10 @@ return [
             ],
         ],
         [
-            'id' => 'smite',
-            'name' => 'Smite',
+            'id' => 'holy_bolt',
+            'name' => 'Holy Bolt',
             'mana' => 15,
-            'dmg_mult' => 0.9,
+            'dmg_mult' => 1.05,
             'icon' => 'sun',
             'type' => 'single',
             'range' => 3,
@@ -93,7 +94,7 @@ return [
             'aoe' => 0,
             'gridVisual' => 'ranged',
             'element' => 'holy',
-            'description' => 'A holy bolt that smites an enemy.',
+            'description' => 'Deals holy damage to an enemy.',
         ],
         [
             'id' => 'holy_weaken',

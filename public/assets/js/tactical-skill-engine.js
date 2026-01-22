@@ -380,6 +380,7 @@ class TacticalSkillEngine {
         let critBonus = 0;
         let parryChance = 0;
         let tauntChance = 0;
+        let skillRangeBonus = 0;
 
         // Apply all active buffs
         if (entity.activeBuffs) {
@@ -418,6 +419,7 @@ class TacticalSkillEngine {
                 if (data.critBonus) critBonus += data.critBonus;
                 if (data.parryChance !== undefined) parryChance = Math.max(parryChance, data.parryChance);
                 if (data.tauntChance !== undefined) tauntChance = Math.max(tauntChance, data.tauntChance);
+                if (data.skillRangeBonus) skillRangeBonus += data.skillRangeBonus;
             });
         }
 
@@ -482,6 +484,7 @@ class TacticalSkillEngine {
         entity.buffedCritBonus = critBonus;
         entity.buffedParryChance = parryChance;
         entity.buffedTauntChance = tauntChance;
+        entity.buffedSkillRangeBonus = skillRangeBonus || 0;
 
         // Store current attributes (after buffs/debuffs) for overlay display
         entity.currentAttributes = { ...attributes };

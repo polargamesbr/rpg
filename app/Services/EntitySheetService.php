@@ -79,6 +79,7 @@ class EntitySheetService
 
     /**
      * Find entity by combat_key (legacy compatibility)
+     * Also searches by id if combat_key doesn't match
      * 
      * @param string $combatKey
      * @return array<string, mixed>|null
@@ -91,6 +92,13 @@ class EntitySheetService
             $sheetCombatKey = isset($sheet['combat_key']) ? strtolower(trim((string)$sheet['combat_key'])) : null;
             if ($sheetCombatKey === $combatKey) {
                 return $sheet;
+            }
+            // Fallback: also check by id
+            if (isset($sheet['id'])) {
+                $sheetId = strtolower(trim((string)$sheet['id']));
+                if ($sheetId === $combatKey) {
+                    return $sheet;
+                }
             }
         }
         
@@ -178,6 +186,7 @@ class EntitySheetService
                     'thief' => 'hero_thief',
                     'acolyte' => 'hero_acolyte',
                     'blacksmith' => 'hero_blacksmith',
+                    'beast_tamer' => 'beast_tamer',
                 ];
                 $classId = strtolower($data['id']);
                 $data['combat_key'] = $classCombatKeyMap[$classId] ?? ('hero_' . $data['id']);

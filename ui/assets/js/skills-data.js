@@ -1354,6 +1354,7 @@ window.skillsData = {
     bless: { name: 'Blessing', mana: 28, dmgMult: 0, icon: 'sun', type: 'self', buff: { id: 'bless', stats: { int: 2, vit: 1 }, duration: 3 }, desc: 'Blessing that improves core stats.' },
     holy_shield: { name: 'Holy Shield', mana: 18, dmgMult: 0, icon: 'shield-check', type: 'self', buff: { id: 'holy_shield', damageTaken: 0.85, duration: 2 }, desc: 'A blessing that reduces incoming damage.' },
     smite: { name: 'Holy Smite', mana: 28, dmgMult: 1.25, icon: 'sun', type: 'single', damageType: 'magic', element: 'holy', desc: 'Holy damage.' },
+    holy_bolt: { name: 'Holy Bolt', mana: 15, dmgMult: 1.05, icon: 'sun', type: 'single', damageType: 'magic', element: 'holy', desc: 'Deals holy damage to an enemy.' },
     purifying_light: { name: 'Purifying Light', mana: 24, dmgMult: 1.15, icon: 'sparkles', type: 'single', damageType: 'magic', element: 'holy', effect: { id: 'paralyze', chance: 0.2, duration: 1 }, desc: 'Holy light that may paralyze.' },
     renewal: { name: 'Renewal', mana: 30, dmgMult: 0, icon: 'heart', type: 'self', healPct: 0.2, manaRestorePct: 0.12, buff: { id: 'renewal', damageTaken: 0.9, duration: 2 }, desc: 'Restore part of your HP and steady yourself.' },
     radiant_wave: { name: 'Radiant Wave', mana: 36, dmgMult: 1.0, icon: 'sun', type: 'aoe', damageType: 'magic', element: 'holy', desc: 'Holy area damage.' },

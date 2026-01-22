@@ -2827,14 +2827,13 @@
      * EFEITO 32: Laser Beam - Feixe de laser concentrado
      * Linha de energia intensa com brilho pulsante
      */
-    function spawnLaserBeam(x, y, intensity = 1) {
+    function spawnLaserBeam(x, y, intensity = 1, angle) {
         if (!particles) return;
 
-        // Direção aleatória do laser
-        const angle = Math.random() * Math.PI * 2;
+        const beamAngle = (angle !== undefined && !isNaN(angle)) ? angle : (Math.random() * Math.PI * 2);
         const beamLength = 120 + intensity * 40;
-        const endX = x + Math.cos(angle) * beamLength;
-        const endY = y + Math.sin(angle) * beamLength;
+        const endX = x + Math.cos(beamAngle) * beamLength;
+        const endY = y + Math.sin(beamAngle) * beamLength;
 
         const beamDuration = 400;
         const pulseCount = 3;
@@ -2891,7 +2890,7 @@
             const sparkY = y + (endY - y) * progress;
 
             setTimeout(() => {
-                const perpAngle = angle + Math.PI / 2 * (Math.random() > 0.5 ? 1 : -1);
+                const perpAngle = beamAngle + Math.PI / 2 * (Math.random() > 0.5 ? 1 : -1);
                 particles.push({
                     type: 'laser',
                     x: sparkX,

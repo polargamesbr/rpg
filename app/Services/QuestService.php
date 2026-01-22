@@ -229,9 +229,19 @@ class QuestService
 
         $player = &$state['player'];
         if (is_array($player)) {
-            $entityId = $player['entity_id'] ?? $player['combatKey'] ?? null;
-            if ($entityId) {
             $character = Character::findById((int)($session['character_id'] ?? 0)) ?? [];
+            // Prioridade: entity_id do state > class_entity_id do character > combatKey do state > mapClassToCombatKey
+            $entityId = $player['entity_id'] ?? $player['combatKey'] ?? null;
+            if (empty($entityId) && !empty($character['class_entity_id'])) {
+                $entityId = $character['class_entity_id'];
+            }
+            if (empty($entityId) && !empty($character['class_name'])) {
+                $ck = self::mapClassToCombatKey($character['class_name']);
+                $entityDef = EntitySheetService::findByCombatKey($ck);
+                $entityId = $entityDef['id'] ?? $ck ?? null;
+            }
+            
+            if ($entityId) {
             try {
                 $inst = EntityInstanceBuilder::build($entityId, $character, []);
             } catch (\Throwable $e) {
@@ -249,6 +259,10 @@ class QuestService
                     'scale' => $stats['scale'],
                     'images' => $sheet ? ($sheet['images'] ?? []) : [],
                 ];
+            }
+            // Atualizar entity_id no state se estava vazio
+            if (empty($player['entity_id']) && $entityId) {
+                $player['entity_id'] = $entityId;
             }
             $player['name'] = $inst['name'] ?? $character['name'] ?? 'Hero';
             $player['type'] = 'player';
@@ -482,11 +496,20 @@ class QuestService
         $entityId = $entityId ?: 'swordsman';
 
         $inst = EntityInstanceBuilder::build($entityId, $character, []);
+        
+        // Beast Tamer: iniciar na posição 11,11
+        $playerX = ($entityId === 'beast_tamer' || strtolower($entityId) === 'beast_tamer') 
+            ? 11 
+            : (int)($playerStart['x'] ?? 5);
+        $playerY = ($entityId === 'beast_tamer' || strtolower($entityId) === 'beast_tamer') 
+            ? 11 
+            : (int)($playerStart['y'] ?? 5);
+        
         $player = [
             'id' => 'player',
             'entity_id' => $entityId,
-            'x' => (int)($playerStart['x'] ?? 5),
-            'y' => (int)($playerStart['y'] ?? 5),
+            'x' => $playerX,
+            'y' => $playerY,
             'hp' => (int)($character['hp'] ?? $inst['maxHp']),
             'sp' => (int)$inst['maxSp'],
             'hasMoved' => false,
@@ -511,11 +534,22 @@ class QuestService
         }
 
         $allies = [];
+        // Beast Tamer não inicia com aliados - eles são invocados via skills
         if (isset($config['allies']) && is_array($config['allies'])) {
             foreach ($config['allies'] as $index => $ally) {
                 $ck = $ally['combat_key'] ?? $ally['combatKey'] ?? 'hero_archer';
-                $entityDef = EntitySheetService::findByCombatKey($ck) ?: EntitySheetService::find('archer');
-                if (!$entityDef) continue;
+                $entityDef = EntitySheetService::findByCombatKey($ck);
+                if (!$entityDef) {
+                    $entityDef = EntitySheetService::find($ck);
+                }
+                if (!$entityDef) {
+                    // Try using class field
+                    $entityDef = EntitySheetService::find($ally['class'] ?? '');
+                }
+                if (!$entityDef) {
+                    error_log("[QuestService] Ally not found: combat_key={$ck}, class=" . ($ally['class'] ?? 'N/A'));
+                    continue;
+                }
                 $stats = EntitySheetService::getCombatStats($entityDef);
                 $allies[] = [
                     'id' => $ally['id'] ?? ('ally_' . ($index + 1)),
@@ -570,6 +604,8 @@ class QuestService
             'swordsman' => 'hero_swordman',
             'archer' => 'hero_archer',
             'mage' => 'hero_mage',
+            'beast tamer' => 'beast_tamer',
+            'beast_tamer' => 'beast_tamer',
             'thief' => 'hero_thief',
             'acolyte' => 'hero_acolyte',
             'blacksmith' => 'hero_blacksmith',

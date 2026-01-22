@@ -396,7 +396,7 @@ const combatSystem = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ battle_state: state })
-        }).catch(() => {});
+        }).catch(() => { });
     },
 
     /**
@@ -3040,13 +3040,6 @@ const combatSystem = {
             // Check if this summon type was already used
             if (this.state.usedSummonTypes.includes(s.summonEntity)) {
                 this.showToastNotification(`${s.name} can only be used once per battle!`);
-                return;
-            }
-
-            // Check ally limit (max 3 total)
-            const aliveAllies = this.data.heroes.filter(h => h.hp > 0);
-            if (aliveAllies.length >= 3) {
-                this.showToastNotification("Maximum 3 allies reached! Cannot summon more.");
                 return;
             }
 
@@ -6035,7 +6028,7 @@ const combatSystem = {
         else if (skillName.includes('lightning') || skillName.includes('electric')) effectName = 'lightning';
 
         // Holy/Light
-        else if (skillId === 'holy_smite' || skillName.includes('holy_smite') || skillName.includes('smite')) effectName = 'holy_smite';
+        else if (skillId === 'holy_smite' || skillId === 'holy_bolt' || skillName.includes('holy_smite') || skillName.includes('smite') || skillName.includes('holy_bolt')) effectName = 'holy_smite';
         else if (skillId === 'holy_radiance' || skillId === 'healing_light' || skillName.includes('holy_radiance') || skillName.includes('radiance')) effectName = 'holy_radiance';
         else if (skillId === 'divine_light' || skillName.includes('divine')) effectName = 'holy_radiance';
         else if (skillName.includes('holy') || skillName.includes('light') && !skillName.includes('lightning')) effectName = 'holy_smite';
@@ -6717,17 +6710,6 @@ const combatSystem = {
         // Determine if summoner is ally (hero) or enemy
         const isAllySummon = summoner.isPlayer === true;
         const targetArray = isAllySummon ? this.data.heroes : this.data.enemies;
-        const aliveTargets = targetArray.filter(e => e.hp > 0);
-
-        // Check ally/enemy limit (max 3 total)
-        if (aliveTargets.length >= 3) {
-            const side = isAllySummon ? 'allies' : 'enemies';
-            this.log(`Cannot summon: Maximum 3 ${side} reached!`);
-            if (isAllySummon) {
-                this.showToastNotification("Maximum 3 allies reached! Cannot summon more.");
-            }
-            return;
-        }
 
         // Check if this summon type was already used by this side
         // Track separately for allies and enemies

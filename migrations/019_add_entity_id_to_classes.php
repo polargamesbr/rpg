@@ -26,7 +26,7 @@ try {
         echo "Added entity_id column to classes.\n";
     }
 
-    $map = ['Swordsman' => 'swordsman', 'Archer' => 'archer', 'Mage' => 'mage', 'Thief' => 'thief', 'Acolyte' => 'acolyte', 'Blacksmith' => 'blacksmith'];
+    $map = ['Swordsman' => 'swordsman', 'Archer' => 'archer', 'Mage' => 'mage', 'Thief' => 'thief', 'Acolyte' => 'acolyte', 'Blacksmith' => 'blacksmith', 'Beast Tamer' => 'beast_tamer'];
     foreach ($map as $name => $eid) {
         $pdo->prepare("UPDATE classes SET entity_id = ? WHERE name = ?")->execute([$eid, $name]);
         echo "Set entity_id='{$eid}' for class '{$name}'.\n";

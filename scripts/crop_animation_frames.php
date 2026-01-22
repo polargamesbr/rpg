@@ -12,9 +12,23 @@
  *    Use --height=0 para só cropar, sem redimensionar.
  * 5) Com --output=webp grava .webp em vez do formato de entrada e remove o .png de origem.
  *
+ * --- FLUXO CORRETO (evitar erro): ---
+ * Os PNGs de trabalho ficam em public/assets/img/animations/<entidade>/<anim> (ex.: archer/atack).
+ * O resultado final fica em public/assets/entities/<entidade>/animations/<anim>.
+ *
+ * 1) COPIAR os PNGs de img/animations/<entidade>/<anim> para entities/<entidade>/animations/<anim>
+ *    (substituir o que houver; pode apagar os .webp antigos dessa subpasta antes).
+ * 2) RODAR o crop NA PASTA ENTITIES com --output=webp:
+ *    php crop_animation_frames.php public/assets/entities/<entidade>/animations/<anim> --output=webp --ext=png
+ *    Isso cropará os PNGs, gravará .webp e removerá os .png de origem.
+ *
+ * NÃO rodar o crop com --output=webp direto em img/animations: os PNGs seriam apagados e
+ * não haveria cópia em entities.
+ *
  * Uso: php crop_animation_frames.php <pasta> [--height=512] [--output=webp] [--ext=png,webp] [--background=#RRGGBB] [--tolerance=20] [--dry-run]
  *
- * Ex.: php crop_animation_frames.php public/assets/entities/acolyte/animations --output=webp --ext=png
+ * Ex.: php crop_animation_frames.php public/assets/entities/archer/animations/atack --output=webp --ext=png
+ *      php crop_animation_frames.php public/assets/entities/acolyte/animations --output=webp --ext=png
  *      php crop_animation_frames.php public/assets/img/animations/acolyte --height=512 --dry-run
  */
 
