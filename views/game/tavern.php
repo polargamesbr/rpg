@@ -33,6 +33,59 @@ $additionalStyles = <<<CSS
         0 8px 32px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
+
+.video-hero-container {
+    background: #000;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+.video-hero-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1500px;
+    aspect-ratio: 1500 / 630; /* Proportional to the video dimensions provided */
+    margin: 0 auto;
+}
+.video-side-gradient {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%; /* Even more coverage for ultra-wide screens */
+    z-index: 11;
+    pointer-events: none;
+}
+.gradient-left {
+    left: -2px;
+    background: linear-gradient(to right, #000 0%, #000 15%, transparent 100%);
+}
+.gradient-right {
+    right: -2px;
+    background: linear-gradient(to left, #000 0%, #000 15%, transparent 100%);
+}
+.video-bottom-gradient {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 25%; /* Reduced height to stop "capping" the lighting */
+    background: linear-gradient(to top, #000 0%, transparent 100%);
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* Wide screen specific framing */
+@media (min-width: 1401px) {
+    .video-hero-wrapper video {
+        object-fit: contain !important;
+        transform: scale(1.2);
+    }
+}
+
+
+
 .chat-container {
     display: flex;
     flex-direction: column;
@@ -699,14 +752,29 @@ ob_start();
     <!-- Área Principal -->
     <main class="flex-1 ml-[280px] flex flex-col h-screen overflow-y-auto overflow-x-hidden custom-scrollbar">
         
-        <!-- Hero Section com Background -->
-        <div class="relative w-full" style="height: 38vh; min-height: 300px;">
-            <img src="<?= asset('img/tavern-background.webp') ?>" alt="Tavern" class="w-full h-full object-cover object-center">
-            <div class="absolute bottom-0 left-0 right-0" style="height: 20%; background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);"></div>
+        <!-- Hero Section com Vídeo Proporcional -->
+        <div class="video-hero-container">
+            <div class="video-hero-wrapper">
+                <!-- Side Gradients -->
+                <div class="video-side-gradient gradient-left"></div>
+                <div class="video-side-gradient gradient-right"></div>
+                <div class="video-bottom-gradient"></div>
+
+                <video 
+                    autoplay 
+                    muted 
+                    loop 
+                    playsinline 
+                    class="w-full h-full object-cover"
+                >
+                    <source src="<?= asset('video/tavern.webm') ?>" type="video/webm">
+                </video>
+            </div>
             
             <!-- Header Superior (Absolute) -->
             <header class="absolute top-0 left-0 right-0 h-24 z-20 pt-6 px-8">
                 <div class="max-w-7xl mx-auto flex items-center justify-between">
+
                     <div>
                         <h1 class="city-title text-5xl font-bold text-stone-100 drop-shadow-lg">Tavern</h1>
                         <p class="text-xs text-amber-500/80 font-medium tracking-widest uppercase mt-2">Rumors, contracts and stories</p>
@@ -731,7 +799,7 @@ ob_start();
         </div>
 
         <!-- Área Principal -->
-        <div class="flex-1 p-8 -mt-24 relative z-20" style="display: flex; flex-direction: column;">
+        <div class="flex-1 p-8 relative z-20" style="display: flex; flex-direction: column;">
             <div class="max-w-7xl mx-auto flex-1" style="display: flex; flex-direction: column;">
                 
                 <div class="grid grid-cols-12 gap-6 flex-1" style="align-items: stretch; min-height: 0;">

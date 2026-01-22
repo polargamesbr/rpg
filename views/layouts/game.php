@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cinzel:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="<?= asset('css/styles.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/dialogue-system.css') ?>">
     <script src="<?= asset('js/lazy-modal-loader.js') ?>"></script>
     <script src="<?= asset('js/worldmap-modal-loader.js') ?>"></script>
     <script src="<?= asset('js/character-modal-loader.js') ?>"></script>
@@ -50,5 +51,6 @@
             lucide.createIcons();
         }
     </script>
+    <script src="<?= asset('js/dialogue-system.js') ?>" defer></script>
 </body>
 </html>
