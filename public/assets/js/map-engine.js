@@ -39,7 +39,7 @@
         turn: 1,
         phase: 'player', // 'player', 'enemy'
         selectedUnit: null,
-        currentAction: null, // 'move', 'attack', null
+        currentAction: null, // 'move', 'attack', 'attacking_preview', 'skill_preview', null
         unitsActedThisTurn: new Set(),
         isAnimating: false,
         gameOver: false,
@@ -47,7 +47,9 @@
         freeExplore: false,
         battleStarted: false, // Flag para banner de batalha na primeira ação hostil
         debugFreeControl: false,
-        debugControlEnemy: false
+        debugControlEnemy: false,
+        pendingAttack: null, // { attacker, target } - for attack preview confirmation
+        pendingSkill: null   // { caster, skill, targets, clickX, clickY } - for skill preview
     };
 
     // Expose gameState globally for TacticalSkillEngine to access turn count
@@ -3259,6 +3261,642 @@
         // Continua fluxo normal - player pode atacar ou usar skill
     }
 
+    // =====================================================
+    // ATTACK PREVIEW SYSTEM (Fire Emblem style)
+    // =====================================================
+
+    /**
+     * Calculate estimated damage for preview (without executing)
+     * @param {Object} attacker - Attacking unit
+     * @param {Object} target - Target unit
+     * @returns {Object} Preview data { min, max, critChance, effectiveness, elementMult }
+     */
+    function calculateDamagePreview(attacker, target) {
+        const range = attacker.attackRange || 1;
+
+        // Base damage calculation (same formula as executeAttack)
+        const baseDamage = (range > 1 && (attacker.attackRanged != null && attacker.attackRanged > 0))
+            ? (attacker.attackRanged || attacker.attack || 10)
+            : (attacker.attack || 10);
+        const defense = target.defense || 0;
+
+        // Min/max with variance (±20%)
+        const minRaw = Math.floor((baseDamage - defense * 0.5) * 0.8);
+        const maxRaw = Math.floor((baseDamage - defense * 0.5) * 1.2);
+
+        // Crit chance
+        const critChance = Math.min(95, Math.max(1, (attacker.stats?.crit ?? attacker.crit ?? 5) + (attacker.buffedCritBonus || 0)));
+
+        // Elemental multiplier
+        const attackerElement = attacker.element || (window.TacticalDataLoader?.entityCache?.[attacker.combatKey || attacker.combat_key]?.element) || 'neutral';
+        const targetElement = target.element || (window.TacticalDataLoader?.entityCache?.[target.combatKey || target.combat_key]?.element) || 'neutral';
+        let elementMult = 1.0;
+        let effectiveness = 'Normal';
+
+        if (window.elementalData) {
+            elementMult = window.elementalData.getMultiplier(attackerElement, targetElement);
+            if (elementMult > 1.2) effectiveness = 'Super Effective!';
+            else if (elementMult > 1.0) effectiveness = 'Effective';
+            else if (elementMult < 0.8) effectiveness = 'Not Very Effective';
+            else if (elementMult < 1.0) effectiveness = 'Resisted';
+        }
+
+        // Apply buffs/debuffs
+        let damageMultiplier = 1.0;
+        if (attacker.buffedDamageDealt) damageMultiplier *= attacker.buffedDamageDealt;
+        if (target.buffedDamageTaken) damageMultiplier *= target.buffedDamageTaken;
+
+        const min = Math.max(1, Math.floor(minRaw * elementMult * damageMultiplier));
+        const max = Math.max(1, Math.floor(maxRaw * elementMult * damageMultiplier));
+        const critMin = Math.floor(min * 1.5);
+        const critMax = Math.floor(max * 1.5);
+
+        return {
+            min, max,
+            critMin, critMax,
+            critChance,
+            effectiveness,
+            elementMult,
+            attackerElement,
+            targetElement
+        };
+    }
+
+    /**
+     * Show attack preview panel with damage estimation
+     * @param {Object} attacker - Attacking unit
+     * @param {Object} target - Target unit
+     */
+    function showAttackPreview(attacker, target) {
+        // Hide any existing skill preview first
+        hideSkillPreview();
+
+        gameState.pendingAttack = { attacker, target };
+        gameState.currentAction = 'attacking_preview';
+
+        const preview = calculateDamagePreview(attacker, target);
+
+        // Get or create preview panel
+        let panel = document.getElementById('attack-preview-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'attack-preview-panel';
+            panel.className = 'fixed z-[1000] pointer-events-auto';
+            document.body.appendChild(panel);
+        }
+
+        // Calculate screen position from target's world coordinates using worldToScreen
+        const canvasRect = canvas.getBoundingClientRect();
+        const worldPos = worldToScreen(target.x, target.y);
+
+        // worldToScreen returns canvas-relative coords, add canvas position for screen coords
+        const screenX = canvasRect.left + worldPos.x;
+        let screenY = canvasRect.top + worldPos.y;
+
+        // Position adjustment: Open slightly above the enemy's HP bar using HP bar as reference
+        const radius = target.radius || 25;
+        const hpBarOffset = (radius + 40) * viewState.scale;
+        screenY -= hpBarOffset;
+
+        panel.style.left = `${screenX}px`;
+        panel.style.top = `${screenY}px`;
+        panel.style.transform = 'translate(-50%, calc(-100% - 10px))'; // Center and sit above target point
+
+        // Effectiveness badge
+        let effectBadge = '';
+        if (preview.effectiveness === 'Super Effective!') {
+            effectBadge = '<span class="text-emerald-400 font-bold text-xs flex items-center gap-1"><span class="text-lg">⚡</span> Super Effective!</span>';
+        } else if (preview.effectiveness === 'Effective') {
+            effectBadge = '<span class="text-green-300 font-semibold text-xs">✓ Effective</span>';
+        } else if (preview.effectiveness === 'Not Very Effective') {
+            effectBadge = '<span class="text-orange-400 font-semibold text-xs">↓ Not Very Effective</span>';
+        } else if (preview.effectiveness === 'Resisted') {
+            effectBadge = '<span class="text-red-400 font-semibold text-xs">✗ Resisted</span>';
+        }
+
+        // HP bar percentage
+        const hpPct = Math.floor((target.hp / target.maxHp) * 100);
+        const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#eab308' : '#ef4444';
+
+        // Predicted HP after attack
+        const avgDamage = Math.floor((preview.min + preview.max) / 2);
+        const predictedHp = Math.max(0, target.hp - avgDamage);
+        const predictedHpPct = Math.floor((predictedHp / target.maxHp) * 100);
+        const willKill = predictedHp <= 0;
+
+        panel.innerHTML = `
+            <div class="attack-preview-inner" style="
+                background: linear-gradient(180deg, rgba(15, 23, 42, 0.97) 0%, rgba(10, 15, 30, 0.99) 50%, rgb(5 10 20 / 23%) 100%);
+                backdrop-filter: blur(40px) saturate(200%);
+                -webkit-backdrop-filter: blur(40px) saturate(200%);
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 
+                            0 25px 80px -20px rgba(0, 0, 0, 0.9), 
+                            0 0 60px -10px rgba(239, 68, 68, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.08), 
+                            inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+                position: relative;
+                padding: 1rem 1.25rem;
+                min-width: 260px;
+                max-width: 300px;
+            ">
+                <!-- Glow overlay -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(180deg, rgba(239, 68, 68, 0.08) 0%, transparent 100%); pointer-events: none;"></div>
+                
+                <!-- Header: Target Info -->
+                <div class="flex items-center gap-3 mb-3 relative">
+                    <div class="w-11 h-11 rounded-xl overflow-hidden border border-white/10 flex-shrink-0" style="background: linear-gradient(135deg, rgba(30,30,40,0.9), rgba(20,20,30,0.9));">
+                        ${target.avatar ? `<img src="${target.avatar}" class="w-full h-full object-cover">` : `<span class="text-xl flex items-center justify-center h-full">👹</span>`}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-white font-black text-base truncate" style="text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${target.name || 'Enemy'}</div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <div class="flex-1 h-2 rounded-full overflow-hidden" style="background: rgba(0,0,0,0.4);">
+                                <div class="h-full rounded-full transition-all relative" style="width: ${hpPct}%; background: linear-gradient(90deg, ${hpColor}, ${hpColor}dd);">
+                                    <!-- Predicted damage indicator -->
+                                    ${!willKill ? `<div class="absolute right-0 top-0 bottom-0" style="width: ${hpPct - predictedHpPct}%; background: rgba(239,68,68,0.6); animation: pulse 0.5s ease-in-out infinite;"></div>` : ''}
+                                </div>
+                            </div>
+                            <span class="text-[0.65rem] text-stone-400 font-mono tabular-nums">${Math.floor(target.hp)}/${target.maxHp}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Damage Estimate Box -->
+                <div class="rounded-xl p-3 mb-3" style="background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.2)); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="text-[0.6rem] text-stone-500 font-bold uppercase tracking-[0.15em] mb-1.5">Estimated Damage</div>
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-2xl font-black text-white" style="text-shadow: 0 0 20px rgba(239,68,68,0.4);">${preview.min}</span>
+                        <span class="text-stone-600 text-lg font-bold">~</span>
+                        <span class="text-2xl font-black text-white" style="text-shadow: 0 0 20px rgba(239,68,68,0.4);">${preview.max}</span>
+                        ${willKill ? '<span class="ml-2 text-red-400 font-black text-xs uppercase tracking-wider animate-pulse">💀 KILL</span>' : ''}
+                    </div>
+                    ${effectBadge ? `<div class="mt-1.5">${effectBadge}</div>` : ''}
+                </div>
+                
+                <!-- Stats Row -->
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div class="rounded-lg p-2 text-center" style="background: rgba(0,0,0,0.2);">
+                        <div class="text-[0.55rem] text-stone-500 uppercase tracking-wider mb-0.5">Crit</div>
+                        <div class="text-amber-400 font-bold text-sm">${preview.critChance}%</div>
+                    </div>
+                    <div class="rounded-lg p-2 text-center" style="background: rgba(0,0,0,0.2);">
+                        <div class="text-[0.55rem] text-stone-500 uppercase tracking-wider mb-0.5">Crit DMG</div>
+                        <div class="text-orange-400 font-bold text-sm">${preview.critMin}~${preview.critMax}</div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <button id="btn-confirm-attack" class="flex-1 py-2.5 px-4 rounded-xl font-black text-white text-sm transition-all active:scale-95" style="
+                        background: linear-gradient(135deg, #dc2626, #b91c1c);
+                        box-shadow: 0 4px 15px -3px rgba(220, 38, 38, 0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+                    ">
+                        ⚔️ ATTACK
+                    </button>
+                    <button id="btn-cancel-attack" class="py-2.5 px-3 rounded-xl font-bold text-stone-400 text-sm transition-all active:scale-95" style="
+                        background: rgba(255,255,255,0.05);
+                        border: 1px solid rgba(255,255,255,0.1);
+                    ">
+                        ✕
+                    </button>
+                </div>
+                
+                <!-- Keyboard hints -->
+                <div class="mt-2 text-center text-[0.55rem] text-stone-600 flex items-center justify-center gap-3">
+                    <span><kbd class="bg-stone-800/80 px-1.5 py-0.5 rounded text-stone-500 font-mono">SPACE</kbd> Confirm</span>
+                    <span><kbd class="bg-stone-800/80 px-1.5 py-0.5 rounded text-stone-500 font-mono">ESC</kbd> Cancel</span>
+                </div>
+            </div>
+        `;
+
+        // Position panel above target (near HP bar)
+        const panelWidth = 280;
+        const panelHeight = 320;
+        let posX = screenX;
+        let posY = screenY - 20; // screenY is already offset above unit
+
+        // Bounds check for top-left logic if not using transform, 
+        // but it's cleaner to use translate(-50%, -100%) and screenX/Y
+
+        panel.style.cssText = `
+            position: fixed;
+            left: ${screenX}px;
+            top: ${posY}px;
+            z-index: 1000;
+            transform: translate(-50%, -100%);
+            animation: fadeInUp 0.15s ease-out;
+            pointer-events: auto;
+        `;
+
+        panel.classList.remove('hidden');
+
+        // Add button listeners
+        document.getElementById('btn-confirm-attack')?.addEventListener('click', confirmAttack);
+        document.getElementById('btn-cancel-attack')?.addEventListener('click', cancelAttackPreview);
+
+        // Add keyboard listener
+        window._attackPreviewKeyHandler = function (e) {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                confirmAttack();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelAttackPreview();
+            }
+        };
+        document.addEventListener('keydown', window._attackPreviewKeyHandler);
+
+        // Highlight target
+        needsRender = true;
+    }
+
+    /**
+     * Confirm and execute the pending attack
+     */
+    async function confirmAttack() {
+        const pending = gameState.pendingAttack;
+        if (!pending) return;
+
+        // Clean up
+        hideAttackPreview();
+
+        // Execute attack
+        attackRangeCells = [];
+        gameState.currentAction = null;
+        await executeAttack(pending.attacker, pending.target);
+        persistSessionState();
+    }
+
+    /**
+     * Cancel attack preview and return to attack mode
+     */
+    function cancelAttackPreview() {
+        hideAttackPreview();
+
+        // Return to attack targeting mode
+        if (gameState.selectedUnit) {
+            setAction('attacking');
+        } else {
+            returnToNormalSelection();
+        }
+    }
+
+    /**
+     * Hide attack preview panel and cleanup
+     */
+    function hideAttackPreview() {
+        gameState.pendingAttack = null;
+
+        const panel = document.getElementById('attack-preview-panel');
+        if (panel) {
+            panel.classList.add('hidden');
+        }
+
+        // Remove keyboard listener
+        if (window._attackPreviewKeyHandler) {
+            document.removeEventListener('keydown', window._attackPreviewKeyHandler);
+            window._attackPreviewKeyHandler = null;
+        }
+
+        needsRender = true;
+    }
+
+    // =====================================================
+    // SKILL PREVIEW SYSTEM (for damage skills)
+    // =====================================================
+
+    /**
+     * Calculate skill damage preview for multiple targets
+     * @param {Object} caster - The unit casting the skill
+     * @param {Object} skill - The skill being used
+     * @param {Array} targets - Array of target units
+     * @returns {Object} Preview data with per-target damage estimates
+     */
+    function calculateSkillDamagePreview(caster, skill, targets) {
+        const dmgMult = skill.dmgMult || skill.dmg_mult || 1.0;
+        const numHits = skill.hits || 1;
+        const isMagic = skill.isMagic || skill.element === 'holy' || skill.element === 'fire' || skill.element === 'ice' || skill.element === 'lightning' || skill.element === 'dark';
+
+        // Base damage (MATK for magic, ATK for physical)
+        const baseDamage = isMagic
+            ? (caster.matk || caster.attack || 10)
+            : (caster.attack || 10);
+
+        const critChance = Math.min(95, Math.max(1, (caster.stats?.crit ?? caster.crit ?? 5) + (caster.buffedCritBonus || 0)));
+
+        const targetPreviews = targets.map(target => {
+            const defense = isMagic ? (target.mdef || 0) : (target.defense || 0);
+            const defReduction = isMagic ? 0.25 : 0.3;
+
+            // Min/max with variance (±20%)
+            const rawDmg = (baseDamage * dmgMult - defense * defReduction) * numHits;
+            const minRaw = Math.floor(rawDmg * 0.8);
+            const maxRaw = Math.floor(rawDmg * 1.2);
+
+            // Elemental multiplier
+            const attackerElement = skill.element || caster.element || 'neutral';
+            const targetElement = target.element || 'neutral';
+            let elementMult = 1.0;
+            let effectiveness = 'Normal';
+
+            if (window.elementalData) {
+                elementMult = window.elementalData.getMultiplier(attackerElement, targetElement);
+                if (elementMult > 1.2) effectiveness = 'Super Effective!';
+                else if (elementMult > 1.0) effectiveness = 'Effective';
+                else if (elementMult < 0.8) effectiveness = 'Not Very Effective';
+                else if (elementMult < 1.0) effectiveness = 'Resisted';
+            }
+
+            // Apply buffs/debuffs
+            let damageMultiplier = 1.0;
+            if (caster.buffedDamageDealt) damageMultiplier *= caster.buffedDamageDealt;
+            if (target.buffedDamageTaken) damageMultiplier *= target.buffedDamageTaken;
+
+            const min = Math.max(1, Math.floor(minRaw * elementMult * damageMultiplier));
+            const max = Math.max(1, Math.floor(maxRaw * elementMult * damageMultiplier));
+            const avgDamage = Math.floor((min + max) / 2);
+            const willKill = target.hp - avgDamage <= 0;
+
+            return {
+                target,
+                min, max,
+                avgDamage,
+                willKill,
+                effectiveness,
+                hpPct: Math.floor((target.hp / target.maxHp) * 100)
+            };
+        });
+
+        const totalMin = targetPreviews.reduce((sum, p) => sum + p.min, 0);
+        const totalMax = targetPreviews.reduce((sum, p) => sum + p.max, 0);
+        const killCount = targetPreviews.filter(p => p.willKill).length;
+
+        return {
+            skill,
+            caster,
+            targets: targetPreviews,
+            totalMin,
+            totalMax,
+            critChance,
+            killCount,
+            isMagic
+        };
+    }
+
+    /**
+     * Show skill preview panel with damage estimation for each target
+     * @param {Object} caster - The unit casting the skill
+     * @param {Object} skill - The skill being used
+     * @param {Array} targets - Array of target units
+     * @param {number} clickX - Click X coordinate
+     * @param {number} clickY - Click Y coordinate
+     */
+    function showSkillPreview(caster, skill, targets, clickX, clickY) {
+        // Hide any existing attack preview first
+        hideAttackPreview();
+
+        // Only show preview for damage skills
+        const isDamageSkill = ['damage', 'attack', 'single', 'aoe', 'pierce', 'line', 'target'].includes(skill.type);
+        if (!isDamageSkill || targets.length === 0) {
+            // Non-damage skills execute immediately
+            skillRangeCells = [];
+            skillAreaCells = [];
+            gameState.currentAction = null;
+            gameState.selectedSkill = null;
+            executeSkill(caster, targets[0] || null, skill, targets).then(() => persistSessionState());
+            return;
+        }
+
+        gameState.pendingSkill = { caster, skill, targets, clickX, clickY };
+        gameState.currentAction = 'skill_preview';
+
+        const preview = calculateSkillDamagePreview(caster, skill, targets);
+
+        // Get or create preview panel
+        let panel = document.getElementById('skill-preview-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'skill-preview-panel';
+            panel.className = 'fixed z-[1000] pointer-events-auto';
+            document.body.appendChild(panel);
+        }
+
+        // Position near click area
+        const canvasRect = canvas.getBoundingClientRect();
+        const worldPos = worldToScreen(clickX, clickY);
+        const screenX = canvasRect.left + worldPos.x;
+        const screenY = canvasRect.top + worldPos.y;
+
+        panel.style.left = `${screenX}px`;
+        panel.style.top = `${screenY}px`;
+        panel.style.transform = 'translate(-50%, calc(-100% - 20px))'; // Center and sit above click point
+
+        // Build target list HTML
+        let targetListHtml = '';
+        if (preview.targets.length <= 5) {
+            // Show detailed list for up to 5 targets
+            targetListHtml = preview.targets.map(t => {
+                const hpColor = t.hpPct > 50 ? '#22c55e' : t.hpPct > 25 ? '#eab308' : '#ef4444';
+                return `
+                    <div class="flex items-center gap-2 py-1.5 px-2 rounded-lg" style="background: rgba(0,0,0,0.2);">
+                        <div class="w-7 h-7 rounded-lg overflow-hidden border border-white/10 flex-shrink-0" style="background: rgba(20,20,30,0.9);">
+                            ${t.target.avatar ? `<img src="${t.target.avatar}" class="w-full h-full object-cover">` : `<span class="text-sm flex items-center justify-center h-full">👹</span>`}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-white text-xs font-bold truncate">${t.target.name}</div>
+                            <div class="flex items-center gap-1">
+                                <div class="flex-1 h-1 rounded-full" style="background: rgba(0,0,0,0.4);">
+                                    <div class="h-full rounded-full" style="width: ${t.hpPct}%; background: ${hpColor};"></div>
+                                </div>
+                                <span class="text-[0.5rem] text-stone-500">${Math.floor(t.target.hp)}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold ${t.willKill ? 'text-red-400' : 'text-amber-300'}">${t.min}~${t.max}</div>
+                            ${t.willKill ? '<div class="text-[0.5rem] text-red-400 font-bold">💀 KILL</div>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            // Summary for many targets
+            targetListHtml = `
+                <div class="text-center py-2">
+                    <div class="text-2xl font-black text-white">${preview.targets.length}</div>
+                    <div class="text-xs text-stone-400">targets</div>
+                    ${preview.killCount > 0 ? `<div class="text-red-400 text-xs font-bold mt-1">💀 ${preview.killCount} kills</div>` : ''}
+                </div>
+            `;
+        }
+
+        panel.innerHTML = `
+            <div class="skill-preview-inner" style="
+                background: linear-gradient(180deg, rgba(15, 23, 42, 0.97) 0%, rgba(10, 15, 30, 0.99) 50%, rgb(5 10 20 / 23%) 100%);
+                backdrop-filter: blur(40px) saturate(200%);
+                -webkit-backdrop-filter: blur(40px) saturate(200%);
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 
+                            0 25px 80px -20px rgba(0, 0, 0, 0.9), 
+                            0 0 60px -10px rgba(168, 85, 247, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.08), 
+                            inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+                position: relative;
+                padding: 1rem 1.25rem;
+                min-width: 280px;
+                max-width: 320px;
+            ">
+                <!-- Glow overlay (purple for skills) -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(180deg, rgba(168, 85, 247, 0.1) 0%, transparent 100%); pointer-events: none;"></div>
+                
+                <!-- Header: Skill Info -->
+                <div class="flex items-center gap-3 mb-3 relative">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(139, 92, 246, 0.2)); border: 1px solid rgba(168, 85, 247, 0.3);">
+                        ${preview.isMagic ? '✨' : '⚔️'}
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-white font-black text-base" style="text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${skill.name}</div>
+                        <div class="text-stone-400 text-xs">${preview.targets.length} target${preview.targets.length > 1 ? 's' : ''}</div>
+                    </div>
+                </div>
+                
+                <!-- Target List -->
+                <div class="mb-3 space-y-1 max-h-[180px] overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;">
+                    ${targetListHtml}
+                </div>
+                
+                <!-- Total Damage Box -->
+                <div class="rounded-xl p-3 mb-3" style="background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.2)); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-[0.55rem] text-stone-500 font-bold uppercase tracking-wider">Total Damage</div>
+                            <div class="text-lg font-black text-white">${preview.totalMin}~${preview.totalMax}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[0.55rem] text-stone-500 font-bold uppercase tracking-wider">Crit</div>
+                            <div class="text-amber-400 font-bold">${preview.critChance}%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <button id="btn-confirm-skill" class="flex-1 py-2.5 px-4 rounded-xl font-black text-white text-sm transition-all active:scale-95" style="
+                        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+                        box-shadow: 0 4px 15px -3px rgba(124, 58, 237, 0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+                    ">
+                        ✨ USE SKILL
+                    </button>
+                    <button id="btn-cancel-skill" class="py-2.5 px-3 rounded-xl font-bold text-stone-400 text-sm transition-all active:scale-95" style="
+                        background: rgba(255,255,255,0.05);
+                        border: 1px solid rgba(255,255,255,0.1);
+                    ">
+                        ✕
+                    </button>
+                </div>
+                
+                <!-- Keyboard hints -->
+                <div class="mt-2 text-center text-[0.55rem] text-stone-600 flex items-center justify-center gap-3">
+                    <span><kbd class="bg-stone-800/80 px-1.5 py-0.5 rounded text-stone-500 font-mono">SPACE</kbd> Confirm</span>
+                    <span><kbd class="bg-stone-800/80 px-1.5 py-0.5 rounded text-stone-500 font-mono">ESC</kbd> Cancel</span>
+                </div>
+            </div>
+        `;
+
+        // Position panel above click area
+        const panelWidth = 300;
+        const panelHeight = 400;
+
+        // Offset for skill preview (anchored to click cell)
+        const posY = screenY - 40;
+
+        panel.style.cssText = `
+            position: fixed;
+            left: ${screenX}px;
+            top: ${posY}px;
+            z-index: 1000;
+            transform: translate(-50%, -100%);
+            animation: fadeInUp 0.15s ease-out;
+            pointer-events: auto;
+        `;
+
+        panel.classList.remove('hidden');
+
+        // Add button listeners
+        document.getElementById('btn-confirm-skill')?.addEventListener('click', confirmSkillAttack);
+        document.getElementById('btn-cancel-skill')?.addEventListener('click', cancelSkillPreview);
+
+        // Add keyboard listener
+        window._skillPreviewKeyHandler = function (e) {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                confirmSkillAttack();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelSkillPreview();
+            }
+        };
+        document.addEventListener('keydown', window._skillPreviewKeyHandler);
+
+        needsRender = true;
+    }
+
+    /**
+     * Confirm and execute the pending skill
+     */
+    async function confirmSkillAttack() {
+        const pending = gameState.pendingSkill;
+        if (!pending) return;
+
+        hideSkillPreview();
+
+        skillRangeCells = [];
+        skillAreaCells = [];
+        gameState.currentAction = null;
+        gameState.selectedSkill = null;
+
+        await executeSkill(pending.caster, pending.targets[0] || null, pending.skill, pending.targets);
+        persistSessionState();
+    }
+
+    /**
+     * Cancel skill preview and return to skill targeting
+     */
+    function cancelSkillPreview() {
+        hideSkillPreview();
+
+        if (gameState.selectedUnit && gameState.pendingSkill) {
+            // Keep skill selected, return to targeting
+            gameState.currentAction = 'skill';
+            gameState.selectedSkill = gameState.pendingSkill.skill;
+        } else {
+            returnToNormalSelection();
+        }
+    }
+
+    /**
+     * Hide skill preview panel and cleanup
+     */
+    function hideSkillPreview() {
+        gameState.pendingSkill = null;
+
+        const panel = document.getElementById('skill-preview-panel');
+        if (panel) {
+            panel.classList.add('hidden');
+        }
+
+        if (window._skillPreviewKeyHandler) {
+            document.removeEventListener('keydown', window._skillPreviewKeyHandler);
+            window._skillPreviewKeyHandler = null;
+        }
+
+        needsRender = true;
+    }
+
     /**
      * Executa um ataque tático entre unidades (REFATORADO COM EFEITOS APRIMORADOS)
      * @param {Object} attacker - Unidade atacante
@@ -5474,7 +6112,7 @@
      */
     function drawAttackRange() {
         if (window.__rpgPerf?.skip?.highlights) return;
-        if (gameState.currentAction !== 'attacking' || attackRangeCells.length === 0) return;
+        if ((gameState.currentAction !== 'attacking' && gameState.currentAction !== 'attacking_preview') || attackRangeCells.length === 0) return;
 
         const pulse = (Math.sin(animationFrame / 15) + 1) / 2;
         const scan = (animationFrame % 80) / 80;
@@ -7208,7 +7846,7 @@
      */
     function drawSkillRangeCells() {
         if (window.__rpgPerf?.skip?.highlights) return;
-        if (skillRangeCells.length === 0 || !selectedSkillForPreview) {
+        if (skillRangeCells.length === 0 || (!selectedSkillForPreview && !gameState.pendingSkill)) {
             // Debug temporário para verificar por que não desenha
             if (gameState.currentAction === 'skill' && gameState.selectedSkill) {
                 console.log('[DEBUG] drawSkillRangeCells skipped:', {
@@ -7603,10 +8241,27 @@
         if (dragStartPos) {
             const dx = e.clientX - lastMousePos.x;
             const dy = e.clientY - lastMousePos.y;
-            if (Math.abs(e.clientX - dragStartPos.x) > 5 || Math.abs(e.clientY - dragStartPos.y) > 5) {
+
+            // Standard dragging threshold
+            if (Math.abs(e.clientX - dragStartPos.x) > 25 || Math.abs(e.clientY - dragStartPos.y) > 25) {
                 isDragging = true;
             }
+
             if (isDragging) {
+                // If dragging while in preview mode, cancel the preview (UX improvement)
+                // Use a larger threshold for cancelling previews specifically (80px)
+                const dragDistX = Math.abs(e.clientX - dragStartPos.x);
+                const dragDistY = Math.abs(e.clientY - dragStartPos.y);
+                const cancelThreshold = 80;
+
+                if (dragDistX > cancelThreshold || dragDistY > cancelThreshold) {
+                    if (gameState.currentAction === 'attacking_preview') {
+                        cancelAttackPreview();
+                    } else if (gameState.currentAction === 'skill_preview') {
+                        cancelSkillPreview();
+                    }
+                }
+
                 viewState.x += dx;
                 viewState.y += dy;
                 cameraTarget = null;
@@ -7737,18 +8392,28 @@
         }
 
         // ====================================
-        // MODO DE ATAQUE (nova HUD tática)
+        // MODO DE ATAQUE (nova HUD tática) - COM PREVIEW
         // ====================================
         if (gameState.currentAction === 'attacking' && attackRangeCells.length > 0) {
             const targetCell = attackRangeCells.find(c => c.x === x && c.y === y && c.hasEnemy);
             if (targetCell && targetCell.enemy) {
-                attackRangeCells = [];
-                gameState.currentAction = null;
-                executeAttack(gameState.selectedUnit, targetCell.enemy).then(() => persistSessionState());
-            } else {
-                const enemyAtCell = unitAtCell && unitAtCell.type === 'enemy' ? unitAtCell : null;
-                if (enemyAtCell) showRangeWarning();
-                returnToNormalSelection();
+                // Show preview instead of immediate attack
+                showAttackPreview(gameState.selectedUnit, targetCell.enemy);
+            }
+            return;
+        }
+
+        // If in preview mode, clicking on another enemy changes target, clicking again confirms
+        if (gameState.currentAction === 'attacking_preview') {
+            const targetCell = attackRangeCells.find(c => c.x === x && c.y === y && c.hasEnemy);
+            if (targetCell && targetCell.enemy && gameState.pendingAttack) {
+                if (targetCell.enemy !== gameState.pendingAttack.target) {
+                    // Change target to new enemy
+                    showAttackPreview(gameState.pendingAttack.attacker, targetCell.enemy);
+                } else {
+                    // Clicked same enemy - confirm!
+                    confirmAttack();
+                }
             }
             return;
         }
@@ -7771,7 +8436,7 @@
             // Para outras skills, verificar range
             const inRange = skillRangeCells.some(c => c.x === x && c.y === y);
             if (!inRange) {
-                returnToNormalSelection();
+                // Click outside skill range: do nothing
                 return;
             }
 
@@ -7808,17 +8473,55 @@
             }
 
             if (targets.length === 0) {
-                returnToNormalSelection();
+                // No valid targets in area: do nothing
                 return;
             }
 
-            // Limpar estado de skill e executar
-            skillRangeCells = [];
-            skillAreaCells = [];
-            gameState.currentAction = null;
-            gameState.selectedSkill = null;
+            // Show preview for damage skills, execute immediately for others
+            showSkillPreview(caster, skill, targets, x, y);
+            return;
+        }
 
-            executeSkill(caster, targets[0] || null, skill, targets).then(() => persistSessionState());
+        // If in skill preview mode, clicking on another target changes the preview target or confirms
+        if (gameState.currentAction === 'skill_preview' && gameState.pendingSkill) {
+            const inRange = skillRangeCells.some(c => c.x === x && c.y === y);
+            if (inRange) {
+                // Check if it's the same target cell (for confirm)
+                const isSameTarget = x === gameState.pendingSkill.clickX && y === gameState.pendingSkill.clickY;
+                if (isSameTarget) {
+                    confirmSkillAttack();
+                    return;
+                }
+
+                // Re-process skill targeting for the new cell
+                const caster = gameState.pendingSkill.caster;
+                const skill = gameState.pendingSkill.skill;
+                const rangeType = getSkillRangeType(skill);
+
+                let targets = [];
+                if (rangeType === 'ally' || rangeType === 'heal') {
+                    const clickedUnit = unitAtCell;
+                    const isAlly = clickedUnit && clickedUnit.hp > 0 && (
+                        (caster.type === 'enemy' && clickedUnit.type === 'enemy') ||
+                        ((caster.type === 'player' || caster.type === 'ally') && (clickedUnit.type === 'player' || clickedUnit.type === 'ally'))
+                    );
+                    if (isAlly) targets = [clickedUnit];
+                    else if (x === caster.x && y === caster.y) targets = [caster];
+                } else {
+                    const area = calculateSkillArea(skill, x, y, caster.x, caster.y);
+                    let targetType = (caster.type === 'enemy') ? 'player' : 'enemy';
+                    const isDamageTarget = (u) => u.type === targetType || (targetType === 'player' && u.type === 'ally') ||
+                        (gameState.debugControlEnemy && caster.type === 'enemy' && u.type === 'enemy' && u.id !== caster.id);
+
+                    targets = [...playerUnits, ...enemyUnits].filter(u =>
+                        u.hp > 0 && isDamageTarget(u) && area.some(cell => cell.x === u.x && cell.y === u.y)
+                    );
+                }
+
+                if (targets.length > 0) {
+                    showSkillPreview(caster, skill, targets, x, y);
+                }
+            }
             return;
         }
 
@@ -7871,7 +8574,11 @@
 
 
             // Clicou em chão vazio ou célula irrelevante: voltar à seleção normal (sai de movimento/ataque/skill, mostra HUD)
-            returnToNormalSelection();
+            // Mas apenas se não estivermos em modo de ataque ou skill, onde queremos manter os highlights
+            if (gameState.currentAction !== 'attacking' && gameState.currentAction !== 'skill' &&
+                gameState.currentAction !== 'attacking_preview' && gameState.currentAction !== 'skill_preview') {
+                returnToNormalSelection();
+            }
         } else {
             // 2. Nada selecionado ou seleção que não pode agir: tentar selecionar aliado com ação
             if (unitAtCell && (unitAtCell.type === 'player' || unitAtCell.type === 'ally')) {
