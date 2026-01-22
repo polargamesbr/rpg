@@ -122,7 +122,12 @@ class SkillService
 
         foreach ($optionalFields as $field) {
             if (isset($skill[$field])) {
-                $normalized[$field] = $skill[$field];
+                $val = $skill[$field];
+                // Cast important tactical numbers to int/float
+                if ($field === 'aoe' || $field === 'range' || $field === 'hits') {
+                    $val = (int)$val;
+                }
+                $normalized[$field] = $val;
             }
         }
 

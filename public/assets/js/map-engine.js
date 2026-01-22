@@ -82,6 +82,10 @@
         // Se skill já tem range definido, usar ele
         if (typeof skill.range === 'number') return skill.range;
 
+        // Suporte para gridVisual
+        if (skill.gridVisual === 'self') return 0;
+        if (skill.gridVisual === 'aoe_small' || skill.gridVisual === 'aoe_medium' || skill.gridVisual === 'aoe_large') return 0;
+
         const name = (skill.name || '').toLowerCase();
         const id = (skill.id || '').toLowerCase();
         const text = name + ' ' + id;
@@ -109,6 +113,16 @@
      */
     function getSkillRangeType(skill) {
         if (skill.rangeType) return skill.rangeType;
+
+        // Suporte para gridVisual
+        if (skill.gridVisual) {
+            if (skill.gridVisual === 'self') return 'self';
+            if (skill.gridVisual.startsWith('aoe')) return 'aoe';
+            if (skill.gridVisual.startsWith('line')) return 'line';
+            if (skill.gridVisual === 'plus' || skill.gridVisual === 'cross') return 'plus';
+        }
+
+        if (skill.type === 'single') return 'single';
         if (skill.type === 'aoe' || skill.type === 'aoe_heal') return 'aoe';
         if (skill.type === 'self') return 'self';
         if (skill.type === 'ally') return 'ally';
@@ -116,9 +130,8 @@
         if (skill.type === 'revive') return 'revive';
         if (skill.type === 'summon') return 'summon';
         if (skill.type === 'pierce') return 'line';
-        if (skill.type === 'aoe') return 'circle';
         if (skill.type === 'line') return 'line';
-        if (skill.type === 'cross') return 'cross';
+        if (skill.type === 'cross' || skill.type === 'plus') return 'plus';
         return 'diamond';
     }
 
@@ -179,12 +192,22 @@
                 for (const skillId of skillIds) {
                     const skillDef = loadedSkills[skillId];
                     if (skillDef) {
+                        let aoe = typeof skillDef.aoe === 'number' ? skillDef.aoe : 0;
+                        // Default based on gridVisual if aoe is 0
+                        if (aoe === 0 && skillDef.gridVisual) {
+                            if (skillDef.gridVisual === 'aoe_small') aoe = 1;
+                            else if (skillDef.gridVisual === 'aoe_medium') aoe = 2;
+                            else if (skillDef.gridVisual === 'aoe_large') aoe = 3;
+                        }
+
                         skills.push({
                             ...skillDef,
                             id: skillId,
                             range: getSkillRange(skillDef),
                             rangeType: getSkillRangeType(skillDef),
-                            aoe: skillDef.aoe || 0
+                            aoe: aoe,
+                            aoeShape: skillDef.aoeShape || 'diamond',
+                            gridVisual: skillDef.gridVisual || null
                         });
                     }
                 }
@@ -257,12 +280,22 @@
             for (const skillId of skillIds) {
                 const skillDef = window.TacticalDataLoader.skillCache[skillId];
                 if (skillDef) {
+                    let aoe = typeof skillDef.aoe === 'number' ? skillDef.aoe : 0;
+                    // Default based on gridVisual if aoe is 0
+                    if (aoe === 0 && skillDef.gridVisual) {
+                        if (skillDef.gridVisual === 'aoe_small') aoe = 1;
+                        else if (skillDef.gridVisual === 'aoe_medium') aoe = 2;
+                        else if (skillDef.gridVisual === 'aoe_large') aoe = 3;
+                    }
+
                     skills.push({
                         ...skillDef,
                         id: skillId,
                         range: getSkillRange(skillDef),
                         rangeType: getSkillRangeType(skillDef),
-                        aoe: skillDef.aoe || 0
+                        aoe: aoe,
+                        aoeShape: skillDef.aoeShape || 'diamond',
+                        gridVisual: skillDef.gridVisual || null
                     });
                 }
             }
@@ -309,6 +342,10 @@
                 return [{ x: unit.x, y: unit.y, dist: 0 }];
             }
             if (rangeType === 'aoe' || rangeType === 'aoe_heal') {
+                // Se o AoE tem um tamanho definido (> 0), permite selecionar a própria célula como centro
+                if (skill.aoe > 0) {
+                    return [{ x: unit.x, y: unit.y, dist: 0 }];
+                }
                 // AoE global atinge todos
                 return []; // Retorna vazio, pois atinge todos (será tratado separadamente)
             }
@@ -360,7 +397,7 @@
 
         const rangeType = getSkillRangeType(skill);
 
-        if (rangeType === 'single' || rangeType === 'ally' || rangeType === 'heal') {
+        if (rangeType === 'single' || rangeType === 'ally' || rangeType === 'heal' || rangeType === 'diamond') {
             area.push({ x: targetX, y: targetY });
             return area;
         }
@@ -395,6 +432,18 @@
                 if (isValidCell(x, y)) {
                     area.push({ x, y });
                 }
+            }
+            return area;
+        }
+
+        if (rangeType === 'plus' || rangeType === 'cross') {
+            const aoeRange = skill.aoe || 1;
+            area.push({ x: targetX, y: targetY });
+            for (let i = 1; i <= aoeRange; i++) {
+                if (isValidCell(targetX + i, targetY)) area.push({ x: targetX + i, y: targetY });
+                if (isValidCell(targetX - i, targetY)) area.push({ x: targetX - i, y: targetY });
+                if (isValidCell(targetX, targetY + i)) area.push({ x: targetX, y: targetY + i });
+                if (isValidCell(targetX, targetY - i)) area.push({ x: targetX, y: targetY - i });
             }
             return area;
         }
@@ -3676,14 +3725,18 @@
         // Hide any existing attack preview first
         hideAttackPreview();
 
-        // Only show preview for damage skills
-        const isDamageSkill = ['damage', 'attack', 'single', 'aoe', 'pierce', 'line', 'target'].includes(skill.type);
+        // Only show preview for skills that deal actual damage
+        const dmgMult = skill.dmgMult || skill.dmg_mult || 0;
+        const isTargetType = ['damage', 'attack', 'single', 'aoe', 'pierce', 'line', 'target'].includes(skill.type);
+        const isDamageSkill = dmgMult > 0 && isTargetType;
+
         if (!isDamageSkill || targets.length === 0) {
-            // Non-damage skills execute immediately
+            // Non-damage skills (debuffs, heals, etc.) or no targets found: execute immediately
             skillRangeCells = [];
             skillAreaCells = [];
             gameState.currentAction = null;
             gameState.selectedSkill = null;
+
             executeSkill(caster, targets[0] || null, skill, targets).then(() => persistSessionState());
             return;
         }
@@ -6639,6 +6692,17 @@
         skillRangeCells = calculateSkillRange(unit, skill);
         skillAreaCells = [];
 
+        // AUTO-PREVIEW: Se o alcance for 0 (centrado no caster), já mostra a área imediatamente.
+        // Isso evita a confusão do jogador ter que "mirar em si mesmo".
+        const skillRange = getSkillRange(skill);
+        if (skillRange === 0) {
+            skillAreaCells = calculateSkillArea(skill, unit.x, unit.y, unit.x, unit.y);
+            console.log('[DEBUG] selectSkillForUse - Range 0 auto-preview:', {
+                aoe: skill.aoe,
+                areaLength: skillAreaCells.length
+            });
+        }
+
         console.log('[DEBUG] selectSkillForUse - After calculateSkillRange:', {
             skillRangeCellsLength: skillRangeCells.length,
             skillRangeCellsSample: skillRangeCells.slice(0, 3), // Primeiras 3 células
@@ -8266,17 +8330,29 @@
 
             // Preview de área de skill (hover)
             if (gameState.currentAction === 'skill' && gameState.selectedUnit && gameState.selectedSkill) {
-                const inRange = skillRangeCells.some(c => c.x === col && c.y === row);
-                if (inRange) {
+                const skillRange = getSkillRange(gameState.selectedSkill);
+                // Se o range for 0, a área é fixa no caster (não depende de onde o mouse está, desde que esteja no mapa)
+                if (skillRange === 0) {
                     skillAreaCells = calculateSkillArea(
                         gameState.selectedSkill,
-                        col,
-                        row,
+                        gameState.selectedUnit.x,
+                        gameState.selectedUnit.y,
                         gameState.selectedUnit.x,
                         gameState.selectedUnit.y
                     );
                 } else {
-                    skillAreaCells = [];
+                    const inRange = skillRangeCells.some(c => c.x === col && c.y === row);
+                    if (inRange) {
+                        skillAreaCells = calculateSkillArea(
+                            gameState.selectedSkill,
+                            col,
+                            row,
+                            gameState.selectedUnit.x,
+                            gameState.selectedUnit.y
+                        );
+                    } else {
+                        skillAreaCells = [];
+                    }
                 }
                 needsRender = true;
             }
@@ -8290,7 +8366,11 @@
             if (coordOverlay) coordOverlay.classList.remove('visible');
             canvas.style.cursor = 'default';
             if (gameState.currentAction === 'skill') {
-                skillAreaCells = [];
+                const skillRange = getSkillRange(gameState.selectedSkill);
+                // Se o range for 0, mantemos a área visível mesmo com mouse fora do grid
+                if (skillRange !== 0) {
+                    skillAreaCells = [];
+                }
                 needsRender = true;
             }
         }
@@ -8491,31 +8571,42 @@
                 return;
             }
 
-            // Para outras skills, verificar range
-            const inRange = skillRangeCells.some(c => c.x === x && c.y === y);
+            // Para habilidades com alcance 0 (centradas no próprio caster),
+            // ignoramos a posição do clique e usamos a posição do caster.
+            const skillRange = getSkillRange(skill);
+            let targetX = x;
+            let targetY = y;
+
+            if (skillRange === 0) {
+                targetX = caster.x;
+                targetY = caster.y;
+            }
+
+            // Verificar range usando as coordenadas ajustadas (targetX, targetY)
+            const inRange = skillRangeCells.some(c => c.x === targetX && c.y === targetY);
             if (!inRange) {
-                // Click outside skill range: do nothing
+                // Se ainda assim não estiver no range (o que não deve ocorrer para range 0), ignora
                 return;
             }
 
             let targets = [];
             if (rangeType === 'ally' || rangeType === 'heal') {
                 // Para skills ally/heal: alvo deve ser aliado (ou a própria célula para auto)
-                const clickedUnit = unitAtCell;
+                const clickedUnit = getUnitAt(targetX, targetY);
                 const isAlly = clickedUnit && clickedUnit.hp > 0 && (
                     (caster.type === 'enemy' && clickedUnit.type === 'enemy') ||
                     ((caster.type === 'player' || caster.type === 'ally') && (clickedUnit.type === 'player' || clickedUnit.type === 'ally'))
                 );
                 if (isAlly) {
                     targets = [clickedUnit];
-                } else if (x === caster.x && y === caster.y) {
+                } else if (targetX === caster.x && targetY === caster.y) {
                     targets = [caster];
                 } else {
                     returnToNormalSelection();
                     return;
                 }
             } else {
-                const area = calculateSkillArea(skill, x, y, caster.x, caster.y);
+                const area = calculateSkillArea(skill, targetX, targetY, caster.x, caster.y);
                 let targetType;
                 if (skill.type === 'ally' || skill.type === 'aoe_heal' || skill.type === 'heal')
                     targetType = (caster.type === 'enemy') ? 'enemy' : 'player';
@@ -8531,22 +8622,33 @@
             }
 
             if (targets.length === 0) {
-                // No valid targets in area: do nothing
                 return;
             }
 
             // Show preview for damage skills, execute immediately for others
-            showSkillPreview(caster, skill, targets, x, y);
+            showSkillPreview(caster, skill, targets, targetX, targetY);
             return;
         }
 
         // If in skill preview mode, clicking on another target changes the preview target or confirms
         if (gameState.currentAction === 'skill_preview' && gameState.pendingSkill) {
-            const inRange = skillRangeCells.some(c => c.x === x && c.y === y);
+            const skillRange = getSkillRange(gameState.pendingSkill.skill);
+            let targetX = x;
+            let targetY = y;
+
+            // Para range 0, forçamos o alvo a ser sempre o caster
+            if (skillRange === 0) {
+                targetX = gameState.pendingSkill.caster.x;
+                targetY = gameState.pendingSkill.caster.y;
+            }
+
+            const inRange = skillRangeCells.some(c => c.x === targetX && c.y === targetY);
             if (inRange) {
                 // Check if it's the same target cell (for confirm)
-                const isSameTarget = x === gameState.pendingSkill.clickX && y === gameState.pendingSkill.clickY;
-                if (isSameTarget) {
+                const isSameTarget = targetX === gameState.pendingSkill.clickX && targetY === gameState.pendingSkill.clickY;
+
+                // Se for o mesmo alvo OU se for range 0 (qualquer clique confirma), procede
+                if (isSameTarget || skillRange === 0) {
                     confirmSkillAttack();
                     return;
                 }
@@ -8558,15 +8660,15 @@
 
                 let targets = [];
                 if (rangeType === 'ally' || rangeType === 'heal') {
-                    const clickedUnit = unitAtCell;
+                    const clickedUnit = getUnitAt(targetX, targetY);
                     const isAlly = clickedUnit && clickedUnit.hp > 0 && (
                         (caster.type === 'enemy' && clickedUnit.type === 'enemy') ||
                         ((caster.type === 'player' || caster.type === 'ally') && (clickedUnit.type === 'player' || clickedUnit.type === 'ally'))
                     );
                     if (isAlly) targets = [clickedUnit];
-                    else if (x === caster.x && y === caster.y) targets = [caster];
+                    else if (targetX === caster.x && targetY === caster.y) targets = [caster];
                 } else {
-                    const area = calculateSkillArea(skill, x, y, caster.x, caster.y);
+                    const area = calculateSkillArea(skill, targetX, targetY, caster.x, caster.y);
                     let targetType = (caster.type === 'enemy') ? 'player' : 'enemy';
                     const isDamageTarget = (u) => u.type === targetType || (targetType === 'player' && u.type === 'ally') ||
                         (gameState.debugControlEnemy && caster.type === 'enemy' && u.type === 'enemy' && u.id !== caster.id);
@@ -8577,7 +8679,7 @@
                 }
 
                 if (targets.length > 0) {
-                    showSkillPreview(caster, skill, targets, x, y);
+                    showSkillPreview(caster, skill, targets, targetX, targetY);
                 }
             }
             return;
