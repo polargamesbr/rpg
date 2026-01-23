@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Services\AuthService;
 use App\Services\CharacterService;
 use App\Models\Character;
-use App\Models\ClassModel;
+use App\Services\UserEventService;
 
 class GameController
 {
@@ -18,19 +18,26 @@ class GameController
         
         // Get active character using CharacterService
         $character = CharacterService::getActiveCharacter();
+        $userId = AuthService::getCurrentUserId();
 
         if (!$character) {
-            // No character found, redirect to panel to create or select one
-            redirect('/panel');
+            if (!UserEventService::hasEvent($userId, 'intro_done')) {
+                redirect('/game/intro');
+            } else {
+                redirect('/panel');
+            }
             return;
         }
         
-        // Get starting city from character data (already joined with class)
-        $originCity = $character['starting_city'] ?? 'Stormhaven';
+        $originCity = 'Stormhaven';
+        $forceDialog = isset($_GET['debug_dialog']) && $_GET['debug_dialog'] === '1';
+        $showGateDialog = $forceDialog || !UserEventService::hasEvent($userId, 'stormhaven_gate_intro');
         
         view('game.city-hub', [
             'character' => $character,
-            'originCity' => $originCity
+            'originCity' => $originCity,
+            'showGateDialog' => $showGateDialog,
+            'forceGateDialog' => $forceDialog
         ]);
     }
 
@@ -43,10 +50,20 @@ class GameController
         
         // Get active character using CharacterService
         $character = CharacterService::getActiveCharacter();
+        $userId = AuthService::getCurrentUserId();
 
         if (!$character) {
-            // No character found, redirect to panel to create or select one
-            redirect('/panel');
+            $userId = AuthService::getCurrentUserId();
+            if (!UserEventService::hasEvent($userId, 'intro_done')) {
+                redirect('/game/intro');
+            } else {
+                redirect('/panel');
+            }
+            return;
+        }
+
+        if (!$userId || !UserEventService::hasEvent($userId, 'stormhaven_gate_intro')) {
+            redirect('/game/city-hub');
             return;
         }
         

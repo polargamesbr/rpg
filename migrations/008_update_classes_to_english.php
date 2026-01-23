@@ -57,6 +57,11 @@ try {
         ]
     ];
 
+    $hasClassColumn = false;
+    $checkColumn = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = :db AND TABLE_NAME = 'characters' AND COLUMN_NAME = 'class'");
+    $checkColumn->execute(['db' => $dbConfig['database']]);
+    $hasClassColumn = (int)$checkColumn->fetchColumn() > 0;
+
     foreach ($classUpdates as $oldName => $newData) {
         // Update classes table
         $updateClassSql = "UPDATE classes SET name = :new_name, display_name = :new_display_name WHERE name = :old_name";
@@ -68,14 +73,16 @@ try {
         ]);
         echo "Updated class: {$oldName} -> {$newData['name']}\n";
         
-        // Update characters table
-        $updateCharacterSql = "UPDATE characters SET class = :new_name WHERE class = :old_name";
-        $stmt = $pdo->prepare($updateCharacterSql);
-        $stmt->execute([
-            'new_name' => $newData['name'],
-            'old_name' => $oldName
-        ]);
-        echo "Updated characters with class: {$oldName} -> {$newData['name']}\n";
+        // Update characters table (legacy column)
+        if ($hasClassColumn) {
+            $updateCharacterSql = "UPDATE characters SET class = :new_name WHERE class = :old_name";
+            $stmt = $pdo->prepare($updateCharacterSql);
+            $stmt->execute([
+                'new_name' => $newData['name'],
+                'old_name' => $oldName
+            ]);
+            echo "Updated characters with class: {$oldName} -> {$newData['name']}\n";
+        }
     }
 
     echo "\n✓ Migration completed successfully!\n";

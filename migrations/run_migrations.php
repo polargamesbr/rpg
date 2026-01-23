@@ -24,7 +24,9 @@ try {
         $dbConfig['charset']
     );
 
-    $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $dbConfig['options']);
+    $options = $dbConfig['options'] ?? [];
+    $options[PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = true;
+    $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
     
     // Criar database se não existir
     $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbConfig['database']}`");
@@ -37,30 +39,51 @@ try {
         '001_create_users_table.php',
         '002_create_characters_table.php',
         '003_update_users_table.php',
-        '004_create_classes_table.php',
-        '005_insert_classes_data.php',
-        '006_add_image_prefix_column.php',
-        '007_add_image_prefix_and_update.php',
-        '008_update_classes_to_english.php',
         '014_create_quest_tables.php',
         '015_seed_quest_definitions.php',
-        '016_create_quest_battle_tables.php'
+        '016_create_quest_battle_tables.php',
+        '017_extract_quest_configs_to_files.php',
+        '018_remove_config_json_column.php',
+        '024_add_attribute_points_to_characters.php',
+        '025_drop_party_tables.php',
+        '026_add_party_fields_to_characters.php',
+        '027_drop_class_id_from_characters.php',
+        '028_add_entity_id_to_characters.php',
+        '029_drop_classes_table.php',
+        '030_create_user_events_table.php'
     ];
     
     foreach ($migrations as $migration) {
         echo "Running: {$migration}\n";
-        if ($migration === '005_insert_classes_data.php') {
-            require __DIR__ . '/' . $migration;
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute();
-        } elseif ($migration === '007_add_image_prefix_and_update.php' || $migration === '008_update_classes_to_english.php') {
-            // These migrations handle their own DB operations
-            require __DIR__ . '/' . $migration;
-        } else {
-            require __DIR__ . '/' . $migration;
-            $pdo->exec($sql);
+        try {
+            if ($migration === '005_insert_classes_data.php') {
+                require __DIR__ . '/' . $migration;
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute();
+        } elseif ($migration === '017_extract_quest_configs_to_files.php' || $migration === '018_remove_config_json_column.php' || $migration === '025_drop_party_tables.php' || $migration === '027_drop_class_id_from_characters.php' || $migration === '028_add_entity_id_to_characters.php' || $migration === '029_drop_classes_table.php') {
+                // These migrations handle their own DB operations
+                require __DIR__ . '/' . $migration;
+            } else {
+                require __DIR__ . '/' . $migration;
+                if (isset($sql) && trim($sql) === 'SELECT 1') {
+                    $stmt = $pdo->query($sql);
+                    $stmt->fetchAll();
+                    $stmt->closeCursor();
+                } else {
+                    $pdo->exec($sql);
+                }
+            }
+            echo "✓ {$migration} executed successfully\n";
+        } catch (PDOException $e) {
+            $errorCode = $e->getCode();
+            $message = $e->getMessage();
+            // Ignore duplicate column / table exists errors to allow re-run
+            if (str_contains($message, 'Duplicate column name') || str_contains($message, 'already exists') || str_contains($message, 'Duplicate entry')) {
+                echo "↷ {$migration} skipped (already applied)\n";
+                continue;
+            }
+            throw $e;
         }
-        echo "✓ {$migration} executed successfully\n";
     }
     
     echo "\n✓ All migrations executed successfully!\n";

@@ -611,7 +611,8 @@ $additionalStyles = <<<CSS
 }
 .quest-card-image {
     position: relative;
-    width: 140px;
+    width: 180px; /* Increased for widescreen feel */
+    aspect-ratio: 3 / 2; /* Matches 1536x1024 */
     flex-shrink: 0;
     overflow: hidden;
 }
@@ -887,7 +888,7 @@ ob_start();
                                     <div class="quest-card-inner">
                                         <!-- Quest Image -->
                                         <div class="quest-card-image">
-                                            <img src="<?= asset('img/torvin.png') ?>" alt="First Steps" class="absolute inset-0 w-full h-full object-cover">
+                                            <img src="<?= asset('quests/first-steps.png') ?>" alt="First Steps" class="absolute inset-0 w-full h-full object-cover">
                                             <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-blue-500/80 text-[9px] font-black text-white uppercase tracking-wider">
                                                 Tutorial
                                             </div>
@@ -919,7 +920,7 @@ ob_start();
                                             
                                             <!-- Action -->
                                             <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-                                                <span class="text-[10px] text-white/30">All Classes</span>
+                                                <span class="text-[10px] text-white/30">Story</span>
                                                 <button class="quest-accept-btn" data-quest-id="first-steps">
                                                     <span>Accept</span>
                                                     <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
@@ -1030,6 +1031,12 @@ ob_start();
 
                 </div>
             </div>
+        </div>
+
+        <div class="flex justify-end px-8 pb-6">
+            <button id="dev-quest-link" class="text-[10px] text-white/20 hover:text-white/50 uppercase tracking-widest">
+                test-dev
+            </button>
         </div>
 
     </main>
@@ -1561,11 +1568,24 @@ $additionalScripts = <<<JSSCRIPT
             description: 'Learn the basics of combat and exploration. Master your first sword techniques.',
             type: 'Tutorial',
             difficulty: 'Easy',
-            image: '/public/assets/img/torvin.png',
+            image: '/public/assets/quests/first-steps.png',
             time: '~15 min',
             rewards: [
                 { icon: 'sparkles', text: '50 XP' },
                 { icon: 'clock', text: '~15 min' }
+            ]
+        },
+        'test-dev': {
+            id: 'test-dev',
+            title: 'Test Dev',
+            description: 'Hidden dev quest for combat testing.',
+            type: 'Dev',
+            difficulty: 'Easy',
+            image: '/public/assets/quests/first-steps.png',
+            time: '~5 min',
+            rewards: [
+                { icon: 'sparkles', text: '0 XP' },
+                { icon: 'clock', text: '~5 min' }
             ]
         }
     };
@@ -1686,6 +1706,19 @@ $additionalScripts = <<<JSSCRIPT
         });
     }
 
+    function setupDevQuestLink() {
+        const devLink = document.getElementById('dev-quest-link');
+        if (!devLink) return;
+
+        devLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            const questData = QUEST_DB['test-dev'];
+            if (questData) {
+                openQuestModal(questData);
+            }
+        });
+    }
+
     window.closeQuestModal = closeQuestModal;
     
     // Initialize
@@ -1694,6 +1727,7 @@ $additionalScripts = <<<JSSCRIPT
         setupEventListeners();
         loadMessages();
         setupQuestButtons();
+        setupDevQuestLink();
         
         // Start polling after initial load (delay to reduce initial server load)
         setTimeout(() => {
@@ -1875,7 +1909,17 @@ $additionalScripts = <<<JSSCRIPT
         const avatarImg = getAvatarImage(msg.class_image_prefix || 'archer', msg.character_gender || 'male');
         const timestamp = formatTimestamp(msg.created_at);
         
-        messageDiv.innerHTML = '<div class="chat-avatar"><div class="chat-avatar-inner"><img src="' + avatarImg + '" alt="' + escapeHtml(msg.character_name) + '" onerror="this.src=\'' + assetImgBase + 'avatar.png\'"></div></div><div class="chat-message-content"><div class="chat-message-header"><span class="chat-message-name">' + escapeHtml(msg.character_name) + '</span><span class="chat-message-level">Lvl ' + (msg.character_level || 1) + '</span><span class="chat-message-class">[' + escapeHtml(msg.class_display_name || msg.class_name || 'Adventurer') + ']</span><span class="chat-message-time">' + timestamp + '</span></div><div class="chat-message-text">' + escapeHtml(msg.message) + '</div></div>';
+        const classMap = {
+            swordsman: 'Swordsman',
+            archer: 'Archer',
+            mage: 'Mage',
+            thief: 'Thief',
+            acolyte: 'Acolyte',
+            blacksmith: 'Blacksmith',
+            beast_tamer: 'Beast Tamer'
+        };
+        const classLabel = classMap[msg.class_name] || msg.class_name || 'Adventurer';
+        messageDiv.innerHTML = '<div class="chat-avatar"><div class="chat-avatar-inner"><img src="' + avatarImg + '" alt="' + escapeHtml(msg.character_name) + '" onerror="this.src=\'' + assetImgBase + 'avatar.png\'"></div></div><div class="chat-message-content"><div class="chat-message-header"><span class="chat-message-name">' + escapeHtml(msg.character_name) + '</span><span class="chat-message-level">Lvl ' + (msg.character_level || 1) + '</span><span class="chat-message-class">[' + escapeHtml(classLabel) + ']</span><span class="chat-message-time">' + timestamp + '</span></div><div class="chat-message-text">' + escapeHtml(msg.message) + '</div></div>';
         
         messageDiv.style.opacity = '0';
         messageDiv.style.transform = 'translateY(10px)';

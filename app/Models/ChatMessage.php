@@ -35,12 +35,9 @@ class ChatMessage
                     c.name as character_name,
                     c.level as character_level,
                     c.gender as character_gender,
-                    cl.name as class_name,
-                    cl.display_name as class_display_name,
-                    cl.image_prefix as class_image_prefix
+                    c.entity_id as class_name
                 FROM chat_messages cm
                 INNER JOIN characters c ON cm.character_id = c.id
-                INNER JOIN classes cl ON c.class_id = cl.id
                 INNER JOIN chat_rooms cr ON cm.chat_room_id = cr.id
                 WHERE cr.name = :room_name
                 ORDER BY cm.created_at DESC
@@ -71,12 +68,9 @@ class ChatMessage
                     c.name as character_name,
                     c.level as character_level,
                     c.gender as character_gender,
-                    cl.name as class_name,
-                    cl.display_name as class_display_name,
-                    cl.image_prefix as class_image_prefix
+                    c.entity_id as class_name
                 FROM chat_messages cm
                 INNER JOIN characters c ON cm.character_id = c.id
-                INNER JOIN classes cl ON c.class_id = cl.id
                 INNER JOIN chat_rooms cr ON cm.chat_room_id = cr.id
                 WHERE cr.name = :room_name
                 AND cm.created_at > (

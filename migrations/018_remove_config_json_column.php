@@ -26,7 +26,7 @@ try {
     
     if (!$checkColumn) {
         echo "Column 'config_json' does not exist in quest_definitions. Nothing to remove.\n";
-        exit(0);
+        return;
     }
     
     // Remove the column

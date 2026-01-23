@@ -33,35 +33,7 @@ return [
     ],
     
     // Allied units
-    'allies' => [
-        [
-            'id' => 'ally_archer_1',
-            'type' => 'player',
-            'name' => 'Archer',
-            'x' => 11,
-            'y' => 9,
-            'combat_key' => 'archer',
-            'class' => 'archer',
-        ],
-        [
-            'id' => 'ally_acolyte_1',
-            'type' => 'player',
-            'name' => 'Acolyte',
-            'x' => 12,
-            'y' => 10,
-            'combat_key' => 'acolyte',
-            'class' => 'acolyte',
-        ],
-        [
-            'id' => 'ally_beast_tamer_1',
-            'type' => 'player',
-            'name' => 'Beast Tamer',
-            'x' => 11,
-            'y' => 11,
-            'combat_key' => 'beast_tamer',
-            'class' => 'beast_tamer',
-        ],
-    ],
+    'allies' => [],
     
     // Enemy units
     'enemies' => [
@@ -74,31 +46,7 @@ return [
         [
             'id' => 'slime_2',
             'combat_key' => 'toxic_slime',
-            'x' => 40,
-            'y' => 9,
-        ],
-        [
-            'id' => 'wolf_1',
-            'combat_key' => 'wolf',
-            'x' => 45,
-            'y' => 8,
-        ],
-        [
-            'id' => 'wolf_2',
-            'combat_key' => 'wolf',
-            'x' => 30,
-            'y' => 10,
-        ],
-        [
-            'id' => 'slime_3',
-            'combat_key' => 'toxic_slime',
-            'x' => 24,
-            'y' => 14,
-        ],
-        [
-            'id' => 'hawk_1',
-            'combat_key' => 'hawk',
-            'x' => 36,
+            'x' => 28,
             'y' => 9,
         ],
     ],

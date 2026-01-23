@@ -9,9 +9,9 @@
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
 
-                <div class="relative h-64 w-full overflow-hidden">
+                <div class="relative h-[420px] w-full overflow-hidden">
                     <img id="quest-preview-image" src="" alt="Quest Image" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80"></div>
 
                     <div class="absolute top-6 left-6">
                         <span id="quest-preview-type" class="px-3 py-1 rounded-full bg-black/60 backdrop-blur border border-white/10 text-xs font-bold text-white uppercase tracking-wider">

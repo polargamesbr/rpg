@@ -3,8 +3,8 @@
 namespace App\Controllers;
 
 use App\Services\AuthService;
+use App\Services\UserEventService;
 use App\Models\Character;
-use App\Models\ClassModel;
 
 class PanelController
 {
@@ -14,30 +14,15 @@ class PanelController
             redirect('/login');
             return;
         }
-
         $userId = AuthService::getCurrentUserId();
-        $characters = Character::findAllByUser($userId);
-        $activeCharacterUuid = $_SESSION['active_character_uuid'] ?? null;
-
-        // Characters already have class data from JOIN in findAllByUser
-        // Format data for view
-        $formattedCharacters = [];
-        foreach ($characters as $char) {
-            $formattedCharacters[] = [
-                'character' => $char,
-                'class' => [
-                    'display_name' => $char['class_display_name'] ?? $char['class_name'] ?? 'Unknown',
-                    'icon_name' => $char['icon_name'] ?? 'sword',
-                    'starting_city' => $char['starting_city'] ?? 'Unknown',
-                    'image_prefix' => $char['image_prefix'] ?? 'default',
-                    'color_hex' => $char['color_hex'] ?? '#d4af37'
-                ]
-            ];
-        }
+        $user = AuthService::getCurrentUser();
+        $character = Character::findByUser($userId);
+        $introDone = UserEventService::hasEvent($userId, 'intro_done');
 
         view('panel.index', [
-            'characters' => $formattedCharacters,
-            'activeCharacterUuid' => $activeCharacterUuid
+            'user' => $user,
+            'character' => $character,
+            'introDone' => $introDone
         ]);
     }
 

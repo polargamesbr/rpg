@@ -23,6 +23,10 @@ return [
     'GET /game/character/create' => 'CharacterController@showCreate',
     'POST /game/character/validate-name' => 'CharacterController@validateName',
     'POST /game/character/store' => 'CharacterController@store',
+    'GET /game/intro' => 'IntroController@index',
+    'POST /game/intro/complete' => 'IntroController@complete',
+    'GET /game/dialogues/{id}' => 'DialogController@show',
+    'POST /game/events/complete' => 'EventController@complete',
     
     // Chat Routes
     'POST /game/chat/send' => 'ChatController@send',
@@ -38,6 +42,7 @@ return [
     'POST /game/explore/state' => 'ExploreController@setState',
     'POST /game/explore/move' => 'ExploreController@move',
     'POST /game/explore/complete' => 'ExploreController@complete',
+    'POST /game/explore/award-exp' => 'ExploreController@awardExp',
     'POST /game/explore/reset' => 'ExploreController@reset',
     
     // Modal Routes (Lazy Loading)

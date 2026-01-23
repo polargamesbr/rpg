@@ -52,6 +52,7 @@ return [
     'skills' => [
         [
             'id' => 'quick_slash',
+            'unlock_level' => 1,
             'name' => 'Quick Slash',
             'mana' => 5,
             'dmg_mult' => 1.0,
@@ -65,6 +66,7 @@ return [
         ],
         [
             'id' => 'guarded_strike',
+            'unlock_level' => 2,
             'name' => 'Guarded Strike',
             'mana' => 15,
             'dmg_mult' => 1.2,
@@ -75,6 +77,7 @@ return [
         ],
         [
             'id' => 'parry_stance',
+            'unlock_level' => 3,
             'name' => 'Parry Stance',
             'mana' => 15,
             'dmg_mult' => 0,
@@ -88,6 +91,7 @@ return [
         ],
         [
             'id' => 'heavy_slash',
+            'unlock_level' => 5,
             'name' => 'Heavy Slash',
             'mana' => 20,
             'dmg_mult' => 2.0,
@@ -102,6 +106,7 @@ return [
         ],
         [
             'id' => 'shield_bash',
+            'unlock_level' => 8,
             'name' => 'Shield Bash',
             'mana' => 25,
             'dmg_mult' => 1.3,
@@ -112,6 +117,7 @@ return [
         ],
         [
             'id' => 'taunting_shout',
+            'unlock_level' => 10,
             'name' => 'Taunting Shout',
             'mana' => 10,
             'dmg_mult' => 0,
@@ -125,6 +131,7 @@ return [
         ],
         [
             'id' => 'cleave',
+            'unlock_level' => 14,
             'name' => 'Cleave',
             'mana' => 30,
             'dmg_mult' => 0.8,
@@ -138,6 +145,7 @@ return [
         ],
         [
             'id' => 'defensive_wall',
+            'unlock_level' => 18,
             'name' => 'Defensive Wall',
             'mana' => 30,
             'dmg_mult' => 0,
@@ -151,6 +159,7 @@ return [
         ],
         [
             'id' => 'crushing_blow',
+            'unlock_level' => 22,
             'name' => 'Crushing Blow',
             'mana' => 25,
             'dmg_mult' => 1.6,
@@ -161,6 +170,7 @@ return [
         ],
         [
             'id' => 'battle_focus',
+            'unlock_level' => 30,
             'name' => 'Battle Focus',
             'mana' => 40,
             'dmg_mult' => 0,
@@ -175,6 +185,7 @@ return [
         ],
         [
             'id' => 'relentless_strike',
+            'unlock_level' => 35,
             'name' => 'Relentless Strike',
             'mana' => 35,
             'dmg_mult' => 0.7,
@@ -185,6 +196,7 @@ return [
         ],
         [
             'id' => 'champions_slash',
+            'unlock_level' => 50,
             'name' => 'Champion\'s Slash',
             'mana' => 60,
             'dmg_mult' => 3.0,
@@ -204,6 +216,7 @@ return [
         ],
         [
             'id' => 'life_steal',
+            'unlock_level' => 60,
             'name' => 'Life Steal',
             'mana' => 55,
             'dmg_mult' => 1.1,
@@ -214,6 +227,7 @@ return [
         ],
         [
             'id' => 'berserk_mode',
+            'unlock_level' => 70,
             'name' => 'Berserk Mode',
             'mana' => 65,
             'dmg_mult' => 0,

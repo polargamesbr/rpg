@@ -117,12 +117,9 @@ class ChatController
                     c.name as character_name,
                     c.level as character_level,
                     c.gender as character_gender,
-                    cl.name as class_name,
-                    cl.display_name as class_display_name,
-                    cl.image_prefix as class_image_prefix
+                    c.entity_id as class_name
                 FROM chat_messages cm
                 INNER JOIN characters c ON cm.character_id = c.id
-                INNER JOIN classes cl ON c.class_id = cl.id
                 WHERE cm.uuid = :uuid
                 LIMIT 1",
                 ['uuid' => $messageData['uuid']]

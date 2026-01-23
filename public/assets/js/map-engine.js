@@ -5189,6 +5189,10 @@
                 if (idx !== -1) {
                     const unit = list[idx];
 
+                    if (casualty.type === 'enemy') {
+                        awardExpForEnemy(unit);
+                    }
+
                     // Spawn death effect at unit position
                     spawnDeathEffect((unit.x - 0.5) * CONFIG.CELL_SIZE, (unit.y - 0.5) * CONFIG.CELL_SIZE);
                     showFloatingText('DERROTADO', (unit.x - 0.5) * CONFIG.CELL_SIZE, (unit.y - 0.5) * CONFIG.CELL_SIZE - 20, '#ef4444');
@@ -5273,6 +5277,24 @@
         updateUI();
         saveCameraState(); // Auto-save after movement
         persistSessionState();
+    }
+
+    async function awardExpForEnemy(enemyUnit) {
+        if (!sessionUid || !enemyUnit) return;
+
+        try {
+            await fetch(`/game/explore/award-exp?session=${encodeURIComponent(sessionUid)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    enemy_id: enemyUnit.id,
+                    enemy_entity_id: enemyUnit.entity_id || enemyUnit.entityId,
+                    enemy_level: enemyUnit.level || enemyUnit.baseLevel || 1
+                })
+            });
+        } catch (error) {
+            console.warn('[MAP-ENGINE] Failed to award EXP:', error);
+        }
     }
 
     function updateFreeExploreState() {

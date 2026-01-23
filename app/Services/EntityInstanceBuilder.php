@@ -43,6 +43,13 @@ class EntityInstanceBuilder
         $defense = (isset($character['defense']) && is_numeric($character['defense'])) ? (int)$character['defense'] : $stats['defense'];
 
         $skills = $base['skills'] ?? [];
+        $skills = array_values(array_filter($skills, function ($s) use ($level) {
+            if (!is_array($s)) {
+                return true;
+            }
+            $unlockLevel = (int)($s['unlock_level'] ?? $s['level'] ?? 1);
+            return $unlockLevel <= $level;
+        }));
         if ($playerSkillIds !== []) {
             $set = array_flip($playerSkillIds);
             $skills = array_values(array_filter($skills, function ($s) use ($set) {

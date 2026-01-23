@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Services\AuthService;
 use App\Services\QuestService;
+use App\Services\ExperienceService;
+use App\Services\EntitySheetService;
 use App\Models\Character;
 
 class ExploreController
@@ -281,6 +283,92 @@ class ExploreController
             'success' => true,
             'redirect' => '/game/tavern'
         ]);
+    }
+
+    /**
+     * Award experience when an enemy is defeated
+     * POST /game/explore/award-exp
+     */
+    public function awardExp(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $enemyId = $input['enemy_id'] ?? null;
+        $enemyEntityId = $input['enemy_entity_id'] ?? null;
+        $enemyLevel = (int)($input['enemy_level'] ?? 1);
+
+        if (!$enemyId && !$enemyEntityId) {
+            jsonResponse(['success' => false, 'error' => 'Missing enemy information'], 400);
+            return;
+        }
+
+        $character = Character::findByUser($user['id']);
+        if (!$character) {
+            jsonResponse(['success' => false, 'error' => 'Character not found'], 404);
+            return;
+        }
+
+        $enemySheet = null;
+        if ($enemyEntityId) {
+            $enemySheet = EntitySheetService::find($enemyEntityId);
+        }
+
+        if (!$enemySheet && $enemyId) {
+            $state = $sessionData['state'] ?? [];
+            $enemies = $state['enemies'] ?? [];
+            foreach ($enemies as $enemy) {
+                if (($enemy['id'] ?? '') === $enemyId) {
+                    $eid = $enemy['entity_id'] ?? null;
+                    if ($eid) {
+                        $enemySheet = EntitySheetService::find($eid);
+                    }
+                    if ($enemyLevel <= 0 && isset($enemy['level'])) {
+                        $enemyLevel = (int)$enemy['level'];
+                    }
+                    break;
+                }
+            }
+        }
+
+        $baseExp = 0;
+        if ($enemySheet && isset($enemySheet['loot_table']['xp'])) {
+            $baseExp = (int)$enemySheet['loot_table']['xp'];
+        }
+
+        if ($enemyLevel <= 0 && $enemySheet) {
+            $enemyLevel = (int)($enemySheet['base_level'] ?? 1);
+        }
+
+        $playerLevel = (int)($character['level'] ?? 1);
+        $expGain = ExperienceService::calculateExpGain($enemyLevel, $playerLevel, $baseExp);
+
+        try {
+            $result = ExperienceService::addExperience((int)$character['id'], $expGain);
+            jsonResponse([
+                'success' => true,
+                'exp_gained' => $expGain,
+                'exp_result' => $result
+            ]);
+        } catch (\Exception $e) {
+            jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
     /**

@@ -97,19 +97,6 @@
         <!-- Lado Direito: Ações -->
         <div class="relative z-10 flex gap-4">
             <div class="flex items-center bg-white/5 rounded-xl p-1.5 border border-white/5 backdrop-blur-sm gap-2">
-                <!-- Bestiário -->
-                <button onclick="openCombatModal()" class="p-2.5 rounded-lg hover:bg-white/10 transition-all hover:scale-105 active:scale-95 group relative" title="Combate">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-swords text-red-400 group-hover:text-red-300">
-                        <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
-                        <line x1="13" x2="19" y1="19" y2="13"></line>
-                        <line x1="16" x2="20" y1="16" y2="20"></line>
-                        <line x1="19" x2="21" y1="21" y2="19"></line>
-                        <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"></polyline>
-                        <line x1="5" x2="9" y1="14" y2="18"></line>
-                        <line x1="7" x2="4" y1="17" y2="20"></line>
-                        <line x1="3" x2="5" y1="19" y2="21"></line>
-                    </svg>
-                </button>
                 <div class="w-px h-6 bg-white/10 mx-1"></div>
                 
                 <!-- Som -->
@@ -475,7 +462,6 @@
     
     <?php include 'modal-worldmap.php'; ?>
     <?php include 'modal-character.php'; ?>
-    <?php include 'modal-combat.php'; ?>
     
 </body>
 </html>

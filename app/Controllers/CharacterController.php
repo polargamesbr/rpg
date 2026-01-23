@@ -4,7 +4,7 @@ namespace App\Controllers;
 
 use App\Services\AuthService;
 use App\Models\Character;
-use App\Models\ClassModel;
+use App\Services\EntitySheetService;
 use App\Services\UuidService;
 
 class CharacterController
@@ -16,23 +16,7 @@ class CharacterController
             redirect('/login');
             return;
         }
-
-        // Allow multiple characters - no need to check for existing character
-
-        $classes = ClassModel::findAll();
-        
-        // Prepare class image map for JavaScript
-        $classImageMap = [];
-        foreach ($classes as $class) {
-            $classKey = strtolower($class['name']);
-            $classKey = str_replace(['ã', 'õ'], ['a', 'o'], $classKey); // Normalize
-            $classImageMap[$classKey] = $class['image_prefix'] ?? 'archer'; // Fallback if missing
-        }
-
-        view('character.create', [
-            'classes' => $classes,
-            'classImageMap' => $classImageMap
-        ]);
+        redirect('/game/intro');
     }
 
     public function validateName(): void
@@ -95,35 +79,7 @@ class CharacterController
             redirect('/login');
             return;
         }
-
-        $name = $_GET['name'] ?? '';
-        
-        if (empty($name) || strlen($name) < 2) {
-            $_SESSION['error'] = 'Invalid character name';
-            redirect('/game/character/create');
-            return;
-        }
-
-        // Validate name format
-        if (!preg_match('/^[a-zA-Z0-9\s]{2,50}$/', $name)) {
-            $_SESSION['error'] = 'Invalid character name format';
-            redirect('/game/character/create');
-            return;
-        }
-
-        // Check if name already exists (double check)
-        if (Character::nameExists($name)) {
-            $_SESSION['error'] = 'This character name is already taken';
-            redirect('/game/character/create');
-            return;
-        }
-
-               $classes = ClassModel::findAll();
-               
-               view('character.select-class', [
-                   'name' => htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
-                   'classes' => $classes
-               ]);
+        redirect('/game/intro');
     }
 
     public function store(): void
@@ -146,7 +102,6 @@ class CharacterController
         // Get JSON input
         $input = json_decode(file_get_contents('php://input'), true);
         $name = trim($input['name'] ?? '');
-        $class = $input['class'] ?? '';
         $gender = $input['gender'] ?? 'male';
 
         header('Content-Type: application/json');
@@ -162,13 +117,6 @@ class CharacterController
             return;
         }
 
-        // Validate class exists in database
-        $classData = ClassModel::findByName($class);
-        if (!$classData) {
-            echo json_encode(['success' => false, 'error' => 'Invalid class']);
-            return;
-        }
-
         $validGenders = ['male', 'female'];
         if (!in_array($gender, $validGenders)) {
             echo json_encode(['success' => false, 'error' => 'Invalid gender']);
@@ -181,15 +129,13 @@ class CharacterController
             return;
         }
 
-        // Get base attributes from class data
-        $baseAttributes = [
-            'str' => (int)$classData['str_base'],
-            'agi' => (int)$classData['agi_base'],
-            'vit' => (int)$classData['vit_base'],
-            'int' => (int)$classData['int_base'],
-            'dex' => (int)$classData['dex_base'],
-            'luk' => (int)$classData['luk_base']
-        ];
+        $entityId = 'swordsman';
+        $sheet = EntitySheetService::find($entityId);
+        if (!$sheet) {
+            echo json_encode(['success' => false, 'error' => 'Invalid entity']);
+            return;
+        }
+        $baseAttributes = $sheet['attributes'] ?? ['str' => 10, 'agi' => 10, 'vit' => 10, 'int' => 10, 'dex' => 10, 'luk' => 10];
 
         // Calculate initial stats
         $level = 1;
@@ -200,25 +146,31 @@ class CharacterController
             'uuid' => UuidService::generate(),
             'user_id' => AuthService::getCurrentUserId(),
             'name' => $name,
-            'class_id' => $classData['id'], // Use class_id foreign key instead of class name
+            'entity_id' => $entityId,
+            'party_active' => 1,
+            'party_slot' => 1,
             'gender' => $gender,
             'level' => $level,
-            'str' => $baseAttributes['str'],
-            'agi' => $baseAttributes['agi'],
-            'vit' => $baseAttributes['vit'],
-            '`int`' => $baseAttributes['int'], // Use backticked key for MySQL reserved word
-            'dex' => $baseAttributes['dex'],
-            'luk' => $baseAttributes['luk'],
+            'str' => (int)$baseAttributes['str'],
+            'agi' => (int)$baseAttributes['agi'],
+            'vit' => (int)$baseAttributes['vit'],
+            '`int`' => (int)$baseAttributes['int'], // Use backticked key for MySQL reserved word
+            'dex' => (int)$baseAttributes['dex'],
+            'luk' => (int)$baseAttributes['luk'],
             'hp' => $maxHp,
             'max_hp' => $maxHp,
             'mana' => $maxMana,
             'max_mana' => $maxMana,
             'xp' => 0,
-            'gold' => 150
+            'attribute_points' => 0,
+            'gold' => 150,
+            'party_active' => 1,
+            'party_slot' => 1
         ];
 
         try {
             Character::create($characterData);
+
             // Get base URL from config
             $appConfig = require __DIR__ . '/../../config/app.php';
             $baseUrl = rtrim($appConfig['url'], '/');

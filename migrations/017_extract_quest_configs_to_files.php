@@ -14,6 +14,19 @@ require_once __DIR__ . '/../config/database.php';
 
 \App\Models\Database::init(require __DIR__ . '/../config/database.php');
 
+$hasConfigColumn = \App\Models\Database::fetchOne(
+    "SELECT COLUMN_NAME 
+     FROM INFORMATION_SCHEMA.COLUMNS 
+     WHERE TABLE_SCHEMA = DATABASE() 
+     AND TABLE_NAME = 'quest_definitions' 
+     AND COLUMN_NAME = 'config_json'"
+);
+
+if (!$hasConfigColumn) {
+    echo "Column 'config_json' does not exist in quest_definitions. Nothing to extract.\n";
+    return;
+}
+
 $quests = \App\Models\Database::fetchAll("SELECT id, config_json FROM quest_definitions WHERE config_json IS NOT NULL");
 
 $questsDir = __DIR__ . '/../app/GameData/quests';

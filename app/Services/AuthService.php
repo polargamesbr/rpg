@@ -83,7 +83,22 @@ class AuthService
 
     public static function isLoggedIn(): bool
     {
-        return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+        if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+            return false;
+        }
+
+        if (empty($_SESSION['user_id'])) {
+            self::logout();
+            return false;
+        }
+
+        $user = User::findById((int)$_SESSION['user_id']);
+        if (!$user) {
+            self::logout();
+            return false;
+        }
+
+        return true;
     }
 
     public static function getCurrentUser(): ?array

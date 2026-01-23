@@ -10,16 +10,7 @@ class AuthController
     public function showLogin(): void
     {
         if (AuthService::isLoggedIn()) {
-            $userId = AuthService::getCurrentUserId();
-            $characters = \App\Models\Character::findAllByUser($userId);
-            
-            if (empty($characters)) {
-                // No characters, go to creation
-                redirect('/game/character/create');
-            } else {
-                // Has characters, go to panel
-                redirect('/panel');
-            }
+            redirect('/panel');
             return;
         }
 
@@ -50,31 +41,13 @@ class AuthController
             return;
         }
 
-        // Check if user has characters
-        $characters = \App\Models\Character::findAllByUser($result['user']['id']);
-        
-        if (empty($characters)) {
-            // No characters, go to creation
-            redirect('/game/character/create');
-        } else {
-            // Has characters, go to panel
-            redirect('/panel');
-        }
+        redirect('/panel');
     }
 
     public function showRegister(): void
     {
         if (AuthService::isLoggedIn()) {
-            $userId = AuthService::getCurrentUserId();
-            $characters = \App\Models\Character::findAllByUser($userId);
-            
-            if (empty($characters)) {
-                // No characters, go to creation
-                redirect('/game/character/create');
-            } else {
-                // Has characters, go to panel
-                redirect('/panel');
-            }
+            redirect('/panel');
             return;
         }
 

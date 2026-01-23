@@ -230,16 +230,8 @@ class QuestService
         $player = &$state['player'];
         if (is_array($player)) {
             $character = Character::findById((int)($session['character_id'] ?? 0)) ?? [];
-            // Prioridade: entity_id do state > class_entity_id do character > combatKey do state > mapClassToCombatKey
-            $entityId = $player['entity_id'] ?? $player['combatKey'] ?? null;
-            if (empty($entityId) && !empty($character['class_entity_id'])) {
-                $entityId = $character['class_entity_id'];
-            }
-            if (empty($entityId) && !empty($character['class_name'])) {
-                $ck = self::mapClassToCombatKey($character['class_name']);
-                $entityDef = EntitySheetService::findByCombatKey($ck);
-                $entityId = $entityDef['id'] ?? $ck ?? null;
-            }
+            // Prioridade: entity_id do state > combatKey do state > entity_id do character
+            $entityId = $player['entity_id'] ?? $player['combatKey'] ?? ($character['entity_id'] ?? null);
             
             if ($entityId) {
             try {
@@ -276,7 +268,7 @@ class QuestService
             $player['moveRange'] = (int)($inst['moveRange'] ?? 4);
             $player['attackRange'] = (int)($inst['attackRange'] ?? 1);
             $player['scale'] = (float)($playerDefaults['scale'] ?? $inst['scale'] ?? 1.0);
-            $player['class'] = strtolower((string)($character['class_name'] ?? $character['class'] ?? ''));
+            $player['class'] = strtolower((string)($character['entity_id'] ?? ''));
             $img = $inst['images']['default'] ?? '';
             $player['avatar'] = $img ? ((str_starts_with($img, '/') ? $img : '/public/' . ltrim($img, '/'))) : '';
             if (isset($playerDefaults['animations']) && is_array($playerDefaults['animations'])) {
@@ -487,13 +479,7 @@ class QuestService
     {
         $playerStart = $config['player_start'] ?? ['x' => 5, 'y' => 5];
 
-        $entityId = $character['class_entity_id'] ?? null;
-        if ($entityId === null || $entityId === '') {
-            $ck = self::mapClassToCombatKey($character['class_name'] ?? $character['class'] ?? '');
-            $entityDef = EntitySheetService::findByCombatKey($ck);
-            $entityId = $entityDef['id'] ?? $ck ?? 'swordsman';
-        }
-        $entityId = $entityId ?: 'swordsman';
+        $entityId = $character['entity_id'] ?? 'swordsman';
 
         $inst = EntityInstanceBuilder::build($entityId, $character, []);
         
@@ -600,17 +586,7 @@ class QuestService
     private static function mapClassToCombatKey(string $className): string
     {
         $normalized = strtolower(trim($className));
-        return match ($normalized) {
-            'swordsman' => 'hero_swordman',
-            'archer' => 'hero_archer',
-            'mage' => 'hero_mage',
-            'beast tamer' => 'beast_tamer',
-            'beast_tamer' => 'beast_tamer',
-            'thief' => 'hero_thief',
-            'acolyte' => 'hero_acolyte',
-            'blacksmith' => 'hero_blacksmith',
-            default => 'hero_swordman'
-        };
+        return $normalized;
     }
 }
 

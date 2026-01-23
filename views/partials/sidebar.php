@@ -1,26 +1,51 @@
 <?php
 use App\Services\AuthService;
 use App\Services\CharacterService;
-use App\Models\ClassModel;
+use App\Models\Character;
 
 $character = CharacterService::getActiveCharacter();
+$user = AuthService::getCurrentUser();
+
+$entityNameMap = [
+    'swordsman' => 'Swordsman',
+    'archer' => 'Archer',
+    'mage' => 'Mage',
+    'thief' => 'Thief',
+    'acolyte' => 'Acolyte',
+    'blacksmith' => 'Blacksmith',
+    'beast_tamer' => 'Beast Tamer'
+];
+$entityImageMap = [
+    'swordsman' => 'swordman',
+    'archer' => 'archer',
+    'mage' => 'mage',
+    'thief' => 'thief',
+    'acolyte' => 'sacer',
+    'blacksmith' => 'blacksmith',
+    'beast_tamer' => 'beast_tamer'
+];
 
 // Get avatar image based on class and gender
 $avatarImage = 'avatar.webp';
 $characterName = 'Unknown';
 $characterClass = 'Adventurer';
 $characterLevel = 1;
+$activeCharacterName = 'Unknown';
+$activeCharacterClass = 'Adventurer';
 
 if ($character) {
     // Character already has class data from JOIN
     $gender = $character['gender'] ?? 'male';
-    $imagePrefix = $character['image_prefix'] ?? 'archer';
+    $entityId = $character['entity_id'] ?? 'swordsman';
+    $imagePrefix = $entityImageMap[$entityId] ?? 'swordman';
     $avatarImage = $imagePrefix . '-' . $gender . '.png';
     
-    $characterName = $character['name'] ?? 'Unknown';
-    $characterClass = $character['class_display_name'] ?? $character['class_name'] ?? 'Adventurer';
+    $activeCharacterName = $character['name'] ?? 'Unknown';
+    $activeCharacterClass = $entityNameMap[$entityId] ?? ucfirst($entityId);
     $characterLevel = $character['level'] ?? 1;
 }
+$characterName = $activeCharacterName ?: 'Unknown';
+$characterClass = 'Party';
 $hp = $character['hp'] ?? 100;
 $maxHp = $character['max_hp'] ?? 100;
 $mana = $character['mana'] ?? 50;
@@ -32,6 +57,19 @@ $hpPercent = $maxHp > 0 ? ($hp / $maxHp) * 100 : 0;
 $manaPercent = $maxMana > 0 ? ($mana / $maxMana) * 100 : 0;
 $xpPercent = $nextLevelXp > 0 ? ($xp / $nextLevelXp) * 100 : 0;
 
+$partyMembers = [];
+if ($user) {
+    $partyMembers = Character::findAllByUser((int)$user['id']);
+}
+if (!$partyMembers && $character) {
+    $partyMembers = [
+        [
+            'name' => $activeCharacterName,
+            'entity_id' => $character['entity_id'] ?? 'swordsman'
+        ]
+    ];
+}
+
 $activePage = $activePage ?? '';
 ?>
 
@@ -39,9 +77,15 @@ $activePage = $activePage ?? '';
     
     <!-- === HERO SHOWCASE === -->
     <div class="relative h-[340px] shrink-0 overflow-hidden group">
-        <!-- Background Image -->
-        <img src="<?= asset('img/' . $avatarImage) ?>" alt="<?= htmlspecialchars($characterName) ?>" 
-             class="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-1000 group-hover:scale-105">
+        <!-- Background Video -->
+        <?php if ($entityId === 'swordsman' && ($gender ?? 'male') === 'male'): ?>
+            <video src="<?= asset('video/hero_swordman.mp4') ?>" 
+                   class="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-1000 group-hover:scale-105"
+                   autoplay loop muted playsinline></video>
+        <?php else: ?>
+            <img src="<?= asset('img/' . $avatarImage) ?>" alt="<?= htmlspecialchars($characterName) ?>" 
+                 class="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-1000 group-hover:scale-105">
+        <?php endif; ?>
         
         <!-- Subtle Vignette (less aggressive) -->
         <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-90"></div>
@@ -78,8 +122,8 @@ $activePage = $activePage ?? '';
                 </h2>
                 <!-- Class Badge -->
                 <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-900/30 to-transparent backdrop-blur-sm rounded-full border border-yellow-500/20">
-                    <i data-lucide="sword" class="w-3 h-3 text-yellow-500"></i>
-                    <span class="text-[10px] font-bold text-yellow-400/90 uppercase tracking-[0.15em]"><?= htmlspecialchars($characterClass) ?></span>
+                    <i data-lucide="users" class="w-3 h-3 text-yellow-500"></i>
+                    <span class="text-[10px] font-bold text-yellow-400/90 uppercase tracking-[0.15em]"><?= htmlspecialchars($characterClass) ?> • <?= htmlspecialchars($activeCharacterName) ?></span>
                 </div>
             </div>
         </div>
@@ -176,6 +220,34 @@ $activePage = $activePage ?? '';
                 </li>
             </ul>
         </div>
+
+        <?php if (!empty($partyMembers)): ?>
+        <!-- Party Section -->
+        <div class="mb-4">
+            <div class="px-3 mb-2 flex items-center gap-2">
+                <div class="w-1 h-1 bg-emerald-500 rounded-full"></div>
+                <span class="text-[9px] font-black text-emerald-500/60 uppercase tracking-[0.3em]">Party</span>
+                <div class="flex-1 h-px bg-gradient-to-r from-emerald-500/20 to-transparent"></div>
+            </div>
+            <ul class="space-y-1">
+                <?php foreach ($partyMembers as $member): ?>
+                    <li>
+                        <div class="sidebar-nav-item disabled">
+                            <i data-lucide="user" class="sidebar-nav-icon"></i>
+                            <span><?= htmlspecialchars($member['name'] ?? 'Member') ?></span>
+                            <span class="ml-auto text-[8px] font-bold text-emerald-400/70 uppercase tracking-wider">
+                                <?php
+                                    $memberEntity = $member['entity_id'] ?? 'swordsman';
+                                    $memberLabel = $entityNameMap[$memberEntity] ?? ucfirst($memberEntity);
+                                ?>
+                                <?= htmlspecialchars($memberLabel) ?>
+                            </span>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
 
         <!-- Hero Section -->
         <div class="mb-4">

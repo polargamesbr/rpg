@@ -14,6 +14,19 @@ return [
         'difficulty' => 'easy',
         'estimated_time' => '15 minutes'
     ],
+    'test-dev' => [
+        'id' => 'test-dev',
+        'title' => 'Test Dev',
+        'description' => 'Hidden dev quest for combat testing.',
+        'prompt_ia' => 'You are a narrator for an RPG game. The player is entering a dev-only combat test map with two slimes. Keep the narration short and functional.',
+        'image' => 'first-steps.png',
+        'rewards' => [
+            'xp' => 0,
+            'gold' => 0
+        ],
+        'difficulty' => 'easy',
+        'estimated_time' => '5 minutes'
+    ],
     'join-the-guild' => [
         'id' => 'join-the-guild',
         'title' => 'Join the Guild',

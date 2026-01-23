@@ -4,6 +4,10 @@ $showSidebar = true;
 $activePage = 'city-hub';
 $character = $character ?? null;
 $originCity = $originCity ?? 'Stormhaven';
+$showGateDialog = $showGateDialog ?? false;
+$forceGateDialog = $forceGateDialog ?? false;
+$playerName = $character['name'] ?? 'Aldric';
+$tavernUrl = url('game/tavern');
 
 ob_start();
 ?>
@@ -151,8 +155,202 @@ ob_start();
 
 </div>
 
+<div id="tavern-unlock-modal" class="tavern-unlock-overlay">
+    <div class="tavern-unlock-card">
+        <div class="tavern-unlock-glow"></div>
+        <div class="tavern-unlock-content">
+            <div class="tavern-unlock-body">
+                <div class="tavern-unlock-badge">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    Novo Local
+                </div>
+                <h2 class="tavern-unlock-title">A Taverna esta acessivel</h2>
+                <p class="tavern-unlock-text">
+                    Voce liberou a Taverna. La dentro voce pode encontrar missoes,
+                    rumores e novas oportunidades para sua jornada.
+                </p>
+            </div>
+            <div class="tavern-unlock-actions">
+                <a class="tavern-unlock-primary" href="<?= $tavernUrl ?>">Ir a Taverna</a>
+                <button type="button" class="tavern-unlock-secondary" data-close>Continuar na cidade</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php
-$additionalScripts = <<<'JS'
+$showGateDialogJs = $showGateDialog ? 'true' : 'false';
+$forceGateDialogJs = $forceGateDialog ? 'true' : 'false';
+$playerNameJson = json_encode($playerName);
+$eventUrl = url('game/events/complete');
+$tavernUrl = url('game/tavern');
+
+$additionalStyles = <<<CSS
+.tavern-unlock-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at top, rgba(245, 158, 11, 0.15), rgba(0, 0, 0, 0.85));
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 12000;
+}
+
+.tavern-unlock-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.tavern-unlock-card {
+    position: relative;
+    width: min(92%, 560px);
+    padding: 0;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(20, 16, 8, 0.98), rgba(10, 8, 5, 0.96));
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.7),
+        0 0 30px rgba(245, 158, 11, 0.2);
+    text-align: center;
+    animation: tavernUnlockPop 0.35s ease-out;
+    max-height: min(82vh, 620px);
+    display: flex;
+    flex-direction: column;
+}
+
+.tavern-unlock-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: 20px;
+    background: linear-gradient(120deg, rgba(245, 158, 11, 0.6), transparent 50%, rgba(251, 191, 36, 0.6));
+    filter: blur(10px);
+    opacity: 0.5;
+    z-index: 0;
+}
+
+.tavern-unlock-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: min(82vh, 620px);
+}
+
+.tavern-unlock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: rgba(255, 222, 154, 0.95);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.tavern-unlock-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.8rem;
+    letter-spacing: 0.08em;
+    color: #fef3c7;
+    text-shadow: 0 6px 22px rgba(245, 158, 11, 0.4);
+    margin-bottom: 10px;
+}
+
+.tavern-unlock-text {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 22px;
+}
+
+.tavern-unlock-body {
+    padding: 32px 28px 0;
+    overflow: auto;
+    max-height: calc(82vh - 140px);
+}
+
+.tavern-unlock-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    padding: 18px 24px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(8, 6, 4, 0.8);
+    position: sticky;
+    bottom: 0;
+}
+
+.tavern-unlock-primary {
+    padding: 12px 22px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(251, 191, 36, 0.9));
+    color: #1f1307;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.85rem;
+    border: none;
+    box-shadow: 0 10px 25px rgba(245, 158, 11, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tavern-unlock-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(245, 158, 11, 0.45);
+}
+
+.tavern-unlock-secondary {
+    padding: 12px 20px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tavern-unlock-secondary:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    color: #fef3c7;
+}
+
+@keyframes tavernUnlockPop {
+    from {
+        transform: translateY(12px) scale(0.96);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 640px) {
+    .tavern-unlock-title {
+        font-size: 1.4rem;
+    }
+    .tavern-unlock-text {
+        font-size: 0.95rem;
+    }
+    .tavern-unlock-body {
+        padding: 14px 22px 0;
+    }
+}
+CSS;
+
+$additionalScripts = <<<JS
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Lucide Icons
     lucide.createIcons();
@@ -187,7 +385,40 @@ document.addEventListener('DOMContentLoaded', () => {
             card.classList.remove('active-tilt');
         });
     });
+
+    const showGateDialog = {$showGateDialogJs};
+    const forceGateDialog = {$forceGateDialogJs};
+    if (showGateDialog && typeof window.initDialog === 'function') {
+        window.dialogueContext = {
+            playerName: {$playerNameJson}
+        };
+        window.onDialogueFinish = (scenarioId, completed) => {
+            if (scenarioId !== 'stormhaven_gate_intro') return;
+            if (!completed) return;
+            if (forceGateDialog) return;
+            fetch('{$eventUrl}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'stormhaven_gate_intro' })
+            }).catch(() => {});
+            showTavernUnlockModal();
+        };
+        initDialog('stormhaven_gate_intro');
+    }
 });
+
+function showTavernUnlockModal() {
+    const modal = document.getElementById('tavern-unlock-modal');
+    if (!modal) return;
+    modal.classList.add('is-visible');
+
+    const closeButtons = modal.querySelectorAll('[data-close]');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modal.classList.remove('is-visible');
+        });
+    });
+}
 JS;
 
 $content = ob_get_clean();

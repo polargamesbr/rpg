@@ -14,7 +14,6 @@
     <script src="<?= asset('js/lazy-modal-loader.js') ?>"></script>
     <script src="<?= asset('js/worldmap-modal-loader.js') ?>"></script>
     <script src="<?= asset('js/character-modal-loader.js') ?>"></script>
-    <script src="<?= asset('js/combat-modal-loader.js') ?>"></script>
     <?php if (isset($additionalStyles)): ?>
         <style><?= $additionalStyles ?></style>
     <?php endif; ?>

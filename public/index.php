@@ -91,7 +91,7 @@ try {
             $normalizedPattern = str_replace(['{', '}'], [':', ''], $pattern);
             
             // Convert pattern to regex (support UUIDs with hyphens)
-            $regexPattern = preg_replace('/:[a-zA-Z0-9_]+/', '([a-zA-Z0-9\-]+)', $normalizedPattern);
+            $regexPattern = preg_replace('/:[a-zA-Z0-9_]+/', '([a-zA-Z0-9\-_]+)', $normalizedPattern);
             $regexPattern = str_replace('/', '\/', $regexPattern);
             $regexPattern = '/^' . $regexPattern . '$/';
             
