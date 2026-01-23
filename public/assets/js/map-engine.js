@@ -3643,29 +3643,42 @@
      * @returns {Object} Preview data with per-target damage estimates
      */
     function calculateSkillDamagePreview(caster, skill, targets) {
-        const dmgMult = skill.dmgMult || skill.dmg_mult || 1.0;
+        const dmgMult = typeof skill.dmgMult === 'number'
+            ? skill.dmgMult
+            : (typeof skill.dmg_mult === 'number' ? skill.dmg_mult : 1.0);
         const numHits = skill.hits || 1;
-        const isMagic = skill.isMagic || skill.element === 'holy' || skill.element === 'fire' || skill.element === 'ice' || skill.element === 'lightning' || skill.element === 'dark';
+        const isMagic = skill.damageType === 'magic'
+            || (skill.element && ['fire', 'ice', 'lightning', 'holy', 'dark'].includes(skill.element));
+        const casterEntityId = getEntityIdForUnit(caster);
+        const isArcher = caster.class === 'archer' || (casterEntityId || '').toLowerCase().includes('archer');
 
-        // Base damage (MATK for magic, ATK for physical)
+        // Base damage (match executeSkill: MATK for magic, ATK for melee, ATK ranged for archer)
         const baseDamage = isMagic
             ? (caster.matk || caster.attack || 10)
-            : (caster.attack || 10);
+            : (isArcher
+                ? ((caster.attackRanged != null && caster.attackRanged > 0) ? caster.attackRanged : (caster.attack || 10))
+                : (caster.attack || 10));
 
         const critChance = Math.min(95, Math.max(1, (caster.stats?.crit ?? caster.crit ?? 5) + (caster.buffedCritBonus || 0)));
 
         const targetPreviews = targets.map(target => {
             const defense = isMagic ? (target.mdef || 0) : (target.defense || 0);
             const defReduction = isMagic ? 0.25 : 0.3;
+            const hitDmgMult = dmgMult / numHits;
 
-            // Min/max with variance (±20%)
-            const rawDmg = (baseDamage * dmgMult - defense * defReduction) * numHits;
-            const minRaw = Math.floor(rawDmg * 0.8);
-            const maxRaw = Math.floor(rawDmg * 1.2);
+            // Min/max per hit (match executeSkill variance)
+            let minHit = Math.max(1, Math.floor(baseDamage * hitDmgMult * 0.9));
+            let maxHit = Math.max(1, Math.floor(baseDamage * hitDmgMult * 1.1));
+            minHit = Math.max(1, minHit - Math.floor(defense * defReduction));
+            maxHit = Math.max(1, maxHit - Math.floor(defense * defReduction));
 
             // Elemental multiplier
-            const attackerElement = skill.element || caster.element || 'neutral';
-            const targetElement = target.element || 'neutral';
+            const attackerElement = skill.element || caster.element
+                || (window.TacticalDataLoader?.entityCache?.[caster.combatKey || caster.combat_key]?.element)
+                || 'neutral';
+            const targetElement = target.element
+                || (window.TacticalDataLoader?.entityCache?.[target.combatKey || target.combat_key]?.element)
+                || 'neutral';
             let elementMult = 1.0;
             let effectiveness = 'Normal';
 
@@ -3682,8 +3695,10 @@
             if (caster.buffedDamageDealt) damageMultiplier *= caster.buffedDamageDealt;
             if (target.buffedDamageTaken) damageMultiplier *= target.buffedDamageTaken;
 
-            const min = Math.max(1, Math.floor(minRaw * elementMult * damageMultiplier));
-            const max = Math.max(1, Math.floor(maxRaw * elementMult * damageMultiplier));
+            const minPerHit = Math.max(1, Math.floor(minHit * elementMult * damageMultiplier));
+            const maxPerHit = Math.max(1, Math.floor(maxHit * elementMult * damageMultiplier));
+            const min = minPerHit * numHits;
+            const max = maxPerHit * numHits;
             const avgDamage = Math.floor((min + max) / 2);
             const willKill = target.hp - avgDamage <= 0;
 

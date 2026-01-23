@@ -25,6 +25,14 @@ class QuestSession
         );
     }
 
+    public static function findActiveByUserAndQuest(int $userId, string $questId): ?array
+    {
+        return Database::fetchOne(
+            "SELECT * FROM quest_sessions WHERE user_id = :user_id AND quest_id = :quest_id AND status = 'active' ORDER BY started_at DESC LIMIT 1",
+            ['user_id' => $userId, 'quest_id' => $questId]
+        );
+    }
+
     public static function updateState(int $id, array $state): bool
     {
         return Database::update(

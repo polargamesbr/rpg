@@ -20,7 +20,8 @@ class QuestService
             throw new \RuntimeException('Quest não encontrada.');
         }
 
-        $existing = QuestSession::findActiveByUser($userId);
+        // Verifica se já existe uma sessão ativa para ESTA quest específica
+        $existing = QuestSession::findActiveByUserAndQuest($userId, $questId);
         if ($existing) {
             return [
                 'session_uid' => $existing['session_uid'],
