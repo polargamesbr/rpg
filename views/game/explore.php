@@ -3973,7 +3973,7 @@
     </script>
     <script src="<?= asset('js/map-debug.js') ?>"></script>
     <script src="<?= asset('js/map-engine.js') ?>"></script>
-    <script src="<?= asset('performance-monitor.js') ?>"></script>
+    <script src="<?= asset('js/performance-monitor.js') ?>"></script>
     <script src="<?= asset('js/dialogue-system.js') ?>"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

@@ -4,7 +4,9 @@ namespace App\Controllers;
 
 use App\Services\AuthService;
 use App\Services\UserEventService;
+use App\Services\EntitySheetService;
 use App\Models\Character;
+use App\Models\Database;
 
 class PanelController
 {
@@ -18,11 +20,41 @@ class PanelController
         $user = AuthService::getCurrentUser();
         $character = Character::findByUser($userId);
         $introDone = UserEventService::hasEvent($userId, 'intro_done');
+        $historyRows = Database::fetchAll(
+            "SELECT quest_id, enemy_id, enemy_entity_id, enemy_level, exp_gained, created_at
+             FROM quest_exp_history
+             WHERE user_id = :user_id
+             ORDER BY created_at DESC
+             LIMIT 50",
+            ['user_id' => $userId]
+        );
+        $expHistory = [];
+        foreach ($historyRows as $row) {
+            $enemyEntityId = $row['enemy_entity_id'] ?? null;
+            $enemyName = $row['enemy_id'] ?? 'unknown';
+            if ($enemyEntityId) {
+                $sheet = EntitySheetService::find($enemyEntityId);
+                if ($sheet && !empty($sheet['name'])) {
+                    $enemyName = $sheet['name'];
+                } else {
+                    $enemyName = $enemyEntityId;
+                }
+            }
+            $expHistory[] = [
+                'quest_id' => $row['quest_id'] ?? '',
+                'enemy_name' => $enemyName,
+                'enemy_entity_id' => $enemyEntityId,
+                'enemy_level' => (int)($row['enemy_level'] ?? 1),
+                'exp_gained' => (int)($row['exp_gained'] ?? 0),
+                'created_at' => $row['created_at'] ?? null
+            ];
+        }
 
         view('panel.index', [
             'user' => $user,
             'character' => $character,
-            'introDone' => $introDone
+            'introDone' => $introDone,
+            'expHistory' => $expHistory
         ]);
     }
 

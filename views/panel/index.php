@@ -38,6 +38,45 @@ $buttonText = $introDone ? 'Continue Story' : 'Start Story';
             box-shadow: 0 30px 90px rgba(0,0,0,0.6);
             backdrop-filter: blur(10px);
         }
+        .panel-layout {
+            display: grid;
+            grid-template-columns: minmax(180px, 220px) 1fr;
+            gap: 2.5rem;
+        }
+        .panel-sidebar {
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding-right: 2rem;
+        }
+        .panel-menu {
+            margin-top: 1.5rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+        .panel-menu a {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.7rem 0.9rem;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: rgba(248,250,252,0.6);
+            text-decoration: none;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: all 0.2s ease;
+        }
+        .panel-menu a:hover {
+            color: #f8fafc;
+            border-color: rgba(212,175,55,0.4);
+            box-shadow: 0 0 20px rgba(212,175,55,0.15);
+        }
+        .panel-content {
+            display: grid;
+            gap: 2rem;
+        }
         .title {
             font-family: 'Cinzel', serif;
             font-size: clamp(2rem, 3vw, 2.8rem);
@@ -85,30 +124,123 @@ $buttonText = $introDone ? 'Continue Story' : 'Start Story';
             transition: all 0.3s ease;
         }
         .cta button:hover { transform: translateY(-2px); }
+        .history {
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 1.5rem;
+        }
+        .history-title {
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            color: rgba(248,250,252,0.7);
+        }
+        .history-list {
+            margin-top: 1rem;
+            display: grid;
+            gap: 0.75rem;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+        .history-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.8rem;
+            padding: 0.7rem 0.9rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .history-item .enemy {
+            font-weight: 700;
+        }
+        .history-item .meta {
+            font-size: 0.75rem;
+            color: rgba(248,250,252,0.6);
+        }
+        .history-item .xp {
+            font-weight: 700;
+            color: #34d399;
+            text-align: right;
+        }
+        .history-empty {
+            font-size: 0.85rem;
+            color: rgba(248,250,252,0.5);
+            border: 1px dashed rgba(255,255,255,0.12);
+            padding: 1rem;
+            border-radius: 12px;
+        }
+        @media (max-width: 820px) {
+            .panel {
+                padding: 2rem;
+            }
+            .panel-layout {
+                grid-template-columns: 1fr;
+            }
+            .panel-sidebar {
+                border-right: none;
+                padding-right: 0;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                padding-bottom: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="panel">
-        <div class="title">Account Panel</div>
-        <div class="subtitle">Story Progress</div>
-        <div class="info">
-            <div class="info-row">
-                <span class="label">Account</span>
-                <span class="value"><?= htmlspecialchars($userName ?: 'User') ?></span>
+        <div class="panel-layout">
+            <aside class="panel-sidebar">
+                <div class="title">Account Panel</div>
+                <div class="subtitle">Story Progress</div>
+                <nav class="panel-menu">
+                    <a href="#account">Conta</a>
+                    <a href="#history">Histórico</a>
+                </nav>
+            </aside>
+            <div class="panel-content">
+                <section id="account">
+                    <div class="info">
+                        <div class="info-row">
+                            <span class="label">Account</span>
+                            <span class="value"><?= htmlspecialchars($userName ?: 'User') ?></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Email</span>
+                            <span class="value"><?= htmlspecialchars($user['email'] ?? '-') ?></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Main Character</span>
+                            <span class="value">
+                                <?= htmlspecialchars($characterName ?: 'Not created yet') ?>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="cta">
+                        <button type="button" onclick="window.location.href='<?= $buttonUrl ?>'"><?= $buttonText ?></button>
+                    </div>
+                </section>
+                <section class="history" id="history">
+                    <div class="history-title">Histórico de Monstros</div>
+                    <?php if (!empty($expHistory ?? [])): ?>
+                        <div class="history-list">
+                            <?php foreach ($expHistory as $row): ?>
+                                <div class="history-item">
+                                    <div>
+                                        <div class="enemy"><?= htmlspecialchars($row['enemy_name']) ?></div>
+                                        <div class="meta">
+                                            Quest: <?= htmlspecialchars($row['quest_id'] ?: '-') ?> · Lv <?= (int)$row['enemy_level'] ?>
+                                        </div>
+                                    </div>
+                                    <div class="xp">+<?= (int)$row['exp_gained'] ?> XP</div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="history-empty">Nenhum monstro derrotado ainda.</div>
+                    <?php endif; ?>
+                </section>
             </div>
-            <div class="info-row">
-                <span class="label">Email</span>
-                <span class="value"><?= htmlspecialchars($user['email'] ?? '-') ?></span>
-            </div>
-            <div class="info-row">
-                <span class="label">Main Character</span>
-                <span class="value">
-                    <?= htmlspecialchars($characterName ?: 'Not created yet') ?>
-                </span>
-            </div>
-        </div>
-        <div class="cta">
-            <button type="button" onclick="window.location.href='<?= $buttonUrl ?>'"><?= $buttonText ?></button>
         </div>
     </div>
 </body>

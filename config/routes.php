@@ -40,7 +40,6 @@ return [
     'GET /game/explore' => 'ExploreController@index',
     'GET /game/explore/state' => 'ExploreController@getState',
     'POST /game/explore/state' => 'ExploreController@setState',
-    'POST /game/explore/move' => 'ExploreController@move',
     'POST /game/explore/complete' => 'ExploreController@complete',
     'POST /game/explore/award-exp' => 'ExploreController@awardExp',
     'POST /game/explore/reset' => 'ExploreController@reset',

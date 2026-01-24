@@ -50,7 +50,9 @@ try {
         '027_drop_class_id_from_characters.php',
         '028_add_entity_id_to_characters.php',
         '029_drop_classes_table.php',
-        '030_create_user_events_table.php'
+        '030_create_user_events_table.php',
+        '031_add_quest_exp_history.php',
+        '032_remove_unused_quest_tables.php'
     ];
     
     foreach ($migrations as $migration) {

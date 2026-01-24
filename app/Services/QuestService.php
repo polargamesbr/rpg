@@ -135,7 +135,8 @@ class QuestService
 
     /**
      * Sincroniza state['enemies'] com config: remove inimigos que não estão no config,
-     * adiciona os em falta, e corrige hp zerado ou ausente.
+     * sincroniza propriedades dos que existem, e corrige entity_id quando ausente.
+     * NÃO cria novos inimigos - se um inimigo não está no state, ele foi morto e não deve ser recriado.
      * @param array<string, mixed> $state
      * @param array<string, mixed> $config
      */
@@ -148,31 +149,45 @@ class QuestService
             $id = $e['id'] ?? null;
             if ($id) $existingById[$id] = $e;
         }
+        
+        error_log('[syncEnemiesToConfig] State enemies: ' . json_encode(array_keys($existingById)));
+        error_log('[syncEnemiesToConfig] Config enemy IDs: ' . json_encode($allowedIds));
+        
         $newEnemies = [];
-        foreach ($configEnemies as $index => $ce) {
-            $id = $ce['id'] ?? ('enemy_' . ($index + 1));
-            $ck = $ce['combat_key'] ?? $ce['combatKey'] ?? null;
-            $entityDef = $ck ? EntitySheetService::findByCombatKey($ck) : null;
-            $eid = $entityDef['id'] ?? $ck ?? null;
-            $stats = $entityDef ? EntitySheetService::getCombatStats($entityDef) : ['maxHp' => 20, 'maxSp' => 50, 'attack' => 5, 'defense' => 2, 'moveRange' => 2, 'attackRange' => 1, 'behavior' => 'aggressive', 'scale' => 1.0];
-            $sheetMaxHp = $stats['maxHp'];
-            if (isset($existingById[$id])) {
-                $e = $existingById[$id];
-                if ((int)($e['hp'] ?? 0) <= 0) $e['hp'] = $sheetMaxHp;
-                $e['entity_id'] = $eid ?? ($e['entity_id'] ?? null);
-                $newEnemies[] = $e;
-            } else {
-                $newEnemies[] = [
-                    'id' => $id,
-                    'entity_id' => $eid,
-                    'x' => (int)($ce['x'] ?? 1),
-                    'y' => (int)($ce['y'] ?? 1),
-                    'hp' => $sheetMaxHp,
-                    'hasMoved' => false,
-                    'facingRight' => false,
-                ];
+        
+        // Iterar apenas pelos inimigos que EXISTEM no state (não criar novos do config)
+        foreach ($existingById as $id => $e) {
+            // Se o inimigo não está no config, remover (não permitido nesta quest)
+            if (!in_array($id, $allowedIds, true)) {
+                error_log("[syncEnemiesToConfig] Removendo inimigo não permitido: {$id}");
+                continue; // Remove este inimigo
             }
+            
+            // Encontrar config correspondente para sincronizar propriedades
+            $ce = null;
+            foreach ($configEnemies as $cand) {
+                $candId = $cand['id'] ?? ('enemy_' . 1);
+                if ($candId === $id) {
+                    $ce = $cand;
+                    break;
+                }
+            }
+            
+            // Garantir entity_id se ausente
+            if (empty($e['entity_id']) && $ce) {
+                $ck = $ce['combat_key'] ?? $ce['combatKey'] ?? null;
+                $entityDef = $ck ? EntitySheetService::findByCombatKey($ck) : null;
+                $e['entity_id'] = $entityDef['id'] ?? $ck ?? null;
+            }
+            
+            // NÃO restaurar HP zerado - se HP <= 0, o inimigo foi morto e será filtrado antes de salvar
+            // Mas se por algum motivo ainda está no state com HP <= 0, manter assim (será filtrado no próximo save)
+            
+            $newEnemies[] = $e;
         }
+        
+        error_log('[syncEnemiesToConfig] Enemies após sync: ' . json_encode(array_map(fn($e) => $e['id'] ?? '?', $newEnemies)));
+        
         $state['enemies'] = $newEnemies;
     }
 
@@ -372,15 +387,6 @@ class QuestService
         }
     }
 
-    public static function recordMove(int $sessionId, array $payload): void
-    {
-        QuestEvent::create([
-            'quest_session_id' => $sessionId,
-            'type' => 'move',
-            'payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES)
-        ]);
-    }
-
     public static function updateSessionState(int $sessionId, array $state): void
     {
         QuestSession::updateState($sessionId, self::slimState($state));
@@ -395,6 +401,9 @@ class QuestService
     public static function mergeStateInput(array $state, array $stateInput): array
     {
         $allowPlayer = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight'];
+        $allowAlly = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight', 'activeBuffs', 'activeDebuffs', 'statusEffects'];
+        $allowEnemy = ['id', 'entity_id', 'x', 'y', 'hp'];
+        
         if (array_key_exists('player', $stateInput)) {
             if ($stateInput['player'] === null) {
                 $state['player'] = null;
@@ -409,14 +418,25 @@ class QuestService
                 }
             }
         }
+        
         if (array_key_exists('allies', $stateInput) && is_array($stateInput['allies'])) {
-            $state['allies'] = $stateInput['allies'];
+            $state['allies'] = array_map(function ($a) use ($allowAlly) {
+                if (!is_array($a)) return $a;
+                return array_intersect_key($a, array_flip($allowAlly));
+            }, $stateInput['allies']);
         }
+        
         if (array_key_exists('enemies', $stateInput) && is_array($stateInput['enemies'])) {
-            $state['enemies'] = $stateInput['enemies'];
+            $state['enemies'] = array_map(function ($e) use ($allowEnemy) {
+                if (!is_array($e)) return $e;
+                return array_intersect_key($e, array_flip($allowEnemy));
+            }, $stateInput['enemies']);
         }
-        if (array_key_exists('chests', $stateInput)) $state['chests'] = $stateInput['chests'];
-        if (array_key_exists('portal', $stateInput)) $state['portal'] = $stateInput['portal'];
+        
+        // Rejeitar dados imutáveis (chests e portal vêm do config, não do state)
+        // if (array_key_exists('chests', $stateInput)) - REMOVIDO
+        // if (array_key_exists('portal', $stateInput)) - REMOVIDO
+        
         if (array_key_exists('turn', $stateInput)) $state['turn'] = $stateInput['turn'];
         if (array_key_exists('phase', $stateInput)) $state['phase'] = $stateInput['phase'];
         if (array_key_exists('unitsActed', $stateInput)) $state['unitsActed'] = $stateInput['unitsActed'];
@@ -432,7 +452,8 @@ class QuestService
     {
         $keepPlayer = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight'];
         $keepAlly = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight', 'activeBuffs', 'activeDebuffs', 'statusEffects'];
-        $keepEnemy = ['id', 'entity_id', 'x', 'y', 'hp', 'hasMoved', 'facingRight'];
+        // Inimigos: remover hasMoved e facingRight (podem ser resetados/derivados)
+        $keepEnemy = ['id', 'entity_id', 'x', 'y', 'hp'];
 
         if (isset($state['player']) && is_array($state['player'])) {
             $state['player'] = array_intersect_key($state['player'], array_flip($keepPlayer));
@@ -447,6 +468,10 @@ class QuestService
                 return is_array($e) ? array_intersect_key($e, array_flip($keepEnemy)) : $e;
             }, $state['enemies']);
         }
+        
+        // Remover dados imutáveis (vêm do config, não do state)
+        unset($state['chests'], $state['portal']);
+        
         return $state;
     }
 
@@ -474,6 +499,28 @@ class QuestService
 
         // Deletar a sessão em si
         Database::delete('quest_sessions', 'id = :id', ['id' => $sessionId]);
+    }
+
+    /**
+     * Constrói um inimigo a partir do config (evita duplicação de lógica)
+     * @param array<string, mixed> $enemyConfig Config do inimigo do quest config
+     * @param int $index Índice para fallback de ID
+     * @return array<string, mixed> Estado mínimo do inimigo
+     */
+    private static function buildEnemyFromConfig(array $enemyConfig, int $index = 0): array
+    {
+        $ck = $enemyConfig['combat_key'] ?? $enemyConfig['combatKey'] ?? null;
+        $entityDef = $ck ? EntitySheetService::findByCombatKey($ck) : null;
+        $eid = $entityDef['id'] ?? $ck ?? null;
+        $stats = $entityDef ? EntitySheetService::getCombatStats($entityDef) : ['maxHp' => 20, 'maxSp' => 50, 'attack' => 5, 'defense' => 2, 'moveRange' => 2, 'attackRange' => 1, 'behavior' => 'aggressive', 'scale' => 1.0];
+        
+        return [
+            'id' => $enemyConfig['id'] ?? ('enemy_' . ($index + 1)),
+            'entity_id' => $eid,
+            'x' => (int)($enemyConfig['x'] ?? 1),
+            'y' => (int)($enemyConfig['y'] ?? 1),
+            'hp' => $stats['maxHp'],
+        ];
     }
 
     private static function buildInitialState(array $character, array $config): array
@@ -504,20 +551,8 @@ class QuestService
         ];
 
         $enemies = [];
-        foreach (($config['enemies'] ?? []) as $index => $enemy) {
-            $ck = $enemy['combat_key'] ?? $enemy['combatKey'] ?? null;
-            $entityDef = $ck ? EntitySheetService::findByCombatKey($ck) : null;
-            $eid = $entityDef['id'] ?? $ck ?? null;
-            $stats = $entityDef ? EntitySheetService::getCombatStats($entityDef) : ['maxHp' => 20, 'maxSp' => 50, 'attack' => 5, 'defense' => 2, 'moveRange' => 2, 'attackRange' => 1, 'behavior' => 'aggressive', 'scale' => 1.0];
-            $enemies[] = [
-                'id' => $enemy['id'] ?? ('enemy_' . ($index + 1)),
-                'entity_id' => $eid,
-                'x' => (int)($enemy['x'] ?? 1),
-                'y' => (int)($enemy['y'] ?? 1),
-                'hp' => $stats['maxHp'],
-                'hasMoved' => false,
-                'facingRight' => false,
-            ];
+        foreach (($config['enemies'] ?? []) as $index => $enemyConfig) {
+            $enemies[] = self::buildEnemyFromConfig($enemyConfig, $index);
         }
 
         $allies = [];
@@ -576,9 +611,7 @@ class QuestService
             'player' => $player,
             'allies' => $allies,
             'enemies' => $enemies,
-            'chests' => $config['chests'] ?? [],
-            'portal' => $config['portal'] ?? null,
-            // Walls são imutáveis e sempre vêm do config, não precisam estar no state
+            // chests e portal são imutáveis e sempre vêm do config, não precisam estar no state
             'turn' => 1,
             'phase' => 'player'
         ];

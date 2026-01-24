@@ -2771,28 +2771,8 @@
             }
             updateUI();
             saveCameraState(); // Auto-save after movement
-            // persistMoveSession só para player principal (id === 'player'), não allies
-            // Allies são salvos via persistSessionState
-            if (sessionUid && unit.id === 'player') {
-                persistMoveSession(startPos, { x: unit.x, y: unit.y });
-            }
-            if (sessionUid) await persistSessionState(true); // Imediato após movimento
+            // Movimento será salvo apenas no final do turno via persistSessionState
             needsRender = true;
-        }
-    }
-
-    async function persistMoveSession(from, to) {
-        if (!sessionUid) return;
-        if (!to || typeof to.x !== 'number' || typeof to.y !== 'number') return;
-        if (to.x < 1 || to.x > CONFIG.GRID_COLS || to.y < 1 || to.y > CONFIG.GRID_ROWS) return;
-        try {
-            await fetch(`/game/explore/move?session=${encodeURIComponent(sessionUid)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ x: to.x, y: to.y, from })
-            });
-        } catch (error) {
-            console.warn('[MapEngine] Falha ao salvar movimento:', error);
         }
     }
 
@@ -2839,12 +2819,7 @@
             }
             updateUI();
             saveCameraState();
-            // persistMoveSession só para player principal (id === 'player'), não allies
-            // Allies são salvos via persistSessionState
-            if (sessionUid && unit.id === 'player') {
-                persistMoveSession(startPos, { x: unit.x, y: unit.y });
-            }
-            // REMOVIDO: persistSessionState() - será chamado ao final do turno
+            // Movimento será salvo apenas no final do turno via persistSessionState
             needsRender = true;
         }
     }
@@ -3594,7 +3569,7 @@
         attackRangeCells = [];
         gameState.currentAction = null;
         await executeAttack(pending.attacker, pending.target);
-        persistSessionState();
+        // State será salvo apenas no final do turno
     }
 
     /**
@@ -3752,7 +3727,8 @@
             gameState.currentAction = null;
             gameState.selectedSkill = null;
 
-            executeSkill(caster, targets[0] || null, skill, targets).then(() => persistSessionState());
+            executeSkill(caster, targets[0] || null, skill, targets);
+            // State será salvo apenas no final do turno
             return;
         }
 
@@ -3959,7 +3935,7 @@
         gameState.selectedSkill = null;
 
         await executeSkill(pending.caster, pending.targets[0] || null, pending.skill, pending.targets);
-        persistSessionState();
+        // State será salvo apenas no final do turno
     }
 
     /**
@@ -4190,10 +4166,22 @@
 
         // 6. MORTE
         if (target.hp <= 0) {
+            console.log('[DEBUG][executeAttack] 💀 Enemy killed:', {
+                id: target.id,
+                name: target.name,
+                entity_id: target.entity_id,
+                level: target.level || target.baseLevel,
+                hp: target.hp,
+                damage_dealt: damage
+            });
+
             spawnDeathEffect((target.x - 0.5) * CONFIG.CELL_SIZE, (target.y - 0.5) * CONFIG.CELL_SIZE);
 
             // Show kill banner
             showKillBanner(target.name || 'Inimigo');
+
+            // EXP será concedido automaticamente no backend quando o state for salvo
+            // Não precisamos fazer requisição separada aqui
 
             await sleep(900);
 
@@ -4282,7 +4270,27 @@
             applyHitEffect(t, isCrit ? 1.3 : 0.8);
             const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE, targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
             if (dmgMult > 1.2 || isCrit || numHits > 1) triggerScreenShake(isCrit ? 12 : (numHits > 1 ? 6 : 8));
-            if (t.hp <= 0) { spawnDeathEffect(targetX, targetY); showKillBanner(t.name); if (t.type === 'enemy') enemyUnits = enemyUnits.filter(u => u.id !== t.id); else playerUnits = playerUnits.filter(u => u.id !== t.id); }
+            if (t.hp <= 0) {
+                console.log('[DEBUG][runDeferredSkillImpact] 💀 Enemy killed by skill:', {
+                    id: t.id,
+                    name: t.name,
+                    entity_id: t.entity_id,
+                    level: t.level || t.baseLevel,
+                    hp: t.hp,
+                    damage_dealt: damage,
+                    skill: skill.name || skill.id
+                });
+                spawnDeathEffect(targetX, targetY);
+                showKillBanner(t.name);
+                
+                // EXP será concedido automaticamente no backend quando o state for salvo
+                // Não precisamos fazer requisição separada aqui
+                if (t.type === 'enemy') {
+                    enemyUnits = enemyUnits.filter(u => u.id !== t.id);
+                } else {
+                    playerUnits = playerUnits.filter(u => u.id !== t.id);
+                }
+            }
         }
         if (deferred.some(({ t }) => t.hp <= 0)) await sleep(900);
         if (typeof updateTurnTimeline === 'function') updateTurnTimeline();
@@ -5175,6 +5183,34 @@
 
         // 3. If there are casualties, mark them and process after map stabilizes
         if (casualties.length > 0) {
+            // Capture enemy data BEFORE any modifications for EXP award
+            const enemyDataForExp = [];
+            casualties.forEach(casualty => {
+                if (casualty.type === 'enemy') {
+                    const list = enemyUnits;
+                    const unit = list.find(u => u.id === casualty.id);
+                    if (unit) {
+                        // Capture complete enemy data before modification
+                        const capturedData = {
+                            id: unit.id,
+                            entity_id: unit.entity_id || unit.entityId || unit.combatKey,
+                            level: unit.level || unit.baseLevel || 1,
+                            name: unit.name || 'Enemy'
+                        };
+                        console.log('[DEBUG][handleBattleResult] 📸 Captured enemy data for EXP:', capturedData, 'from unit:', {
+                            id: unit.id,
+                            entity_id: unit.entity_id,
+                            entityId: unit.entityId,
+                            combatKey: unit.combatKey,
+                            level: unit.level,
+                            baseLevel: unit.baseLevel,
+                            name: unit.name
+                        });
+                        enemyDataForExp.push(capturedData);
+                    }
+                }
+            });
+
             // Mark all casualties as "pending death" (0 HP visual)
             casualties.forEach(casualty => {
                 const list = casualty.type === 'enemy' ? enemyUnits : playerUnits;
@@ -5196,17 +5232,29 @@
             viewState.scale = lockedCamera.scale;
             cameraTarget = null;
 
-            // 4. Run ALL death effects simultaneously (no camera movement)
+            // 4. Award EXP for defeated enemies (using captured data)
+            if (enemyDataForExp.length > 0) {
+                console.log('[DEBUG][handleBattleResult] 🎯 Awarding EXP for', enemyDataForExp.length, 'enemies:', enemyDataForExp);
+                for (const enemyData of enemyDataForExp) {
+                    try {
+                        console.log('[DEBUG][handleBattleResult] 💰 Calling awardExpForEnemy for:', enemyData);
+                        await awardExpForEnemy(enemyData);
+                        console.log('[DEBUG][handleBattleResult] ✅ EXP awarded successfully for:', enemyData.id);
+                    } catch (err) {
+                        console.error('[DEBUG][handleBattleResult] ❌ Failed to award EXP for:', enemyData, err);
+                    }
+                }
+            } else {
+                console.log('[DEBUG][handleBattleResult] ⚠️ No enemy data captured for EXP award');
+            }
+
+            // 5. Run ALL death effects simultaneously (no camera movement)
             console.log('[DEBUG][handleBattleResult] Running death effects...');
             for (const casualty of casualties) {
                 const list = casualty.type === 'enemy' ? enemyUnits : playerUnits;
                 const idx = list.findIndex(u => u.id === casualty.id);
                 if (idx !== -1) {
                     const unit = list[idx];
-
-                    if (casualty.type === 'enemy') {
-                        awardExpForEnemy(unit);
-                    }
 
                     // Spawn death effect at unit position
                     spawnDeathEffect((unit.x - 0.5) * CONFIG.CELL_SIZE, (unit.y - 0.5) * CONFIG.CELL_SIZE);
@@ -5291,24 +5339,91 @@
         needsRender = true;
         updateUI();
         saveCameraState(); // Auto-save after movement
-        persistSessionState();
+        // State será salvo apenas no final do turno
     }
 
     async function awardExpForEnemy(enemyUnit) {
-        if (!sessionUid || !enemyUnit) return;
+        if (!sessionUid) {
+            console.warn('[MAP-ENGINE][awardExpForEnemy] No session UID available');
+            return;
+        }
+
+        if (!enemyUnit) {
+            console.warn('[MAP-ENGINE][awardExpForEnemy] No enemy unit provided');
+            return;
+        }
+
+        // Validate required fields
+        if (!enemyUnit.id) {
+            console.error('[MAP-ENGINE][awardExpForEnemy] Enemy unit missing id:', enemyUnit);
+            return;
+        }
+
+        const enemyId = enemyUnit.id;
+        const enemyEntityId = enemyUnit.entity_id || enemyUnit.entityId;
+        const enemyLevel = enemyUnit.level || enemyUnit.baseLevel || 1;
+
+        console.log('[MAP-ENGINE][awardExpForEnemy] 🎯 Requesting EXP award for enemy:', {
+            id: enemyId,
+            entity_id: enemyEntityId,
+            level: enemyLevel,
+            name: enemyUnit.name || 'Unknown'
+        });
 
         try {
-            await fetch(`/game/explore/award-exp?session=${encodeURIComponent(sessionUid)}`, {
+            const response = await fetch(`/game/explore/award-exp?session=${encodeURIComponent(sessionUid)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    enemy_id: enemyUnit.id,
-                    enemy_entity_id: enemyUnit.entity_id || enemyUnit.entityId,
-                    enemy_level: enemyUnit.level || enemyUnit.baseLevel || 1
+                    enemy_id: enemyId,
+                    enemy_entity_id: enemyEntityId,
+                    enemy_level: enemyLevel
                 })
             });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[MAP-ENGINE][awardExpForEnemy] ❌ API error:', response.status, errorText);
+                return;
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                if (data.already_awarded) {
+                    console.log('[MAP-ENGINE][awardExpForEnemy] ⚠️ EXP already awarded for enemy:', enemyId);
+                } else {
+                    const expResult = data.exp_result || {};
+                    const expGained = data.exp_gained || 0;
+                    const leveledUp = expResult.leveled_up || false;
+                    const newLevel = expResult.level_after || expResult.new_level;
+                    const newXp = expResult.exp_after;
+                    const expForNext = expResult.exp_for_next_level;
+                    
+                    console.log('[MAP-ENGINE][awardExpForEnemy] ✅ EXP AWARDED SUCCESSFULLY!', {
+                        enemy_id: enemyId,
+                        enemy_name: enemyUnit.name || 'Unknown',
+                        exp_gained: expGained,
+                        exp_before: expResult.exp_before,
+                        exp_after: newXp,
+                        level_before: expResult.level_before,
+                        level_after: newLevel,
+                        leveled_up: leveledUp,
+                        exp_for_next_level: expForNext,
+                        attribute_points: expResult.attribute_points
+                    });
+                    
+                    // Show visual feedback
+                    if (leveledUp) {
+                        showNotification(`🎉 Level Up! Level ${newLevel}`, 'success');
+                    } else {
+                        showNotification(`+${expGained} EXP (${newXp}/${expForNext} para próximo level)`, 'info');
+                    }
+                }
+            } else {
+                console.error('[MAP-ENGINE][awardExpForEnemy] ❌ API returned error:', data.error);
+            }
         } catch (error) {
-            console.warn('[MAP-ENGINE] Failed to award EXP:', error);
+            console.error('[MAP-ENGINE][awardExpForEnemy] ❌ Failed to award EXP:', error);
         }
     }
 
@@ -5346,6 +5461,28 @@
     // Debounce para persistSessionState - evita múltiplas chamadas
     let persistTimeout = null;
     let isPersisting = false;
+    // Rastrear inimigos que já tiveram EXP concedido nesta sessão (persistido no sessionStorage)
+    function getEnemiesExpAwarded() {
+        try {
+            const stored = sessionStorage.getItem(`enemiesExpAwarded_${sessionUid}`);
+            return stored ? new Set(JSON.parse(stored)) : new Set();
+        } catch {
+            return new Set();
+        }
+    }
+    function saveEnemiesExpAwarded(set) {
+        try {
+            sessionStorage.setItem(`enemiesExpAwarded_${sessionUid}`, JSON.stringify(Array.from(set)));
+        } catch (e) {
+            console.warn('[MAP-ENGINE] Failed to save enemiesExpAwarded to sessionStorage:', e);
+        }
+    }
+    function addEnemyExpAwarded(enemyId) {
+        const set = getEnemiesExpAwarded();
+        set.add(enemyId);
+        saveEnemiesExpAwarded(set);
+        return set;
+    }
 
     function persistSessionState(immediate = false) {
         if (!sessionUid) return Promise.resolve();
@@ -5364,6 +5501,9 @@
         }
 
         isPersisting = true;
+
+        // NOTA: EXP é concedido em handleBattleResult quando o inimigo morre,
+        // não aqui. Esta função apenas salva o state.
 
         const alive = playerUnits.filter(u => u.hp > 0);
         // Identificar player principal pelo id, não pela posição no array
@@ -5394,17 +5534,15 @@
                     activeDebuffs: a.activeDebuffs || [],
                     statusEffects: a.statusEffects || []
                 })),
-                enemies: enemyUnits.map(e => ({
+                enemies: enemyUnits.filter(e => e.hp > 0).map(e => ({
                     id: e.id,
                     entity_id: e.entity_id,
                     x: e.x,
                     y: e.y,
-                    hp: e.hp,
-                    hasMoved: !!e.hasMoved,
-                    facingRight: !!e.facingRight
+                    hp: e.hp
+                    // hasMoved e facingRight removidos - podem ser resetados/derivados
                 })),
-                chests: chests.map(c => ({ id: c.id, x: c.x, y: c.y, opened: c.opened, loot: c.loot })),
-                portal: portal ? { id: portal.id, x: portal.x, y: portal.y, name: portal.name } : null,
+                // chests e portal são imutáveis e vêm do config, não precisam ser enviados
                 turn: gameState.turn,
                 phase: gameState.phase,
                 unitsActed: Array.from(gameState.unitsActedThisTurn || [])
@@ -5821,7 +5959,7 @@
             return;
         }
         gameState.unitsActedThisTurn.add(unit.id);
-        await persistSessionState(true); // Imediato após unidade agir
+        // State será salvo apenas no final do turno
 
         const allActed = playerUnits.every(u => u.hp <= 0 || gameState.unitsActedThisTurn.has(u.id));
         const hasNext = !allActed && playerUnits.some(u => u.hp > 0 && !gameState.unitsActedThisTurn.has(u.id));
@@ -6684,7 +6822,7 @@
 
             // Executar skill imediatamente no próprio personagem
             await executeSkill(unit, unit, skill, [unit]);
-            persistSessionState();
+            // State será salvo apenas no final do turno
             return;
         }
         if (skill.type === 'aoe_heal') {
@@ -6700,7 +6838,7 @@
             gameState.selectedSkill = null;
             const allies = playerUnits.filter(u => u.hp > 0);
             await executeSkill(unit, unit, skill, allies.length ? allies : [unit]);
-            persistSessionState();
+            // State será salvo apenas no final do turno
             return;
         }
 
@@ -6867,10 +7005,7 @@
                 if (enemy) {
                     hideActionMenu();
                     await executeAttack(gameState.selectedUnit, enemy);
-                    // Persistir após ataque do player (se não for fim de turno, persistir aqui)
-                    if (!gameState.phase || gameState.phase === 'player') {
-                        persistSessionState();
-                    }
+                    // State será salvo apenas no final do turno
                 } else {
                     showNotification(`Inimigo fora de alcance! Aproxime-se para atacar.`, 'warning');
                 }
@@ -8604,7 +8739,8 @@
                 skillAreaCells = [];
                 gameState.currentAction = null;
                 gameState.selectedSkill = null;
-                executeSkill(caster, caster, skill, [caster]).then(() => persistSessionState());
+                executeSkill(caster, caster, skill, [caster]);
+                // State será salvo apenas no final do turno
                 return;
             }
 
