@@ -3903,6 +3903,8 @@
         </div>
     </div>
 
+    <!-- Crypto-JS for encryption (works in HTTP) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <!-- Tactical Data Loader (new system) -->
     <script src="<?= asset('js/tactical-data-loader.js') ?>"></script>
     <script src="<?= asset('js/effects-data.js') ?>"></script>
@@ -3916,6 +3918,11 @@
         // Configuração de Debug - Controlado via console do navegador
         // Para ativar debug: digite 'debug = true' ou 'window.DEBUG_MODE = true' no console
         window._DEBUG_MODE = false;
+        
+        // Flag de DEBUG_MODE do PHP (controla criptografia)
+        // Quando true: dados são enviados em texto plano (RAW)
+        // Quando false: dados são criptografados
+        window.ENCRYPTION_DEBUG_MODE = <?= json_encode($data['debug_mode'] ?? false) ?>;
         
         // Criar setter/observer para DEBUG_MODE que inicializa o debug automaticamente
         Object.defineProperty(window, 'DEBUG_MODE', {

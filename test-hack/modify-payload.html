@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔓 Simulação de Ataque - Modificar Payload</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #f00;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #f00;
+        }
+        .warning {
+            background: #330000;
+            border: 2px solid #f00;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .section {
+            background: #0a0a0a;
+            border: 1px solid #0f0;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .section h2 {
+            color: #0f0;
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        input[type="text"] {
+            width: 100%;
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 3px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0a0;
+        }
+        .result {
+            background: #001a00;
+            border: 1px solid #0f0;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+        .error {
+            color: #f00;
+        }
+        .success {
+            color: #0f0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔓 SIMULAÇÃO DE ATAQUE - MODIFICAR PAYLOAD</h1>
+        
+        <div class="warning">
+            <strong>⚠️ AVISO:</strong> Este é apenas um teste de segurança educacional. 
+            Não use contra sistemas reais sem autorização.
+        </div>
+
+        <div class="section">
+            <h2>1. Chave de Sessão (Interceptada)</h2>
+            <label>Cole a chave obtida de <code>POST /game/explore/get-key</code>:</label>
+            <input type="text" id="sessionKey" placeholder="c98658f6172508ff299ab4664207d5ea3e63e0065fa46bd5ee13cb4f70c918a1">
+        </div>
+
+        <div class="section">
+            <h2>2. Payload Criptografado (Capturado do Network)</h2>
+            <label>Cole o payload criptografado:</label>
+            <textarea id="encryptedPayload" placeholder='{"encrypted":"...","iv":"...","tag":""}'></textarea>
+        </div>
+
+        <button onclick="decryptPayload()">🔓 Descriptografar</button>
+        <button onclick="modifyAndReencrypt()">⚔️ Modificar e Re-criptografar</button>
+        <button onclick="sendModifiedPayload()">📤 Tentar Enviar (Será Rejeitado)</button>
+
+        <div class="section" id="resultSection" style="display: none;">
+            <h2>Resultado:</h2>
+            <div class="result" id="result"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. Payload Modificado</h2>
+            <label>Modifique os valores abaixo e clique em "Modificar e Re-criptografar":</label>
+            <input type="number" id="newHp" placeholder="HP (ex: 99999)" value="99999">
+            <input type="number" id="newSp" placeholder="SP (ex: 99999)" value="99999">
+            <input type="number" id="newX" placeholder="X" value="10">
+            <input type="number" id="newY" placeholder="Y" value="10">
+        </div>
+    </div>
+
+    <script>
+        let decryptedData = null;
+
+        function decryptPayload() {
+            const sessionKey = document.getElementById('sessionKey').value.trim();
+            const encryptedText = document.getElementById('encryptedPayload').value.trim();
+            
+            if (!sessionKey || !encryptedText) {
+                showResult('❌ Erro: Preencha a chave e o payload criptografado', 'error');
+                return;
+            }
+
+            try {
+                const payload = JSON.parse(encryptedText);
+                const encrypted = payload.encrypted;
+                const iv = payload.iv;
+
+                if (!encrypted || !iv) {
+                    showResult('❌ Erro: Payload inválido. Precisa ter "encrypted" e "iv"', 'error');
+                    return;
+                }
+
+                // Converter chave hex para WordArray
+                const keyWordArray = CryptoJS.enc.Hex.parse(sessionKey);
+                const ivWordArray = CryptoJS.enc.Base64.parse(iv);
+                const encryptedWordArray = CryptoJS.enc.Base64.parse(encrypted);
+
+                // Descriptografar
+                const decrypted = CryptoJS.AES.decrypt(
+                    { ciphertext: encryptedWordArray },
+                    keyWordArray,
+                    {
+                        iv: ivWordArray,
+                        mode: CryptoJS.mode.CBC,
+                        padding: CryptoJS.pad.Pkcs7
+                    }
+                );
+
+                const plaintext = decrypted.toString(CryptoJS.enc.Utf8);
+                decryptedData = JSON.parse(plaintext);
+
+                showResult('✅ PAYLOAD DESCRIPTOGRAFADO!\n\n' + 
+                    JSON.stringify(decryptedData, null, 2) + 
+                    '\n\n📊 Dados:\n' +
+                    'Turn: ' + (decryptedData.state?.turn || 'N/A') + '\n' +
+                    'Phase: ' + (decryptedData.state?.phase || 'N/A') + '\n' +
+                    'Player HP: ' + (decryptedData.state?.player?.hp || 'N/A') + '\n' +
+                    'Player SP: ' + (decryptedData.state?.player?.sp || 'N/A') + '\n' +
+                    'Position: (' + (decryptedData.state?.player?.x || 'N/A') + ', ' + (decryptedData.state?.player?.y || 'N/A') + ')\n' +
+                    'Enemies: ' + (decryptedData.state?.enemies?.length || 0), 'success');
+            } catch (err) {
+                showResult('❌ Erro ao descriptografar: ' + err.message, 'error');
+            }
+        }
+
+        function modifyAndReencrypt() {
+            if (!decryptedData) {
+                showResult('❌ Erro: Descriptografe o payload primeiro', 'error');
+                return;
+            }
+
+            const sessionKey = document.getElementById('sessionKey').value.trim();
+            if (!sessionKey) {
+                showResult('❌ Erro: Preencha a chave de sessão', 'error');
+                return;
+            }
+
+            try {
+                // Modificar valores
+                const newHp = parseInt(document.getElementById('newHp').value) || decryptedData.state.player.hp;
+                const newSp = parseInt(document.getElementById('newSp').value) || decryptedData.state.player.sp;
+                const newX = parseInt(document.getElementById('newX').value) || decryptedData.state.player.x;
+                const newY = parseInt(document.getElementById('newY').value) || decryptedData.state.player.y;
+
+                decryptedData.state.player.hp = newHp;
+                decryptedData.state.player.sp = newSp;
+                decryptedData.state.player.x = newX;
+                decryptedData.state.player.y = newY;
+
+                // Re-criptografar
+                const keyWordArray = CryptoJS.enc.Hex.parse(sessionKey);
+                const iv = CryptoJS.lib.WordArray.random(16);
+                const plaintext = JSON.stringify(decryptedData);
+
+                const encrypted = CryptoJS.AES.encrypt(plaintext, keyWordArray, {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                });
+
+                const newPayload = {
+                    encrypted: encrypted.ciphertext.toString(CryptoJS.enc.Base64),
+                    iv: iv.toString(CryptoJS.enc.Base64),
+                    tag: ''
+                };
+
+                showResult('✅ PAYLOAD MODIFICADO E RE-CRIPTOGRAFADO!\n\n' +
+                    'Novos valores:\n' +
+                    'HP: ' + newHp + '\n' +
+                    'SP: ' + newSp + '\n' +
+                    'Position: (' + newX + ', ' + newY + ')\n\n' +
+                    '📦 Payload criptografado:\n' +
+                    JSON.stringify(newPayload, null, 2) + '\n\n' +
+                    '⚠️  ATENÇÃO: Se você tentar enviar isso, o servidor vai REJEITAR!\n' +
+                    'O CombatValidator detecta HP/SP inválidos e bloqueia.', 'success');
+
+                // Salvar para envio
+                window.modifiedPayload = newPayload;
+            } catch (err) {
+                showResult('❌ Erro: ' + err.message, 'error');
+            }
+        }
+
+        async function sendModifiedPayload() {
+            if (!window.modifiedPayload) {
+                showResult('❌ Erro: Modifique e re-criptografe o payload primeiro', 'error');
+                return;
+            }
+
+            const sessionUid = prompt('Digite o session_uid:');
+            if (!sessionUid) {
+                showResult('❌ Erro: Session UID necessário', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/game/explore/state?session=${encodeURIComponent(sessionUid)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(window.modifiedPayload)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult('⚠️  INACREDITÁVEL: O servidor aceitou! (Isso não deveria acontecer)\n\n' +
+                        JSON.stringify(result, null, 2), 'error');
+                } else {
+                    showResult('✅ PROTEÇÃO FUNCIONANDO!\n\n' +
+                        'O servidor REJEITOU o payload modificado:\n' +
+                        JSON.stringify(result, null, 2) + '\n\n' +
+                        '🛡️  O CombatValidator detectou valores inválidos e bloqueou o ataque!', 'success');
+                }
+            } catch (err) {
+                showResult('❌ Erro ao enviar: ' + err.message, 'error');
+            }
+        }
+
+        function showResult(text, type) {
+            const resultDiv = document.getElementById('result');
+            const resultSection = document.getElementById('resultSection');
+            resultDiv.textContent = text;
+            resultDiv.className = 'result ' + type;
+            resultSection.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

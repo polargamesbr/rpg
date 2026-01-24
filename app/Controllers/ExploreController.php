@@ -6,6 +6,10 @@ use App\Services\AuthService;
 use App\Services\QuestService;
 use App\Services\ExperienceService;
 use App\Services\EntitySheetService;
+use App\Services\CombatValidator;
+use App\Services\ActionService;
+use App\Services\CombatCalculator;
+use App\Services\StateEncryptionService;
 use App\Models\Character;
 use App\Models\Database;
 
@@ -44,12 +48,95 @@ class ExploreController
             return;
         }
 
+        // Carregar config para passar DEBUG_MODE para o frontend
+        $appConfig = require __DIR__ . '/../../config/app.php';
+        
         $data = [
             'character' => $character,
-            'pageTitle' => 'Explore'
+            'pageTitle' => 'Explore',
+            'debug_mode' => $appConfig['debug_mode'] ?? false
         ];
 
         include __DIR__ . '/../../views/game/explore.php';
+    }
+
+    /**
+     * Get encryption key token for session
+     * POST /game/explore/get-key
+     */
+    public function getEncryptionKey(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        // Verificar se sessão existe
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        // Gerar chave e retornar diretamente (sem criptografia adicional)
+        // A segurança vem da validação do estado esperado no servidor
+        $keyData = StateEncryptionService::generateSessionKey($sessionUid);
+        
+        jsonResponse([
+            'success' => true,
+            'token' => $keyData['token'],
+            'key' => $keyData['key']
+        ]);
+    }
+
+    /**
+     * Get expected state HMAC (servidor calcula estado esperado e retorna HMAC)
+     * POST /game/explore/get-expected-hmac
+     */
+    public function getExpectedHmac(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $token = $input['token'] ?? null;
+        
+        if (!$token || !StateEncryptionService::validateToken($sessionUid, $token)) {
+            jsonResponse(['success' => false, 'error' => 'Invalid token'], 400);
+            return;
+        }
+
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        // Calcular estado esperado baseado no estado atual
+        // Por enquanto, retornar HMAC do estado atual (cliente deve enviar estado similar)
+        $expectedState = $sessionData['state'] ?? [];
+        $hmac = StateEncryptionService::generateHmac(['state' => $expectedState], $sessionUid);
+        
+        jsonResponse([
+            'success' => true,
+            'hmac' => $hmac
+        ]);
     }
 
     /**
@@ -81,6 +168,10 @@ class ExploreController
         // chests e portal são imutáveis e sempre vêm do config, não do state
         $chests = $config['chests'] ?? [];
         $portal = $config['portal'] ?? null;
+        
+        // Criptografar resposta se tiver chave de sessão E se DEBUG_MODE=false
+        $shouldEncrypt = StateEncryptionService::shouldEncrypt();
+        $sessionKey = $_SESSION["state_key_{$sessionUid}"] ?? null;
 
         $mapConfig = $config['map'] ?? [
             'gridCols' => 20,
@@ -92,10 +183,33 @@ class ExploreController
         // Walls são imutáveis e sempre vêm do config, não do state
         $walls = $config['walls'] ?? [];
         
+        // Buscar logs de combate da sessão (ordem cronológica: mais antigos primeiro)
+        $combatLogs = Database::fetchAll(
+            "SELECT log_key, log_params, turn, phase, created_at 
+             FROM quest_combat_logs 
+             WHERE session_uid = :session_uid 
+             ORDER BY turn ASC, created_at ASC
+             LIMIT 100",
+            ['session_uid' => $sessionUid]
+        );
+        
+        // Formatar logs para o frontend
+        $formattedLogs = [];
+        foreach ($combatLogs as $log) {
+            $params = json_decode($log['log_params'] ?? '{}', true) ?: [];
+            $formattedLogs[] = [
+                'key' => $log['log_key'],
+                'params' => $params,
+                'timestamp' => strtotime($log['created_at']),
+                'turn' => (int)$log['turn'],
+                'phase' => $log['phase']
+            ];
+        }
+        
         // Contrato: player (objeto), allies (array), entities (array de inimigos).
         // Frontend usa collectCombatKeysFromSession(); não renomear sem ajustar lá.
         // NOTA: walls e mapConfig vêm do config (imutáveis), não do state salvo
-        jsonResponse([
+        $responseData = [
             'success' => true,
             'session' => [
                 'uid' => $sessionUid,
@@ -111,8 +225,30 @@ class ExploreController
             'mapConfig' => $mapConfig, // Vem do config (imutável), necessário para renderização
             'turn' => $state['turn'] ?? 1,
             'phase' => $state['phase'] ?? 'player',
-            'unitsActed' => $state['unitsActed'] ?? []
-        ]);
+            'unitsActed' => $state['unitsActed'] ?? [],
+            'combatLogs' => $formattedLogs // Logs de combate da sessão
+        ];
+        
+        // Criptografar resposta se tiver chave de sessão E se DEBUG_MODE=false
+        if ($shouldEncrypt && $sessionKey) {
+            $plaintext = json_encode($responseData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $encryptionKey = hex2bin($sessionKey);
+            $iv = random_bytes(16);
+            $encrypted = openssl_encrypt($plaintext, 'aes-256-cbc', $encryptionKey, OPENSSL_RAW_DATA, $iv);
+            
+            if ($encrypted !== false) {
+                jsonResponse([
+                    'success' => true,
+                    'encrypted' => true,
+                    'data' => base64_encode($encrypted),
+                    'iv' => base64_encode($iv)
+                ]);
+                return;
+            }
+        }
+        
+        // Se DEBUG_MODE=true ou não tiver chave, retornar sem criptografia (RAW)
+        jsonResponse($responseData);
     }
 
     /**
@@ -140,23 +276,131 @@ class ExploreController
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
-        $stateInput = $input['state'] ?? $input;
+        
+        // Verificar se payload está criptografado (apenas se DEBUG_MODE=false)
+        $shouldDecrypt = StateEncryptionService::shouldEncrypt();
+        if ($shouldDecrypt && isset($input['encrypted'], $input['iv'])) {
+            // Usar chave da session para descriptografar payload
+            $sessionKey = $_SESSION["state_key_{$sessionUid}"] ?? null;
+            if (!$sessionKey) {
+                jsonResponse(['success' => false, 'error' => 'Session key not found'], 400);
+                return;
+            }
+            
+            // Usar chave diretamente (já é hex de 64 caracteres = 32 bytes)
+            $encryptionKey = hex2bin($sessionKey);
+            $encryptedData = base64_decode($input['encrypted']);
+            $ivData = base64_decode($input['iv']);
+            
+            // Descriptografar usando AES-256-CBC (compatível com CryptoJS)
+            $plaintext = openssl_decrypt($encryptedData, 'aes-256-cbc', $encryptionKey, OPENSSL_RAW_DATA, $ivData);
+            if ($plaintext === false) {
+                jsonResponse(['success' => false, 'error' => 'Failed to decrypt payload'], 400);
+                return;
+            }
+            
+            $decrypted = json_decode($plaintext, true);
+            $stateInput = is_array($decrypted) ? ($decrypted['state'] ?? $decrypted) : [];
+            $combatLogs = $decrypted['combatLogs'] ?? [];
+        } elseif (isset($input['payload'], $input['hmac'], $input['token'])) {
+            // Validar token primeiro
+            if (!StateEncryptionService::validateToken($sessionUid, $input['token'])) {
+                jsonResponse(['success' => false, 'error' => 'Invalid session token'], 400);
+                return;
+            }
+            
+            // Validar HMAC
+            $payload = $input['payload'] ?? [];
+            if (!StateEncryptionService::validateHmac($payload, $input['hmac'], $sessionUid)) {
+                jsonResponse(['success' => false, 'error' => 'Invalid HMAC - payload may have been tampered'], 400);
+                return;
+            }
+            $stateInput = $payload['state'] ?? $payload;
+            $combatLogs = $payload['combatLogs'] ?? [];
+        } else {
+            // Modo legado (sem criptografia) - manter compatibilidade
+            $stateInput = $input['state'] ?? $input;
+            $combatLogs = $input['combatLogs'] ?? [];
+        }
+        
         if (!is_array($stateInput)) {
             jsonResponse(['success' => false, 'error' => 'Invalid state'], 400);
             return;
         }
 
-        $oldState = $sessionData['state'] ?? [];
+        // IMPORTANTE: oldState já vem enriquecido de getSessionState (com maxHp, maxSp, etc)
+        // Mas precisamos usar o state RAW do banco para comparação correta
+        $rawState = json_decode($sessionData['session']['state_json'] ?? '{}', true) ?: [];
+        $oldState = $sessionData['state'] ?? []; // State enriquecido (para referência de maxHp/maxSp)
+        
         if (is_array($input['player'] ?? null)) {
             $stateInput['player'] = array_merge($stateInput['player'] ?? [], $input['player']);
         }
         if (is_array($input['portal'] ?? null)) {
             $stateInput['portal'] = array_merge($stateInput['portal'] ?? [], $input['portal']);
         }
-        $newState = QuestService::mergeStateInput($oldState, $stateInput);
+        $newState = QuestService::mergeStateInput($rawState, $stateInput); // Usar rawState para merge
         
-        // Detectar inimigos mortos comparando state anterior com novo
-        $this->awardExpForDefeatedEnemies($oldState, $newState, $sessionData, (int)$user['id']);
+        // VALIDAÇÕES MÍNIMAS (apenas o essencial para evitar manipulação grosseira)
+        $character = Character::findByUser((int)$user['id']);
+        if (!$character) {
+            jsonResponse(['success' => false, 'error' => 'Character not found'], 404);
+            return;
+        }
+
+        $config = $sessionData['config'] ?? [];
+        $validationErrors = [];
+        
+        // Usar rawState (do banco) para comparação
+        $oldStateForValidation = $rawState;
+
+        // Apenas validações críticas:
+        // 1. HP/SP não podem ser negativos ou extremamente altos (> 10x max)
+        $hpSpValidation = CombatValidator::validateHpSp($oldStateForValidation, $newState, $character, $config);
+        if (!$hpSpValidation['valid']) {
+            // Filtrar apenas erros críticos (valores extremos)
+            $criticalErrors = array_filter($hpSpValidation['errors'], function($err) {
+                return strpos($err, 'exceeds maximum excessively') !== false || 
+                       strpos($err, 'cannot be negative') !== false;
+            });
+            if (!empty($criticalErrors)) {
+                $validationErrors = array_merge($validationErrors, $criticalErrors);
+            }
+        }
+
+        // 2. Turn não pode diminuir ou pular muito
+        $turnPhaseValidation = CombatValidator::validateTurnPhase($oldStateForValidation, $newState);
+        if (!$turnPhaseValidation['valid']) {
+            $validationErrors = array_merge($validationErrors, $turnPhaseValidation['errors']);
+        }
+
+        // 3. Remoção de inimigos - sempre permitir se existia no oldState (frontend só remove quando HP <= 0)
+        // (validação removida - sempre permitir remoção se inimigo existia antes)
+
+        // 4. unitsActed - verificar se unidades existem (mas permitir unidades que morreram)
+        $unitsActedValidation = CombatValidator::validateUnitsActed($newState, $oldStateForValidation);
+        if (!$unitsActedValidation['valid']) {
+            $validationErrors = array_merge($validationErrors, $unitsActedValidation['errors']);
+        }
+
+        // Se houver erros críticos, rejeitar
+        if (!empty($validationErrors)) {
+            error_log('[setState] State validation failed. Rejecting state update. Errors: ' . json_encode($validationErrors));
+            jsonResponse([
+                'success' => false,
+                'error' => 'State validation failed',
+                'validation_errors' => $validationErrors
+            ], 400);
+            return;
+        }
+        
+        // Detectar inimigos mortos comparando state anterior com novo (usar rawState)
+        $this->awardExpForDefeatedEnemies($oldStateForValidation, $newState, $sessionData, (int)$user['id']);
+        
+        // Salvar logs de combate se fornecidos
+        if (!empty($combatLogs) && is_array($combatLogs)) {
+            $this->saveCombatLogs($sessionUid, (int)$user['id'], $combatLogs);
+        }
         
         QuestService::updateSessionState((int)$sessionData['session']['id'], $newState);
         jsonResponse(['success' => true]);
@@ -410,6 +654,230 @@ class ExploreController
     }
 
     /**
+     * Processa ação de movimento
+     * POST /game/explore/action/move
+     */
+    public function moveAction(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $unitId = $input['unit_id'] ?? 'player';
+        $targetX = (int)($input['x'] ?? 0);
+        $targetY = (int)($input['y'] ?? 0);
+
+        if ($targetX < 1 || $targetY < 1) {
+            jsonResponse(['success' => false, 'error' => 'Invalid coordinates'], 400);
+            return;
+        }
+
+        $result = ActionService::processMove(
+            (int)$sessionData['session']['id'],
+            $unitId,
+            $targetX,
+            $targetY,
+            $sessionData,
+            (int)$user['id']
+        );
+
+        if (!$result['success']) {
+            jsonResponse(['success' => false, 'error' => $result['error']], 400);
+            return;
+        }
+
+        // Salvar novo estado
+        QuestService::updateSessionState((int)$sessionData['session']['id'], $result['new_state']);
+        
+        jsonResponse([
+            'success' => true,
+            'position' => ['x' => $targetX, 'y' => $targetY]
+        ]);
+    }
+
+    /**
+     * Processa ação de finalizar turno
+     * POST /game/explore/action/end-turn
+     */
+    public function endTurnAction(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        $result = ActionService::processEndTurn(
+            (int)$sessionData['session']['id'],
+            $sessionData
+        );
+
+        if (!$result['success']) {
+            jsonResponse(['success' => false, 'error' => $result['error']], 400);
+            return;
+        }
+
+        // Salvar novo estado
+        QuestService::updateSessionState((int)$sessionData['session']['id'], $result['new_state']);
+        
+        jsonResponse([
+            'success' => true,
+            'turn' => $result['new_state']['turn'] ?? 1,
+            'phase' => $result['new_state']['phase'] ?? 'player'
+        ]);
+    }
+
+    /**
+     * Processa ação de ataque
+     * POST /game/explore/action/attack
+     */
+    public function attackAction(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $attackerId = $input['attacker_id'] ?? 'player';
+        $targetId = $input['target_id'] ?? null;
+
+        if (!$targetId) {
+            jsonResponse(['success' => false, 'error' => 'Target ID required'], 400);
+            return;
+        }
+
+        $result = ActionService::processAttack(
+            (int)$sessionData['session']['id'],
+            $attackerId,
+            $targetId,
+            $sessionData
+        );
+
+        if (!$result['success']) {
+            jsonResponse(['success' => false, 'error' => $result['error']], 400);
+            return;
+        }
+
+        // Detectar se inimigo morreu
+        $oldState = $sessionData['state'] ?? [];
+        $this->awardExpForDefeatedEnemies($oldState, $result['new_state'], $sessionData, (int)$user['id']);
+
+        // Salvar novo estado
+        QuestService::updateSessionState((int)$sessionData['session']['id'], $result['new_state']);
+        
+        jsonResponse([
+            'success' => true,
+            'result' => $result['result']
+        ]);
+    }
+
+    /**
+     * Processa ação de skill
+     * POST /game/explore/action/skill
+     */
+    public function skillAction(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $casterId = $input['caster_id'] ?? 'player';
+        $skillId = $input['skill_id'] ?? null;
+        $targetIds = $input['target_ids'] ?? [];
+
+        if (!$skillId) {
+            jsonResponse(['success' => false, 'error' => 'Skill ID required'], 400);
+            return;
+        }
+
+        if (empty($targetIds) || !is_array($targetIds)) {
+            jsonResponse(['success' => false, 'error' => 'Target IDs required'], 400);
+            return;
+        }
+
+        $result = ActionService::processSkill(
+            (int)$sessionData['session']['id'],
+            $casterId,
+            $skillId,
+            $targetIds,
+            $sessionData
+        );
+
+        if (!$result['success']) {
+            jsonResponse(['success' => false, 'error' => $result['error']], 400);
+            return;
+        }
+
+        // Detectar se inimigos morreram
+        $oldState = $sessionData['state'] ?? [];
+        $this->awardExpForDefeatedEnemies($oldState, $result['new_state'], $sessionData, (int)$user['id']);
+
+        // Salvar novo estado
+        QuestService::updateSessionState((int)$sessionData['session']['id'], $result['new_state']);
+        
+        jsonResponse([
+            'success' => true,
+            'result' => $result['result']
+        ]);
+    }
+
+    /**
      * Award experience when an enemy is defeated (DEPRECATED - use awardExpForDefeatedEnemies)
      * POST /game/explore/award-exp
      */
@@ -640,6 +1108,71 @@ class ExploreController
             ]);
         } catch (\Exception $e) {
             jsonResponse(['success' => false, 'error' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Salva logs de combate no banco de dados
+     * Evita duplicatas usando hash de turn + phase + key + params
+     */
+    private function saveCombatLogs(string $sessionUid, int $userId, array $logs): void
+    {
+        if (empty($logs) || !is_array($logs)) {
+            return;
+        }
+
+        foreach ($logs as $log) {
+            if (!isset($log['key'], $log['params'], $log['turn'], $log['phase'])) {
+                continue; // Pular logs inválidos
+            }
+
+            $logKey = $log['key'];
+            $logParams = is_array($log['params']) ? json_encode($log['params'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '{}';
+            $turn = (int)$log['turn'];
+            $phase = in_array($log['phase'] ?? '', ['player', 'enemy']) ? $log['phase'] : 'player';
+
+            try {
+                // Verificar se já existe (evitar duplicatas)
+                // Comparar log_params diretamente usando JSON_EXTRACT para comparação precisa
+                $existing = Database::fetchOne(
+                    "SELECT id FROM quest_combat_logs 
+                     WHERE session_uid = :session_uid 
+                     AND turn = :turn 
+                     AND phase = :phase 
+                     AND log_key = :log_key 
+                     AND log_params = :log_params
+                     LIMIT 1",
+                    [
+                        'session_uid' => $sessionUid,
+                        'turn' => $turn,
+                        'phase' => $phase,
+                        'log_key' => $logKey,
+                        'log_params' => $logParams
+                    ]
+                );
+
+                if ($existing) {
+                    continue; // Já existe, pular
+                }
+
+                // Inserir novo log
+                Database::query(
+                    "INSERT INTO quest_combat_logs 
+                     (session_uid, user_id, turn, phase, log_key, log_params) 
+                     VALUES (:session_uid, :user_id, :turn, :phase, :log_key, :log_params)",
+                    [
+                        'session_uid' => $sessionUid,
+                        'user_id' => $userId,
+                        'turn' => $turn,
+                        'phase' => $phase,
+                        'log_key' => $logKey,
+                        'log_params' => $logParams
+                    ]
+                );
+            } catch (Exception $e) {
+                error_log("[saveCombatLogs] Erro ao salvar log: " . $e->getMessage());
+                // Continuar com próximo log mesmo se houver erro
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ This directory contains all game data configurations.
 app/GameData/
 ├── sheets/           # Entity definitions (PHP)
 │   ├── classes/      # Player classes (swordsman, archer, beast_tamer, etc.)
-│   └── monsters/     # Enemy definitions (toxic_slime, wolf, etc.)
+│   └── monsters/     # Enemy definitions (slime, wolf, etc.)
 ├── quests/           # Quest configurations (PHP preferred)
 │   └── first-steps.php
 ├── quests.php        # Quest registry/catalog
@@ -48,7 +48,7 @@ return [
     ],
     
     'enemies' => [
-        ['id' => 'slime_1', 'combat_key' => 'toxic_slime', 'x' => 24, 'y' => 10],
+        ['id' => 'slime_1', 'combat_key' => 'slime', 'x' => 24, 'y' => 10],
     ],
     
     'walls' => [
@@ -68,7 +68,7 @@ return [
 ## Entity References
 
 Allies and enemies reference entities by `combat_key` which should match:
-- Entity sheet `id` (e.g., `beast_tamer`, `archer`, `toxic_slime`)
+- Entity sheet `id` (e.g., `beast_tamer`, `archer`, `slime`)
 - Or entity sheet `combat_key` field
 
 The system uses `EntitySheetService::findByCombatKey()` which:

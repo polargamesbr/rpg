@@ -53,11 +53,11 @@ return [
         ],
     ],
 
-    // Enemy units (toxic_slime, wolf, hawk)
+    // Enemy units (slime, wolf, hawk)
     'enemies' => [
         [
             'id' => 'slime_1',
-            'combat_key' => 'toxic_slime',
+            'combat_key' => 'slime',
             'x' => 24,
             'y' => 10,
         ],

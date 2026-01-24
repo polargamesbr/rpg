@@ -14,6 +14,79 @@ window.TacticalDataLoader = (function() {
     // Pending requests to avoid duplicate API calls
     const pendingEntityRequests = {};
     const pendingSkillRequests = {};
+    
+    // API encryption key (baseada em user_id)
+    let apiEncryptionKey = null;
+
+    /**
+     * Obtém chave de criptografia da API (baseada em user_id)
+     */
+    async function getApiEncryptionKey() {
+        if (apiEncryptionKey) return apiEncryptionKey;
+        
+        try {
+            const response = await fetch('/game/api/get-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) {
+                console.warn('[TacticalDataLoader] Failed to get API encryption key');
+                return null;
+            }
+            
+            const data = await response.json();
+            if (data.success && data.key) {
+                apiEncryptionKey = data.key;
+                return apiEncryptionKey;
+            }
+        } catch (err) {
+            console.error('[TacticalDataLoader] Error getting API key:', err);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Descriptografa resposta da API
+     */
+    async function decryptApiResponse(encryptedData) {
+        if (typeof CryptoJS === 'undefined') {
+            console.warn('[TacticalDataLoader] CryptoJS not available, cannot decrypt');
+            return encryptedData;
+        }
+        
+        if (!apiEncryptionKey) {
+            await getApiEncryptionKey();
+        }
+        
+        if (!apiEncryptionKey) {
+            console.warn('[TacticalDataLoader] No API encryption key available');
+            return encryptedData;
+        }
+        
+        try {
+            const keyWordArray = CryptoJS.enc.Hex.parse(apiEncryptionKey);
+            const ivWordArray = CryptoJS.enc.Base64.parse(encryptedData.iv);
+            const encryptedWordArray = CryptoJS.enc.Base64.parse(encryptedData.data);
+            
+            const decrypted = CryptoJS.AES.decrypt(
+                { ciphertext: encryptedWordArray },
+                keyWordArray,
+                {
+                    iv: ivWordArray,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                }
+            );
+            
+            const plaintext = decrypted.toString(CryptoJS.enc.Utf8);
+            return JSON.parse(plaintext);
+        } catch (err) {
+            console.error('[TacticalDataLoader] Error decrypting API response:', err);
+            return encryptedData; // Fallback: retornar sem descriptografar
+        }
+    }
 
     /**
      * Load entities by IDs in batch
@@ -65,6 +138,12 @@ window.TacticalDataLoader = (function() {
                     throw new Error('Falha ao carregar entidades. Tente novamente.');
                 }
             }
+            
+            // Descriptografar se resposta estiver criptografada
+            if (data?.encrypted && data?.data && data?.iv) {
+                data = await decryptApiResponse(data);
+            }
+            
             const entities = data.entities || {};
             Object.keys(entities).forEach(key => {
                 const sheet = entities[key];
@@ -167,6 +246,12 @@ window.TacticalDataLoader = (function() {
                     throw new Error('Falha ao carregar skills. Tente novamente.');
                 }
             }
+            
+            // Descriptografar se resposta estiver criptografada
+            if (data?.encrypted && data?.data && data?.iv) {
+                data = await decryptApiResponse(data);
+            }
+            
             const skills = data.skills || {};
             Object.keys(skills).forEach(id => { skillCache[id] = skills[id]; });
             delete pendingSkillRequests[cacheKey];

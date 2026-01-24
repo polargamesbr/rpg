@@ -39,10 +39,19 @@ return [
     // Explore Routes (Canvas Map System)
     'GET /game/explore' => 'ExploreController@index',
     'GET /game/explore/state' => 'ExploreController@getState',
+    'POST /game/explore/get-key' => 'ExploreController@getEncryptionKey',
+    'POST /game/api/get-key' => 'EntityController@getApiKey',
+    'POST /game/explore/get-expected-hmac' => 'ExploreController@getExpectedHmac',
     'POST /game/explore/state' => 'ExploreController@setState',
     'POST /game/explore/complete' => 'ExploreController@complete',
     'POST /game/explore/award-exp' => 'ExploreController@awardExp',
     'POST /game/explore/reset' => 'ExploreController@reset',
+    
+    // Action-based Routes (Secure)
+    'POST /game/explore/action/move' => 'ExploreController@moveAction',
+    'POST /game/explore/action/end-turn' => 'ExploreController@endTurnAction',
+    'POST /game/explore/action/attack' => 'ExploreController@attackAction',
+    'POST /game/explore/action/skill' => 'ExploreController@skillAction',
     
     // Modal Routes (Lazy Loading)
     'GET /game/modal/{modalName}' => 'GameController@loadModal',

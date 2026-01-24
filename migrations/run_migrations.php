@@ -52,7 +52,8 @@ try {
         '029_drop_classes_table.php',
         '030_create_user_events_table.php',
         '031_add_quest_exp_history.php',
-        '032_remove_unused_quest_tables.php'
+        '032_remove_unused_quest_tables.php',
+        '033_create_quest_combat_logs_table.php'
     ];
     
     foreach ($migrations as $migration) {

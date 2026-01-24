@@ -1,17 +1,17 @@
 <?php
 
 return [
-    'id' => 'toxic_slime',
+    'id' => 'slime',
     'type' => 'monster',
     'is_player' => false,
-    'name' => 'Toxic Slime',
-    'display_name' => 'Toxic Slime',
+    'name' => 'Slime',
+    'display_name' => 'Slime',
     'role' => 'Monster',
-    'element' => 'poison',
-    'desc' => 'A poisonous slime creature that oozes through dark places. Their toxic touch can dissolve flesh and spread disease to those unfortunate enough to encounter them.',
-    'base_level' => 3,
+    'element' => 'neutral',
+    'desc' => 'Uma criatura gelatinosa comum encontrada em lugares escuros. Apesar de sua aparência simples, pode ser perigosa em grupos.',
+    'base_level' => 1, // Slime é level 1 (monstro fraco)
     'images' => [
-        'default' => 'assets/entities/toxic_slime/avatar.webp',
+        'default' => 'assets/entities/slime/avatar.webp',
     ],
     'animations' => [
         'base' => 'entities',

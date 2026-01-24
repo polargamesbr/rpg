@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Services\SkillService;
 use App\Services\AuthService;
+use App\Services\StateEncryptionService;
 
 class SkillController
 {
@@ -35,9 +36,22 @@ class SkillController
 
         $skills = SkillService::getSkills($ids);
 
-        jsonResponse([
+        $responseData = [
             'skills' => $skills
-        ]);
+        ];
+
+        // Criptografar resposta se tiver usuário autenticado E se DEBUG_MODE=false
+        $shouldEncrypt = StateEncryptionService::shouldEncrypt();
+        $user = AuthService::getCurrentUser();
+        if ($shouldEncrypt && $user) {
+            $encryptionKey = StateEncryptionService::getUserEncryptionKey((int)$user['id']);
+            $encrypted = StateEncryptionService::encryptApiResponse($responseData, $encryptionKey);
+            jsonResponse($encrypted);
+            return;
+        }
+
+        // Se DEBUG_MODE=true, retornar sem criptografia (RAW)
+        jsonResponse($responseData);
     }
 
     /**
@@ -64,8 +78,21 @@ class SkillController
             return;
         }
 
-        jsonResponse([
+        $responseData = [
             'skill' => $skill
-        ]);
+        ];
+
+        // Criptografar resposta se tiver usuário autenticado E se DEBUG_MODE=false
+        $shouldEncrypt = StateEncryptionService::shouldEncrypt();
+        $user = AuthService::getCurrentUser();
+        if ($shouldEncrypt && $user) {
+            $encryptionKey = StateEncryptionService::getUserEncryptionKey((int)$user['id']);
+            $encrypted = StateEncryptionService::encryptApiResponse($responseData, $encryptionKey);
+            jsonResponse($encrypted);
+            return;
+        }
+
+        // Se DEBUG_MODE=true, retornar sem criptografia (RAW)
+        jsonResponse($responseData);
     }
 }

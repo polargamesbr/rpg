@@ -57,6 +57,8 @@
 
     let sessionUid = null;
     let sessionData = null;
+    let encryptionToken = null;
+    let sessionEncryptionKey = null; // Chave descriptografada (armazenada em memória)
 
     // =====================================================
     // ENTITIES
@@ -480,7 +482,7 @@
             'hero_swordman': 'swordsman', 'swordman': 'swordsman',
             'hero_archer': 'archer', 'archer': 'archer',
             'hero_acolyte': 'acolyte', 'acolyte': 'acolyte',
-            'toxic_slime': 'toxic_slime', 'slime': 'toxic_slime',
+            'slime': 'slime',
             'wolf': 'wolf'
         };
         if (combatMap[combatKey]) return combatMap[combatKey];
@@ -489,7 +491,7 @@
             'swordsman': 'swordsman', 'swordman': 'swordsman', 'warrior': 'swordsman',
             'archer': 'archer', 'ranged': 'archer', 'hero': 'swordsman',
             'acolyte': 'acolyte',
-            'slime': 'toxic_slime', 'toxic_slime': 'toxic_slime', 'wolf': 'wolf'
+            'slime': 'slime', 'wolf': 'wolf'
         };
         return classMap[className] || combatKey || null;
     }
@@ -1082,86 +1084,22 @@
     }
 
     // =====================================================
-    // DEBUG MODE
+    // DEBUG - Sistema movido para map-debug.js
+    // As variáveis abaixo ainda são usadas para edição de paredes
     // =====================================================
-    let debugMode = false;
-    let debugDraggingUnit = null;
-    let debugFPS = 7; // FPS padrão da animação (controlável via UI)
-    let debugSelectedUnit = null; // Unidade selecionada para debug
-    let debugScale = 2.0; // Escala padrão do personagem (controlável via UI)
-    let debugOffsetX = 1; // Offset X padrão (controlável via UI)
-    let debugOffsetY = 44; // Offset Y padrão (controlável via UI)
+    let debugWallsAdded = []; // Novas paredes adicionadas no debug (formato: [{x, y}, ...])
+    let debugWallsRemoved = []; // Paredes de WALLS removidas no debug (formato: [{x, y}, ...])
 
     // Valores padrão de offset para sprites (usados quando não está em modo debug)
     // Walk: Offset X: -3px, Offset Y: 44px
     const DEFAULT_SPRITE_OFFSET_X = -3;
     const DEFAULT_SPRITE_OFFSET_Y = 44;
-    let debugAnimationState = null; // Estado de animação forçado no debug (null = usar estado real da unidade, 'idle' ou 'walk' = forçar)
-    let debugCompareAnimations = false; // Mostrar idle e walk juntos (debug)
-    let debugCompareOffset = 60; // Distância da cópia no modo comparação
-
-    // Debug: Edição de paredes
-    let debugEditWalls = false; // Modo de edição de paredes
-    let debugWallsAdded = []; // Novas paredes adicionadas no debug (formato: [{x, y}, ...])
-    let debugWallsRemoved = []; // Paredes de WALLS removidas no debug (formato: [{x, y}, ...])
 
     // =====================================================
-    // DEBUG - Código removido: agora usa map-debug.js
-    // O sistema de debug foi movido para map-debug.js
+    // WALLS - Carregado do config do mapa (PHP)
+    // Inicializado como array vazio, será preenchido pelo applySessionConfig()
     // =====================================================
-    // WALLS - Carregado do config do mapa (config_json.walls)
-    // Fallback padrão se não houver no config
-    // =====================================================
-    // WALLS - Carregado do config do mapa (config_json.walls)
-    // Fallback padro se no houver no config
-    // =====================================================
-    let WALLS = [
-        { "x": 8, "y": 12 }, { "x": 9, "y": 13 }, { "x": 10, "y": 13 }, { "x": 8, "y": 11 }, { "x": 8, "y": 13 },
-        { "x": 11, "y": 13 }, { "x": 11, "y": 14 }, { "x": 12, "y": 14 }, { "x": 12, "y": 15 }, { "x": 13, "y": 15 },
-        { "x": 13, "y": 16 }, { "x": 14, "y": 16 }, { "x": 15, "y": 16 }, { "x": 16, "y": 16 }, { "x": 17, "y": 16 },
-        { "x": 18, "y": 16 }, { "x": 19, "y": 16 }, { "x": 20, "y": 16 }, { "x": 21, "y": 16 }, { "x": 22, "y": 16 },
-        { "x": 23, "y": 16 }, { "x": 24, "y": 16 }, { "x": 25, "y": 16 }, { "x": 26, "y": 16 }, { "x": 26, "y": 15 },
-        { "x": 27, "y": 15 }, { "x": 27, "y": 14 }, { "x": 28, "y": 14 }, { "x": 28, "y": 13 }, { "x": 28, "y": 12 },
-        { "x": 28, "y": 11 }, { "x": 29, "y": 11 }, { "x": 30, "y": 11 }, { "x": 32, "y": 11 }, { "x": 31, "y": 11 },
-        { "x": 34, "y": 11 }, { "x": 33, "y": 11 }, { "x": 36, "y": 11 }, { "x": 35, "y": 11 }, { "x": 33, "y": 10 },
-        { "x": 34, "y": 10 }, { "x": 35, "y": 10 }, { "x": 36, "y": 10 }, { "x": 37, "y": 10 }, { "x": 37, "y": 11 },
-        { "x": 38, "y": 11 }, { "x": 38, "y": 10 }, { "x": 39, "y": 10 }, { "x": 39, "y": 11 }, { "x": 40, "y": 11 },
-        { "x": 40, "y": 10 }, { "x": 41, "y": 10 }, { "x": 41, "y": 11 }, { "x": 42, "y": 11 }, { "x": 42, "y": 10 },
-        { "x": 43, "y": 11 }, { "x": 43, "y": 10 }, { "x": 43, "y": 12 }, { "x": 44, "y": 12 }, { "x": 44, "y": 13 },
-        { "x": 45, "y": 13 }, { "x": 45, "y": 14 }, { "x": 46, "y": 14 }, { "x": 47, "y": 14 }, { "x": 50, "y": 14 },
-        { "x": 48, "y": 14 }, { "x": 49, "y": 14 }, { "x": 51, "y": 14 }, { "x": 53, "y": 14 }, { "x": 52, "y": 14 },
-        { "x": 54, "y": 14 }, { "x": 55, "y": 14 }, { "x": 54, "y": 13 }, { "x": 54, "y": 12 }, { "x": 54, "y": 11 },
-        { "x": 54, "y": 10 }, { "x": 54, "y": 9 }, { "x": 53, "y": 13 }, { "x": 52, "y": 13 }, { "x": 51, "y": 13 },
-        { "x": 50, "y": 13 }, { "x": 52, "y": 11 }, { "x": 52, "y": 10 }, { "x": 51, "y": 11 }, { "x": 51, "y": 10 },
-        { "x": 51, "y": 12 }, { "x": 52, "y": 12 }, { "x": 53, "y": 12 }, { "x": 53, "y": 11 }, { "x": 53, "y": 10 },
-        { "x": 54, "y": 8 }, { "x": 54, "y": 7 }, { "x": 54, "y": 6 }, { "x": 54, "y": 5 }, { "x": 54, "y": 4 },
-        { "x": 54, "y": 3 }, { "x": 53, "y": 3 }, { "x": 52, "y": 3 }, { "x": 51, "y": 3 }, { "x": 51, "y": 4 },
-        { "x": 51, "y": 5 }, { "x": 51, "y": 6 }, { "x": 50, "y": 6 }, { "x": 49, "y": 6 }, { "x": 48, "y": 6 },
-        { "x": 47, "y": 5 }, { "x": 48, "y": 5 }, { "x": 43, "y": 5 }, { "x": 42, "y": 5 }, { "x": 40, "y": 5 },
-        { "x": 41, "y": 5 }, { "x": 40, "y": 6 }, { "x": 41, "y": 6 }, { "x": 42, "y": 6 }, { "x": 38, "y": 6 },
-        { "x": 39, "y": 6 }, { "x": 42, "y": 7 }, { "x": 41, "y": 7 }, { "x": 39, "y": 7 }, { "x": 40, "y": 7 },
-        { "x": 38, "y": 7 }, { "x": 37, "y": 7 }, { "x": 37, "y": 6 }, { "x": 35, "y": 6 }, { "x": 36, "y": 7 },
-        { "x": 36, "y": 6 }, { "x": 35, "y": 7 }, { "x": 34, "y": 6 }, { "x": 34, "y": 7 }, { "x": 33, "y": 7 },
-        { "x": 33, "y": 6 }, { "x": 44, "y": 4 }, { "x": 45, "y": 4 }, { "x": 46, "y": 4 }, { "x": 43, "y": 4 },
-        { "x": 48, "y": 4 }, { "x": 47, "y": 4 }, { "x": 38, "y": 3 }, { "x": 32, "y": 6 }, { "x": 32, "y": 7 },
-        { "x": 31, "y": 7 }, { "x": 31, "y": 6 }, { "x": 30, "y": 7 }, { "x": 30, "y": 6 }, { "x": 29, "y": 6 },
-        { "x": 29, "y": 7 }, { "x": 29, "y": 5 }, { "x": 29, "y": 4 }, { "x": 29, "y": 3 }, { "x": 29, "y": 2 },
-        { "x": 29, "y": 1 }, { "x": 27, "y": 3 }, { "x": 28, "y": 5 }, { "x": 28, "y": 4 }, { "x": 28, "y": 3 },
-        { "x": 28, "y": 2 }, { "x": 27, "y": 2 }, { "x": 27, "y": 1 }, { "x": 28, "y": 1 }, { "x": 26, "y": 1 },
-        { "x": 25, "y": 1 }, { "x": 24, "y": 1 }, { "x": 23, "y": 3 }, { "x": 23, "y": 4 }, { "x": 24, "y": 4 },
-        { "x": 24, "y": 3 }, { "x": 24, "y": 2 }, { "x": 23, "y": 2 }, { "x": 23, "y": 1 }, { "x": 22, "y": 1 },
-        { "x": 22, "y": 3 }, { "x": 22, "y": 2 }, { "x": 26, "y": 4 }, { "x": 25, "y": 2 }, { "x": 27, "y": 5 },
-        { "x": 27, "y": 4 }, { "x": 26, "y": 3 }, { "x": 26, "y": 2 }, { "x": 25, "y": 3 }, { "x": 25, "y": 4 },
-        { "x": 22, "y": 4 }, { "x": 21, "y": 1 }, { "x": 20, "y": 1 }, { "x": 19, "y": 1 }, { "x": 19, "y": 2 },
-        { "x": 19, "y": 3 }, { "x": 18, "y": 3 }, { "x": 18, "y": 4 }, { "x": 17, "y": 4 }, { "x": 16, "y": 4 },
-        { "x": 16, "y": 5 }, { "x": 15, "y": 5 }, { "x": 14, "y": 5 }, { "x": 15, "y": 4 }, { "x": 14, "y": 4 },
-        { "x": 13, "y": 4 }, { "x": 13, "y": 3 }, { "x": 13, "y": 2 }, { "x": 13, "y": 1 }, { "x": 13, "y": 5 },
-        { "x": 12, "y": 5 }, { "x": 12, "y": 6 }, { "x": 12, "y": 7 }, { "x": 11, "y": 7 }, { "x": 8, "y": 7 },
-        { "x": 9, "y": 7 }, { "x": 10, "y": 7 }, { "x": 8, "y": 8 }, { "x": 8, "y": 9 }, { "x": 8, "y": 10 },
-        { "x": 7, "y": 4 }, { "x": 12, "y": 8 }, { "x": 26, "y": 8 }, { "x": 27, "y": 8 }, { "x": 26, "y": 11 },
-        { "x": 23, "y": 12 }, { "x": 26, "y": 12 }, { "x": 27, "y": 12 }, { "x": 23, "y": 8 }, { "x": 20, "y": 6 },
-        { "x": 23, "y": 7 }, { "x": 25, "y": 5 }, { "x": 26, "y": 5 }
-    ];
+    let WALLS = [];
 
     // =====================================================
     // INITIALIZATION - With Map Auto-Detection
@@ -1170,7 +1108,7 @@
         console.log('[MAP-ENGINE] init() iniciado');
 
         // Dependências já foram verificadas em waitForDependencies()
-        console.log('[MAP-ENGINE] Dependências verificadas. combatData disponível.');
+        console.log('[MAP-ENGINE] Dependências verificadas. TacticalDataLoader disponível.');
 
         try {
             canvas = document.getElementById('map-canvas');
@@ -1239,6 +1177,15 @@
         console.log('[MAP-ENGINE] Iniciando carregamento de sessão e mapa');
         try {
             sessionUid = getSessionUidFromUrl();
+            // Obter chave de criptografia ao carregar sessão (aguardar para garantir que está disponível)
+            if (sessionUid) {
+                try {
+                    await getEncryptionKey();
+                    console.log('[MAP-ENGINE] Encryption key obtained');
+                } catch (err) {
+                    console.warn('[init] Failed to get encryption key:', err);
+                }
+            }
             if (sessionUid) {
                 console.log('[MAP-ENGINE] Carregando sessão UID:', sessionUid);
                 await loadSessionStateFromServer(sessionUid);
@@ -1319,7 +1266,13 @@
                 debugWallsRemoved = [];
                 console.log('[DEBUG][init] Alterações de debug resetadas ao recarregar');
             } else {
-                initializeEntities();
+                // Sem sessão: inicializar arrays vazios (modo debug/desenvolvimento)
+                // Em produção, sempre deve haver uma sessão ativa
+                console.warn('[MAP-ENGINE] ⚠️ Nenhuma sessão encontrada. Inicializando com arrays vazios.');
+                playerUnits = [];
+                enemyUnits = [];
+                chests = [];
+                portal = null;
             }
 
             // CRITICAL: Set up canvas and event listeners BEFORE handling battle result
@@ -1447,24 +1400,69 @@
             console.log('[DEBUG][loadSession] Carregando sessão UID:', uid);
             const response = await fetch(`/game/explore/state?session=${encodeURIComponent(uid)}`);
             const data = await response.json();
-            console.log('[DEBUG][loadSession] Resposta do servidor:', data);
+            
+            // Verificar se resposta está criptografada
+            let decryptedData = data;
+            if (data?.encrypted && data?.data && data?.iv) {
+                console.log('[DEBUG][loadSession] Resposta criptografada, descriptografando...');
+                
+                if (!sessionEncryptionKey) {
+                    // Tentar obter chave se não tiver
+                    await getEncryptionKey();
+                }
+                
+                if (sessionEncryptionKey && typeof CryptoJS !== 'undefined') {
+                    try {
+                        const keyWordArray = CryptoJS.enc.Hex.parse(sessionEncryptionKey);
+                        const ivWordArray = CryptoJS.enc.Base64.parse(data.iv);
+                        const encryptedWordArray = CryptoJS.enc.Base64.parse(data.data);
+                        
+                        const decrypted = CryptoJS.AES.decrypt(
+                            { ciphertext: encryptedWordArray },
+                            keyWordArray,
+                            {
+                                iv: ivWordArray,
+                                mode: CryptoJS.mode.CBC,
+                                padding: CryptoJS.pad.Pkcs7
+                            }
+                        );
+                        
+                        const plaintext = decrypted.toString(CryptoJS.enc.Utf8);
+                        decryptedData = JSON.parse(plaintext);
+                        console.log('[DEBUG][loadSession] ✅ Resposta descriptografada com sucesso');
+                    } catch (err) {
+                        console.error('[DEBUG][loadSession] ❌ Erro ao descriptografar:', err);
+                        // Fallback: usar dados sem descriptografar (vai falhar, mas não quebra)
+                    }
+                } else {
+                    console.warn('[DEBUG][loadSession] ⚠️ Chave ou CryptoJS não disponível, tentando sem descriptografia');
+                }
+            }
+            
+            console.log('[DEBUG][loadSession] Resposta do servidor:', decryptedData);
 
-            if (!data?.success) {
+            if (!decryptedData?.success) {
                 console.warn('[MapEngine] Sessão inválida, fallback para modo padrão.');
                 sessionData = null;
                 return;
             }
 
-            console.log('[DEBUG][loadSession] Entities recebidos:', data.entities);
-            console.log('[DEBUG][loadSession] Quantidade de entities:', Array.isArray(data.entities) ? data.entities.length : 0);
+            console.log('[DEBUG][loadSession] Entities recebidos:', decryptedData.entities);
+            console.log('[DEBUG][loadSession] Quantidade de entities:', Array.isArray(decryptedData.entities) ? decryptedData.entities.length : 0);
             console.log('[DEBUG][loadSession] Turno/fase recebidos:', {
-                turn: data.turn,
-                phase: data.phase,
-                unitsActed: data.unitsActed
+                turn: decryptedData.turn,
+                phase: decryptedData.phase,
+                unitsActed: decryptedData.unitsActed
             });
 
-            sessionData = data;
-            applySessionConfig(data);
+            sessionData = decryptedData;
+            applySessionConfig(decryptedData);
+            
+            // Restaurar logs de combate se fornecidos
+            if (decryptedData.combatLogs && Array.isArray(decryptedData.combatLogs)) {
+                restoreCombatLogs(decryptedData.combatLogs);
+            }
+            
             console.log('[DEBUG][loadSession] sessionData final:', sessionData);
         } catch (error) {
             console.error('[MapEngine] Erro ao carregar sessão:', error);
@@ -1485,8 +1483,9 @@
             WALLS = configWalls;
             console.log(`[DEBUG][applySessionConfig] Carregadas ${WALLS.length} paredes do config do mapa`);
         } else {
-            // Fallback: manter paredes padrão se não houver no config
-            console.log('[DEBUG][applySessionConfig] Nenhuma parede no config, usando padrão');
+            // Se não houver paredes no config, manter array vazio
+            WALLS = [];
+            console.log('[DEBUG][applySessionConfig] Nenhuma parede no config, array vazio');
         }
     }
 
@@ -1535,110 +1534,9 @@
         }, 300);
     }
 
-    function initializeEntities() {
-        // Helper to get entity name (now loaded via API)
-        const getEntityName = (key, fallback) => {
-            // Try cache first, otherwise use fallback
-            const entity = window.TacticalDataLoader?.entityCache?.[key];
-            return entity?.name || fallback;
-        };
-
-        // Player Units (your team) - Using dynamic names from combatData
-        // Agora com sistema de atributos integrado ao SkillEngine
-        // REMOVIDO: hero2 (Mage) e hero3 (Archer) - eram apenas para debug
-        // O sistema real usa initializeEntitiesFromSession() que carrega units da sessão
-        playerUnits = [
-            {
-                id: 'hero1', name: getEntityName('hero_swordman', 'Swordman'), type: 'player',
-                combatKey: 'hero_swordman',
-                x: 16, y: 8,
-                level: 10,
-                attributes: { str: 15, agi: 8, vit: 12, int: 5, dex: 10, luk: 6 },
-                hp: 100, maxHp: 100, sp: 1000, maxSp: 1000, attack: 18, defense: 12,
-                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/characters/swordman.webp',
-                class: 'warrior', scale: 1.0
-            }
-        ];
-
-        // Enemy Units - Positioned closer for group combat testing
-        // Agora com sistema de atributos integrado ao SkillEngine
-        enemyUnits = [
-            {
-                id: 'orc1', name: getEntityName('orc', 'Orc Warrior'), type: 'enemy',
-                x: 18, y: 8,
-                level: 5,
-                attributes: { str: 12, agi: 5, vit: 10, int: 3, dex: 6, luk: 3 },
-                hp: 35, maxHp: 35, attack: 10, defense: 5,
-                moveRange: 3, attackRange: 1, avatar: '/public/assets/img/orc.webp',
-                behavior: 'aggressive', scale: 1.0
-            },
-            {
-                id: 'orc2', name: getEntityName('orc_scout', 'Orc Scout'), type: 'enemy',
-                x: 19, y: 7,
-                level: 6,
-                attributes: { str: 8, agi: 10, vit: 7, int: 4, dex: 12, luk: 4 },
-                hp: 45, maxHp: 45, attack: 15, defense: 3,
-                moveRange: 2, attackRange: 3, avatar: '/public/assets/img/orc_scout.webp',
-                behavior: 'defensive', scale: 1.0
-            },
-            {
-                id: 'orc3', name: getEntityName('bandit_marauder', 'Bandit Marauder'), type: 'enemy',
-                x: 19, y: 9,
-                level: 12,
-                attributes: { str: 18, agi: 8, vit: 15, int: 5, dex: 10, luk: 5 },
-                hp: 120, maxHp: 120, attack: 22, defense: 10,
-                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/bandit_marauder.webp',
-                behavior: 'aggressive', scale: 1.0
-            },
-            {
-                id: 'orc4', name: getEntityName('goblin', 'Goblin Scout'), type: 'enemy',
-                x: 30, y: 5,
-                level: 4,
-                attributes: { str: 6, agi: 14, vit: 5, int: 5, dex: 10, luk: 8 },
-                hp: 40, maxHp: 40, attack: 18, defense: 3,
-                moveRange: 2, attackRange: 2, avatar: '/public/assets/img/goblin.png',
-                behavior: 'defensive', scale: 1.0
-            },
-            {
-                id: 'wolf1', name: getEntityName('wolf', 'Dire Wolf'), type: 'enemy',
-                combatKey: 'wolf',
-                x: 12, y: 11,
-                level: 5,
-                attributes: { str: 10, agi: 15, vit: 8, int: 2, dex: 8, luk: 4 },
-                hp: 40, maxHp: 40, attack: 12, defense: 4,
-                moveRange: 4, attackRange: 1, avatar: '/public/assets/img/characters/wolf.webp',
-                behavior: 'aggressive', scale: 1.0,
-                animationState: 'idle'
-            },
-            {
-                id: 'slime1', name: getEntityName('toxic_slime', 'Toxic Slime'), type: 'enemy',
-                x: 11, y: 7,
-                level: 3,
-                attributes: { str: 5, agi: 4, vit: 12, int: 6, dex: 4, luk: 5 },
-                hp: 30, maxHp: 30, attack: 8, defense: 8,
-                moveRange: 2, attackRange: 1, avatar: '/public/assets/img/characters/slime.webp',
-                behavior: 'aggressive', scale: 1.0
-            }
-        ];
-
-        // Chests - scattered around map
-        chests = [
-            { id: 'chest1', x: 10, y: 8, opened: false, loot: { gold: 25, item: 'Poção de Vida' } },
-            { id: 'chest2', x: 22, y: 12, opened: false, loot: { gold: 50, item: 'Elixir' } },
-            { id: 'chest3', x: 35, y: 7, opened: false, loot: { gold: 35, item: 'Bomba' } }
-        ];
-
-        // Portal - at the far right of castle
-        portal = { id: 'portal', x: 36, y: 8, name: 'Portão do Castelo' };
-
-        // Recalcular stats baseados em level/atributos se SkillEngine disponível
-        applySkillEngineStats(playerUnits);
-        applySkillEngineStats(enemyUnits);
-
-        loadImages();
-        loadRequiredSprites(); // Carregar sprites necessários
-        updateFreeExploreState();
-    }
+    // Função initializeEntities() removida - código hardcoded desnecessário
+    // O sistema real sempre usa initializeEntitiesFromSession() que carrega dados do PHP
+    // Se não houver sessão, arrays são inicializados vazios (ver init() linha ~1269)
 
     /**
      * Aplica stats calculados pelo TacticalSkillEngine às unidades
@@ -1695,10 +1593,23 @@
             unit.crit = stats.crit;
             unit.aspd = stats.aspd;
 
-            // HP e MP - usar calculado ou manter original se maior (para bosses etc)
-            unit.maxHp = Math.max(unit.maxHp || 0, stats.maxHp);
-            unit.maxSp = Math.max(unit.maxSp || 0, stats.maxMana);
-            unit.maxMana = stats.maxMana;
+            // HP e MP - Para monstros, usar valores do sheet diretamente (não recalcular baseado em level)
+            // Para players, usar cálculo baseado em level
+            const isMonster = unit.type === 'enemy' || unit.combatKey === 'slime' || unit.combatKey === 'wolf' || unit.combatKey === 'hawk';
+            
+            if (isMonster) {
+                // Monstros: manter maxHp e maxSp do sheet (já vem correto do backend)
+                // Não sobrescrever com stats calculados pelo TacticalSkillEngine
+                // Apenas garantir que maxMana está definido
+                if (!unit.maxMana) {
+                    unit.maxMana = unit.maxSp || stats.maxMana;
+                }
+            } else {
+                // Players: usar cálculo baseado em level
+                unit.maxHp = Math.max(unit.maxHp || 0, stats.maxHp);
+                unit.maxSp = Math.max(unit.maxSp || 0, stats.maxMana);
+                unit.maxMana = stats.maxMana;
+            }
 
             // Forçar HP/SP cheios se for nova batalha
             if (isNewBattle) {
@@ -1722,7 +1633,20 @@
 
             // Recalcular stats com buffs/debuffs (se houver)
             if (window.TacticalSkillEngine.recalculateStats) {
+                // Para monstros, salvar maxHp/maxSp antes de recalculateStats para não serem sobrescritos
+                const isMonster = unit.type === 'enemy' || unit.combatKey === 'slime' || unit.combatKey === 'wolf' || unit.combatKey === 'hawk';
+                const savedMaxHp = isMonster ? unit.maxHp : null;
+                const savedMaxSp = isMonster ? unit.maxSp : null;
+                
                 window.TacticalSkillEngine.recalculateStats(unit);
+
+                // Restaurar maxHp/maxSp dos monstros se foram alterados
+                if (isMonster && savedMaxHp !== null) {
+                    unit.maxHp = savedMaxHp;
+                }
+                if (isMonster && savedMaxSp !== null) {
+                    unit.maxSp = savedMaxSp;
+                }
 
                 // Atualizar propriedades individuais após recalculateStats (para compatibilidade)
                 if (unit.stats) {
@@ -1916,7 +1840,7 @@
 
             const combatKey = enemy.combatKey || enemy.combat_key || enemy.entity_id || null;
             const unitCombatKey = (combatKey || '').toLowerCase();
-            const isSlime = unitCombatKey === 'toxic_slime' || unitCombatKey === 'slime' || (enemy.name && enemy.name.toLowerCase().includes('slime'));
+            const isSlime = unitCombatKey === 'slime' || (enemy.name && enemy.name.toLowerCase().includes('slime'));
 
             console.log(`[DEBUG][initEntities] Inimigo ${index + 1} - combatKey: ${unitCombatKey}, isSlime: ${isSlime}, x: ${enemy.x}, y: ${enemy.y}`);
 
@@ -1938,13 +1862,15 @@
                 baseAttributes: enemy.baseAttributes || enemy.attributes || entityDef?.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 },
                 x: enemy.x || 1,
                 y: enemy.y || 1,
-                // HP/SP: usar maxHp/maxSp se for nova batalha, senão usar valores salvos
-                hp: isNewBattle ? (enemy.maxHp || enemy.hp || 20) : (enemy.hp || enemy.maxHp || 20),
-                maxHp: enemy.maxHp || enemy.hp || 20,
-                sp: isNewBattle ? (enemy.maxSp || 50) : (enemy.sp || enemy.maxSp || 50),
-                maxSp: enemy.maxSp || 50,
-                mana: isNewBattle ? (enemy.maxMana || enemy.maxSp || 50) : (enemy.mana || enemy.sp || 50),
-                maxMana: enemy.maxMana || enemy.maxSp || 50,
+                // HP/SP: Para monstros, SEMPRE usar valores do entity sheet (maxHp/maxSp do sheet)
+                // Se não houver entity sheet, usar valores salvos ou defaults
+                // Prioridade: entity sheet > enemy salvo > defaults
+                maxHp: entityDef?.maxHp || enemy.maxHp || enemy.hp || 20,
+                maxSp: entityDef?.maxSp || enemy.maxSp || 50,
+                hp: isNewBattle ? (entityDef?.maxHp || enemy.maxHp || enemy.hp || 20) : (enemy.hp || entityDef?.maxHp || enemy.maxHp || 20),
+                sp: isNewBattle ? (entityDef?.maxSp || enemy.maxSp || 50) : (enemy.sp || entityDef?.maxSp || enemy.maxSp || 50),
+                mana: isNewBattle ? (entityDef?.maxSp || enemy.maxMana || enemy.maxSp || 50) : (enemy.mana || enemy.sp || entityDef?.maxSp || enemy.maxSp || 50),
+                maxMana: entityDef?.maxSp || enemy.maxMana || enemy.maxSp || 50,
                 attack: enemy.attack || 5,
                 defense: enemy.defense || 2,
                 moveRange: enemy.moveRange || 2,
@@ -2093,6 +2019,14 @@
             }
             // Sempre atualizar baseAttributes
             unit.baseAttributes = entityDef.attributes ? { ...entityDef.attributes } : (unit.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 });
+            // Para monstros, SEMPRE usar maxHp/maxSp do entity sheet (não recalcular)
+            if (unit.type === 'enemy' && entityDef.maxHp !== undefined) {
+                unit.maxHp = entityDef.maxHp;
+            }
+            if (unit.type === 'enemy' && entityDef.maxSp !== undefined) {
+                unit.maxSp = entityDef.maxSp;
+                unit.maxMana = entityDef.maxSp;
+            }
             // Atualizar level se entity sheet tiver
             if (entityDef.level) {
                 unit.level = entityDef.level;
@@ -2172,8 +2106,14 @@
             unitsActed: Array.from(gameState.unitsActedThisTurn || [])
         });
 
-        // Persistir de forma assíncrona sem bloquear a UI
-        persistSessionState().catch(() => { });
+        // Log de turno encerrado
+        addCombatLog('turn_ended', {
+            unit: 'Jogador'
+        });
+        
+        // Persistir IMEDIATAMENTE a mudança de fase para evitar que refresh reverta
+        // Usar await para garantir que a persistência aconteça antes de continuar
+        await persistSessionState(true);
 
         // Close all menus/popups
         hideActionMenu();
@@ -2228,6 +2168,13 @@
     async function processEnemyTurn() {
         for (const enemy of enemyUnits) {
             if (enemy.hp <= 0) continue;
+            
+            // CRÍTICO: Verificar se o inimigo já agiu neste turno
+            // Isso previne que inimigos que já agiram (após refresh) ajam novamente
+            if (gameState.unitsActedThisTurn.has(String(enemy.id))) {
+                console.log(`[processEnemyTurn] Inimigo ${enemy.id} já agiu neste turno, pulando...`);
+                continue;
+            }
 
             // Find closest player unit
             let closestPlayer = findClosestPlayer(enemy);
@@ -2248,62 +2195,99 @@
 
             // 2. DECISÃO: Usar skill, atacar ou mover
             let actionTaken = false;
+            
+            // Verificar distância para ataque melee
+            const dist = Math.max(Math.abs(enemy.x - closestPlayer.x), Math.abs(enemy.y - closestPlayer.y));
+            
+            // Para slime (monstro fraco), balancear entre ataque e skill (50% cada)
+            const isSlime = enemy.combatKey === 'slime' || enemy.entity_id === 'slime';
+            const shouldUseSkill = isSlime 
+                ? (viableSkills.length > 0 && Math.random() < 0.5) // 50% chance de usar skill
+                : (viableSkills.length > 0); // Outros monstros sempre usam skill se disponível
 
-            if (viableSkills.length > 0) {
+            if (shouldUseSkill) {
                 // Escolher melhor skill
                 const bestSkill = chooseBestSkill(enemy, closestPlayer, viableSkills);
                 enemy.intent = 'skill';
                 await executeSkill(enemy, closestPlayer, bestSkill);
                 actionTaken = true;
+                
+                // Persistir estado imediatamente após skill do inimigo
+                await persistSessionState(true);
+            } else if (dist <= (enemy.attackRange || 1)) {
+                // Está no alcance, atacar normalmente!
+                enemy.intent = 'attack';
+                await executeAttack(enemy, closestPlayer);
+                actionTaken = true;
+                
+                // Persistir estado imediatamente após ataque do inimigo
+                await persistSessionState(true);
             } else {
-                // Verificar distância para ataque melee
-                const dist = Math.max(Math.abs(enemy.x - closestPlayer.x), Math.abs(enemy.y - closestPlayer.y));
-
-                if (dist <= (enemy.attackRange || 1)) {
-                    // Está no alcance, atacar!
-                    enemy.intent = 'attack';
-                    await executeAttack(enemy, closestPlayer);
-                    actionTaken = true;
-                } else {
-                    // Precisa se mover
-                    enemy.intent = 'move';
-                    const targetCell = findBestEnemyApproachCell(enemy, closestPlayer);
-                    if (targetCell) {
-                        const path = findPath(enemy, targetCell, enemy.moveRange);
-                        if (path.length > 0) {
-                            // Mover até entrar no alcance
-                            let stopIndex = path.length - 1;
-                            for (let i = 0; i < path.length; i++) {
-                                const distToPlayer = Math.max(Math.abs(path[i].x - closestPlayer.x), Math.abs(path[i].y - closestPlayer.y));
-                                if (distToPlayer <= (enemy.attackRange || 1)) {
-                                    stopIndex = Math.max(0, i - 1);
-                                    break;
-                                }
-                            }
-
-                            const movePath = path.slice(0, Math.min(enemy.moveRange, stopIndex + 1));
-                            for (const step of movePath) {
-                                if (getUnitAt(step.x, step.y) && getUnitAt(step.x, step.y) !== enemy) break;
-                                await animateMove(enemy, step.x, step.y, true);
-                                enemy.x = step.x;
-                                enemy.y = step.y;
-                            }
-
-                            // Após mover, verificar se ficou adjacente
-                            const newDist = Math.max(Math.abs(enemy.x - closestPlayer.x), Math.abs(enemy.y - closestPlayer.y));
-                            if (newDist <= (enemy.attackRange || 1)) {
-                                enemy.intent = 'attack';
-                                await executeAttack(enemy, closestPlayer);
-                                actionTaken = true;
+                // Precisa se mover
+                enemy.intent = 'move';
+                const targetCell = findBestEnemyApproachCell(enemy, closestPlayer);
+                if (targetCell) {
+                    const path = findPath(enemy, targetCell, enemy.moveRange);
+                    if (path.length > 0) {
+                        // Mover até entrar no alcance
+                        let stopIndex = path.length - 1;
+                        for (let i = 0; i < path.length; i++) {
+                            const distToPlayer = Math.max(Math.abs(path[i].x - closestPlayer.x), Math.abs(path[i].y - closestPlayer.y));
+                            if (distToPlayer <= (enemy.attackRange || 1)) {
+                                stopIndex = Math.max(0, i - 1);
+                                break;
                             }
                         }
-                    }
 
-                    if (!actionTaken) {
-                        enemy.intent = 'wait';
-                        gameState.unitsActedThisTurn.add(enemy.id);
+                        const movePath = path.slice(0, Math.min(enemy.moveRange, stopIndex + 1));
+                        for (const step of movePath) {
+                            if (getUnitAt(step.x, step.y) && getUnitAt(step.x, step.y) !== enemy) break;
+                            await animateMove(enemy, step.x, step.y, true);
+                            enemy.x = step.x;
+                            enemy.y = step.y;
+                            
+                            // Log de movimento do inimigo
+                            addCombatLog('moved', {
+                                unit: enemy.name || enemy.id || 'Inimigo',
+                                x: enemy.x,
+                                y: enemy.y
+                            });
+                            
+                            // Persistir estado imediatamente após cada movimento do inimigo
+                            // Isso previne que refresh (F5) reverta o movimento
+                            await persistSessionState(true);
+                        }
+
+                        // Após mover, verificar se ficou adjacente
+                        const newDist = Math.max(Math.abs(enemy.x - closestPlayer.x), Math.abs(enemy.y - closestPlayer.y));
+                        if (newDist <= (enemy.attackRange || 1)) {
+                            enemy.intent = 'attack';
+                            await executeAttack(enemy, closestPlayer);
+                            actionTaken = true;
+                            
+                            // Persistir estado imediatamente após ataque do inimigo
+                            await persistSessionState(true);
+                        }
                     }
                 }
+
+                if (!actionTaken) {
+                    enemy.intent = 'wait';
+                    gameState.unitsActedThisTurn.add(String(enemy.id));
+                    
+                    // Persistir estado quando inimigo não age (wait)
+                    await persistSessionState(true);
+                }
+            }
+            
+            // CRÍTICO: Marcar inimigo como tendo agido APÓS qualquer ação (movimento, ataque, skill, wait)
+            // Isso garante que mesmo se refresh acontecer, o inimigo não agirá novamente
+            if (!gameState.unitsActedThisTurn.has(String(enemy.id))) {
+                gameState.unitsActedThisTurn.add(String(enemy.id));
+                console.log(`[processEnemyTurn] Inimigo ${enemy.id} marcado como tendo agido`);
+                
+                // Persistir imediatamente após marcar como agido
+                await persistSessionState(true);
             }
 
             // Voltar para idle após ação
@@ -2318,8 +2302,13 @@
             await sleep(200);
         }
 
-        // ÚNICA PERSISTÊNCIA ao final do turno inimigo
-        persistSessionState();
+        // Log de turno inimigo encerrado
+        addCombatLog('turn_ended', {
+            unit: 'Inimigo'
+        });
+        
+        // Persistência final ao término do turno inimigo (redundante, mas garante sincronização)
+        await persistSessionState(true);
 
         if (playerUnits[0]) {
             await animateCameraToUnit(playerUnits[0]);
@@ -2394,6 +2383,11 @@
     }
 
     async function startPlayerTurn() {
+        // Log de turno iniciado
+        addCombatLog('turn_started', {
+            turn: gameState.turn || 1,
+            phase: gameState.phase || 'player'
+        });
         if (gameState.freeExplore) return;
         gameState.turn++;
         gameState.phase = 'player';
@@ -2742,6 +2736,15 @@
 
             // Mark unit as having moved this turn
             unit.hasMoved = true;
+            
+            // Log de movimento
+            if (unit && unit.x !== undefined && unit.y !== undefined) {
+                addCombatLog('moved', {
+                    unit: unit.name || unit.id || 'Unidade',
+                    x: unit.x,
+                    y: unit.y
+                });
+            }
 
             // Free Control: permitir mover de novo (turno não avança, ações ilimitadas)
             if (gameState.debugFreeControl || gameState.debugControlEnemy) {
@@ -4076,7 +4079,10 @@
             if (window.MapSFX?.spawnParrySpark) window.MapSFX.spawnParrySpark(targetPxX, targetPxY, 1);
             playSfx('parry1.mp3', 0.5, 1.0);
             showParryText(target);
-            addLogEntry('attack', `<span class="target">${target.name}</span> defendeu o ataque!`);
+            addCombatLog('defended', {
+                target: target.name || target.id || 'Alvo',
+                attacker: attacker.name || attacker.id || 'Atacante'
+            });
             await sleep(400);
             gameState.isAnimating = false;
             await finishUnitTurn(attacker);
@@ -4159,10 +4165,19 @@
         await sleep(600); // Delay para jogador ver o dano
 
         // 5. Combat Log - registrar ataque
-        const attackLogMsg = isCrit
-            ? `<span class="attacker">${attacker.name}</span> acertou <span class="damage">CRÍTICO</span> em <span class="target">${target.name}</span> causando <span class="damage">${damage}</span> de dano!`
-            : `<span class="attacker">${attacker.name}</span> atacou <span class="target">${target.name}</span> causando <span class="damage">${damage}</span> de dano.`;
-        addLogEntry('attack', attackLogMsg);
+        if (isCrit) {
+            addCombatLog('critical_hit', {
+                attacker: attacker.name || attacker.id || 'Atacante',
+                target: target.name || target.id || 'Alvo',
+                damage: damage
+            });
+        } else {
+            addCombatLog('attacked', {
+                attacker: attacker.name || attacker.id || 'Atacante',
+                target: target.name || target.id || 'Alvo',
+                damage: damage
+            });
+        }
 
         // 6. MORTE
         if (target.hp <= 0) {
@@ -4179,6 +4194,11 @@
 
             // Show kill banner
             showKillBanner(target.name || 'Inimigo');
+            
+            // Log de derrota
+            addCombatLog('defeated', {
+                target: target.name || target.id || 'Inimigo'
+            });
 
             // EXP será concedido automaticamente no backend quando o state for salvo
             // Não precisamos fazer requisição separada aqui
@@ -4212,7 +4232,7 @@
             const archerSkills = ['quick_shot', 'poison_arrow', 'focused_shot', 'piercing_arrow', 'multishot', 'tactical_retreat', 'rain_of_arrows', 'crippling_shot', 'deadly_aim'];
             const swordsmanSkills = ['quick_slash', 'shield_bash', 'berserk_mode', 'power_thrust', 'provoke', 'double_attack', 'sword_mastery', 'war_cry', 'bash', 'heavy_slash', 'champions_slash', 'relentless_strike', 'life_steal', 'crushing_blow', 'guarded_strike', 'cleave'];
             if (casterEntityId === 'wolf') playClawSfx(casterEntityId);
-            else if (casterEntityId === 'toxic_slime') playSlimeSfx(casterEntityId);
+            else if (casterEntityId === 'slime') playSlimeSfx(casterEntityId);
             else if (archerSkills.includes(skill.id)) playBowSfx(casterEntityId, false);
             else if (swordsmanSkills.includes(skill.id) || isPhysical) playSwordSfx(casterEntityId, false);
             else if (isMagic) playMagicSfx(false);
@@ -4282,6 +4302,11 @@
                 });
                 spawnDeathEffect(targetX, targetY);
                 showKillBanner(t.name);
+                
+                // Log de derrota por skill
+                addCombatLog('defeated', {
+                    target: t.name || t.id || 'Inimigo'
+                });
                 
                 // EXP será concedido automaticamente no backend quando o state for salvo
                 // Não precisamos fazer requisição separada aqui
@@ -4367,6 +4392,13 @@
         } else {
             await showSkillBanner(skill.name, skill.icon || 'zap', skillType, skillImg);
         }
+        
+        // Log de skill usada
+        addCombatLog('skill_used', {
+            caster: caster.name || caster.id || 'Unidade',
+            skill: skill.name || skill.id || 'Skill',
+            target: target ? (target.name || target.id || 'Alvo') : null
+        });
 
         // Trigger attack animation for caster (igual ao executeAttack)
         const casterSpriteAnims = casterEntityId ? spriteCache.get(casterEntityId) : null;
@@ -4465,6 +4497,13 @@
                     if (skill.debuff && window.TacticalSkillEngine) {
                         window.TacticalSkillEngine.applyDebuff(enemy, skill.debuff, caster, skill.id);
                         console.log(`[MAP-ENGINE] Debuff aplicado: ${skill.name} em ${enemy.name}`, skill.debuff);
+                        
+                        // Log de debuff aplicado
+                        addCombatLog('debuff_applied', {
+                            target: enemy.name || enemy.id || 'Inimigo',
+                            debuff: skill.name || skill.id || 'Debuff'
+                        });
+                        
                         playDebuffApplySfx();
                         const enemyX = (enemy.x - 0.5) * CONFIG.CELL_SIZE;
                         const enemyY = (enemy.y - 0.5) * CONFIG.CELL_SIZE;
@@ -4537,7 +4576,7 @@
 
                         if (casterEntityId === 'wolf') {
                             playClawSfx(casterEntityId);
-                        } else if (casterEntityId === 'toxic_slime') {
+                        } else if (casterEntityId === 'slime') {
                             playSlimeSfx(casterEntityId);
                         } else if (archerSkills.includes(skill.id)) {
                             playBowSfx(casterEntityId, false);
@@ -4593,11 +4632,22 @@
                             if (window.MapSFX?.spawnParrySpark) window.MapSFX.spawnParrySpark(targetX, targetY, 1);
                             playSfx('parry1.mp3', 0.5, 1.0);
                             showParryText(t);
-                            addLogEntry('attack', `<span class="target">${t.name}</span> defendeu o ataque!`);
+                            addCombatLog('defended', {
+                                target: t.name || t.id || 'Alvo',
+                                attacker: caster.name || caster.id || 'Atacante',
+                                skill: skill.name || skill.id || 'Skill'
+                            });
                             continue;
                         }
 
                         t.hp = Math.max(0, t.hp - damage);
+
+                        // Log de dano da skill
+                        addCombatLog('skill_damage', {
+                            skill: skill.name || skill.id || 'Skill',
+                            target: t.name || t.id || 'Alvo',
+                            damage: damage
+                        });
 
                         // Atualizar HUD se o alvo for a unidade selecionada
                         if (gameState.selectedUnit && (gameState.selectedUnit.id === t.id || gameState.selectedUnit === t)) {
@@ -4691,6 +4741,13 @@
                 for (const ally of allAllies) {
                     window.TacticalSkillEngine.applyBuff(ally, skill.buff, caster, skill.id);
                     console.log(`[MAP-ENGINE] Buff aplicado: ${skill.name} em ${ally.name}`, skill.buff);
+                    
+                    // Log de buff aplicado
+                    addCombatLog('buff_applied', {
+                        target: ally.name || ally.id || 'Aliado',
+                        buff: skill.name || skill.id || 'Buff'
+                    });
+                    
                     playBuffApplySfx();
                     const allyX = (ally.x - 0.5) * CONFIG.CELL_SIZE;
                     const allyY = (ally.y - 0.5) * CONFIG.CELL_SIZE;
@@ -4714,6 +4771,14 @@
                     healing += Math.floor((caster.matk || 0) * (skill.healMatk ?? 0.5));
                     healing = Math.max(1, healing);
                     t.hp = Math.min(t.maxHp, t.hp + healing);
+                    
+                    // Log de cura
+                    addCombatLog('skill_heal', {
+                        caster: caster.name || caster.id || 'Unidade',
+                        target: t.name || t.id || 'Alvo',
+                        heal: healing
+                    });
+                    
                     showHealNumber(t.x, t.y, healing);
                     spawnHealEffect((t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE);
                 }
@@ -4727,6 +4792,13 @@
                 if (skill.buff && window.TacticalSkillEngine) {
                     window.TacticalSkillEngine.applyBuff(t, skill.buff, caster, skill.id);
                     console.log(`[MAP-ENGINE] Buff aplicado: ${skill.name} em ${t.name}`, skill.buff);
+                    
+                    // Log de buff aplicado
+                    addCombatLog('buff_applied', {
+                        target: t.name || t.id || 'Alvo',
+                        buff: skill.name || skill.id || 'Buff'
+                    });
+                    
                     playBuffApplySfx();
 
                     // Pack Leader: aplicar automaticamente em todos os summons quando o Beast Tamer usa
@@ -4756,6 +4828,13 @@
                 if (skill.debuff && window.TacticalSkillEngine) {
                     window.TacticalSkillEngine.applyDebuff(t, skill.debuff, caster, skill.id);
                     console.log(`[MAP-ENGINE] Debuff aplicado: ${skill.name} em ${t.name}`, skill.debuff);
+                    
+                    // Log de debuff aplicado
+                    addCombatLog('debuff_applied', {
+                        target: t.name || t.id || 'Alvo',
+                        debuff: skill.name || skill.id || 'Debuff'
+                    });
+                    
                     playDebuffApplySfx();
                 }
 
@@ -5484,8 +5563,13 @@
         return set;
     }
 
-    function persistSessionState(immediate = false) {
-        if (!sessionUid) return Promise.resolve();
+    async function persistSessionState(immediate = false) {
+        console.log('[persistSessionState] Called, immediate:', immediate, 'sessionUid:', sessionUid);
+        
+        if (!sessionUid) {
+            console.warn('[persistSessionState] No sessionUid, skipping');
+            return Promise.resolve();
+        }
 
         // Se já está persistindo e não é imediato, agendar para depois
         if (isPersisting && !immediate) {
@@ -5501,6 +5585,7 @@
         }
 
         isPersisting = true;
+        console.log('[persistSessionState] Starting persistence...');
 
         // NOTA: EXP é concedido em handleBattleResult quando o inimigo morre,
         // não aqui. Esta função apenas salva o state.
@@ -5546,7 +5631,9 @@
                 turn: gameState.turn,
                 phase: gameState.phase,
                 unitsActed: Array.from(gameState.unitsActedThisTurn || [])
-            }
+            },
+            // Incluir logs de combate para sincronização com servidor
+            combatLogs: combatLogs.slice(-100) // Últimos 100 logs para evitar payload muito grande
         };
         console.log('[DEBUG][persistSessionState] Enviando state:', {
             turn: payload.state.turn,
@@ -5554,15 +5641,157 @@
             unitsActed: payload.state.unitsActed
         });
 
+        // Criptografar payload se tiver chave de sessão
+        // Se não tiver chave ainda, tentar obter antes de enviar
+        console.log('[persistSessionState] Checking encryption key:', {
+            hasKey: !!sessionEncryptionKey,
+            keyLength: sessionEncryptionKey ? sessionEncryptionKey.length : 0,
+            sessionUid: sessionUid
+        });
+        
+        if (!sessionEncryptionKey && sessionUid) {
+            console.log('[persistSessionState] Key not available, requesting...');
+            try {
+                const key = await getEncryptionKey();
+                console.log('[persistSessionState] Key obtained:', !!key, key ? key.substring(0, 10) + '...' : 'null');
+            } catch (err) {
+                console.warn('[persistSessionState] Failed to get encryption key:', err);
+            }
+        }
+        
+        let requestBody;
+        // Verificar se DEBUG_MODE está habilitado (dados em texto plano)
+        const shouldEncrypt = !(window.ENCRYPTION_DEBUG_MODE === true);
+        
+        if (shouldEncrypt && sessionEncryptionKey) {
+            console.log('[persistSessionState] Attempting to encrypt payload...');
+            try {
+                const encrypted = await encryptPayload(payload, sessionEncryptionKey);
+                requestBody = JSON.stringify({
+                    encrypted: encrypted.encrypted,
+                    iv: encrypted.iv,
+                    tag: encrypted.tag
+                });
+                console.log('[persistSessionState] ✅ Payload encrypted successfully');
+            } catch (err) {
+                console.error('[persistSessionState] ❌ Encryption failed, sending plain:', err);
+                requestBody = JSON.stringify(payload);
+            }
+        } else {
+            if (window.ENCRYPTION_DEBUG_MODE === true) {
+                console.log('[persistSessionState] 🔓 DEBUG_MODE=true, sending plain text (RAW)');
+            } else {
+                console.warn('[persistSessionState] ⚠️ No encryption key available, sending plain text');
+            }
+            requestBody = JSON.stringify(payload);
+        }
+
         return fetch(`/game/explore/state?session=${encodeURIComponent(sessionUid)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: requestBody
         }).then(() => {
             isPersisting = false;
         }).catch(() => {
             isPersisting = false;
         });
+    }
+
+    /**
+     * Criptografa payload usando AES-256 (com crypto-js para funcionar em HTTP)
+     */
+    async function encryptPayload(payload, key) {
+        try {
+            console.log('[encryptPayload] Starting encryption...');
+            
+            // Verificar se CryptoJS está disponível
+            if (typeof CryptoJS === 'undefined') {
+                throw new Error('CryptoJS library not loaded');
+            }
+            
+            const payloadJson = JSON.stringify(payload);
+            
+            // A chave vem como hex string (64 chars = 32 bytes)
+            // CryptoJS precisa da chave como WordArray
+            const keyWordArray = CryptoJS.enc.Hex.parse(key);
+            
+            // Gerar IV aleatório (16 bytes)
+            const iv = CryptoJS.lib.WordArray.random(16);
+            
+            // Criptografar usando AES-256-CBC (compatível com PHP openssl)
+            const encrypted = CryptoJS.AES.encrypt(payloadJson, keyWordArray, {
+                iv: iv,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
+            });
+            
+            // Extrair ciphertext e IV em base64
+            const ciphertext = encrypted.ciphertext;
+            const ivBase64 = iv.toString(CryptoJS.enc.Base64);
+            
+            const result = {
+                encrypted: ciphertext.toString(CryptoJS.enc.Base64),
+                iv: ivBase64,
+                tag: '' // CBC não usa tag, mas mantemos para compatibilidade
+            };
+            
+            console.log('[encryptPayload] ✅ Encryption successful');
+            return result;
+        } catch (err) {
+            console.error('[encryptPayload] ❌ Encryption error:', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Obtém chave de criptografia do servidor
+     */
+    async function getEncryptionKey() {
+        if (!sessionUid) {
+            console.warn('[getEncryptionKey] No sessionUid');
+            return null;
+        }
+        if (sessionEncryptionKey) {
+            console.log('[getEncryptionKey] Key already available');
+            return sessionEncryptionKey; // Já tem chave
+        }
+        
+        try {
+            console.log('[getEncryptionKey] Requesting key from server...');
+            const response = await fetch(`/game/explore/get-key?session=${encodeURIComponent(sessionUid)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.warn('[getEncryptionKey] Failed to get key:', response.status, errorText);
+                return null;
+            }
+            
+            const data = await response.json();
+            if (!data.success) {
+                console.warn('[getEncryptionKey] Server returned success=false:', data);
+                return null;
+            }
+            
+            if (!data.key) {
+                console.warn('[getEncryptionKey] No key in response:', data);
+                return null;
+            }
+            
+            encryptionToken = data.token;
+            
+            // Chave vem diretamente do servidor (sem criptografia adicional)
+            // A segurança vem da validação do estado esperado no servidor, não da ocultação da chave
+            sessionEncryptionKey = data.key;
+            console.log('[getEncryptionKey] ✅ Key obtained successfully, length:', sessionEncryptionKey ? sessionEncryptionKey.length : 0);
+            console.log('[getEncryptionKey] Key preview:', sessionEncryptionKey ? sessionEncryptionKey.substring(0, 20) + '...' : 'null');
+            return sessionEncryptionKey;
+        } catch (err) {
+            console.error('[getEncryptionKey] Error:', err);
+            return null;
+        }
     }
 
     function areEnemiesCleared() {
@@ -6943,7 +7172,38 @@
             title: '💀 Derrota',
             content: 'Todos os seus heróis foram derrotados...',
             buttons: [
-                { text: 'Tentar Novamente', primary: true, action: () => location.reload() },
+                { 
+                    text: 'Tentar Novamente', 
+                    primary: true, 
+                    action: () => {
+                        // Resetar sessão e voltar para tavern para começar a quest novamente
+                        if (sessionUid) {
+                            fetch(`/game/explore/reset?session=${encodeURIComponent(sessionUid)}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Redirecionar para tavern onde pode começar a quest novamente
+                                    window.location.href = '/game/tavern';
+                                } else {
+                                    console.error('[GameOver] Erro ao resetar sessão:', data.error);
+                                    alert('Erro ao reiniciar missão. Redirecionando para tavern...');
+                                    window.location.href = '/game/tavern';
+                                }
+                            })
+                            .catch(err => {
+                                console.error('[GameOver] Erro ao resetar sessão:', err);
+                                alert('Erro ao reiniciar missão. Redirecionando para tavern...');
+                                window.location.href = '/game/tavern';
+                            });
+                        } else {
+                            // Se não tiver sessionUid, apenas voltar para tavern
+                            window.location.href = '/game/tavern';
+                        }
+                    }
+                },
                 { text: 'Sair', action: () => window.location.href = '/game/tavern' }
             ]
         });
@@ -7551,7 +7811,9 @@
         }, 1500);
 
         // Add to combat log
-        addLogEntry('defeat', `<span class="target">${targetName}</span> foi derrotado!`);
+        addCombatLog('defeated', {
+            target: targetName
+        });
     }
 
     // =====================================================
@@ -7694,41 +7956,195 @@
     // =====================================================
     // COMBAT LOG SYSTEM
     // =====================================================
-    const combatLogEntries = [];
+    const combatLogs = []; // Array de logs em memória para sincronização
     const MAX_LOG_ENTRIES = 20;
 
-    function addLogEntry(type, html) {
+    // Sistema de tradução de logs (chaves para multilíngua)
+    const logTranslations = {
+        'attacked': (params) => 
+            `<span class="attacker">${params.attacker}</span> atacou <span class="target">${params.target}</span> causando <span class="damage">${params.damage}</span> de dano.`,
+        
+        'defended': (params) => 
+            `<span class="target">${params.target}</span> defendeu o ataque!`,
+        
+        'moved': (params) => 
+            `<span class="attacker">${params.unit}</span> moveu-se para (${params.x}, ${params.y}).`,
+        
+        'skill_used': (params) => 
+            `<span class="attacker">${params.caster}</span> usou <span class="skill">${params.skill}</span>${params.target ? ` em <span class="target">${params.target}</span>` : ''}.`,
+        
+        'skill_damage': (params) => 
+            `<span class="skill">${params.skill}</span> causou <span class="damage">${params.damage}</span> de dano em <span class="target">${params.target}</span>.`,
+        
+        'skill_heal': (params) => 
+            `<span class="attacker">${params.caster}</span> curou <span class="target">${params.target}</span> em <span class="heal">${params.heal}</span> HP.`,
+        
+        'buff_applied': (params) => 
+            `<span class="target">${params.target}</span> recebeu <span class="buff">${params.buff}</span>.`,
+        
+        'debuff_applied': (params) => 
+            `<span class="target">${params.target}</span> recebeu <span class="debuff">${params.debuff}</span>.`,
+        
+        'turn_ended': (params) => 
+            `${params.unit ? `<span class="attacker">${params.unit}</span> ` : ''}passou o turno.`,
+        
+        'turn_started': (params) => 
+            `Turno ${params.turn} - ${params.phase === 'player' ? 'Jogador' : 'Inimigo'}.`,
+        
+        'defeated': (params) => 
+            `<span class="target">${params.target}</span> foi derrotado!`,
+        
+        'critical_hit': (params) => 
+            `<span class="attacker">${params.attacker}</span> acertou um <span class="critical">crítico</span> em <span class="target">${params.target}</span> causando <span class="damage">${params.damage}</span> de dano!`
+    };
+
+    // Ícones para cada tipo de log
+    const logIcons = {
+        'attacked': 'sword',
+        'defended': 'shield',
+        'moved': 'footprints',
+        'skill_used': 'sparkles',
+        'skill_damage': 'sparkles',
+        'skill_heal': 'heart',
+        'buff_applied': 'arrow-up-circle',
+        'debuff_applied': 'arrow-down-circle',
+        'turn_ended': 'clock',
+        'turn_started': 'play',
+        'defeated': 'skull',
+        'critical_hit': 'zap'
+    };
+
+    // Traduz chave de log para HTML
+    function translateLog(key, params) {
+        const translator = logTranslations[key];
+        if (!translator) {
+            console.warn(`[CombatLog] Chave de log não encontrada: ${key}`);
+            return `[${key}]`;
+        }
+        try {
+            return translator(params || {});
+        } catch (err) {
+            console.error(`[CombatLog] Erro ao traduzir log ${key}:`, err);
+            return `[${key}]`;
+        }
+    }
+
+    // Adiciona log ao array e renderiza
+    function addCombatLog(key, params = {}) {
+        if (!sessionUid) {
+            console.warn('[CombatLog] Tentando adicionar log sem sessionUid');
+            return;
+        }
+
+        const logEntry = {
+            key: key,
+            params: params,
+            timestamp: Math.floor(Date.now() / 1000),
+            turn: gameState.turn || 1,
+            phase: gameState.phase || 'player'
+        };
+
+        // Adicionar ao array (manter últimos 100)
+        combatLogs.push(logEntry);
+        if (combatLogs.length > 100) {
+            combatLogs.shift();
+        }
+
+        // Renderizar no DOM (novos logs embaixo = estilo chat)
+        renderLogEntry(logEntry, false);
+
+        console.log('[CombatLog] Log adicionado:', logEntry);
+    }
+
+    // Renderiza uma entrada de log no DOM
+    // appendToTop: true = mais recente no topo (insertBefore); false = mais recente embaixo (appendChild, estilo chat)
+    function renderLogEntry(logEntry, appendToTop = false) {
         const body = document.getElementById('combat-log-body');
         if (!body) return;
 
-        const icons = {
-            attack: 'sword',
-            skill: 'sparkles',
-            move: 'footprints',
-            defeat: 'skull',
-            turn: 'clock'
-        };
-
-        const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const html = translateLog(logEntry.key, logEntry.params);
+        const icon = logIcons[logEntry.key] || 'info';
+        const time = new Date(logEntry.timestamp * 1000).toLocaleTimeString('pt-BR', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit' 
+        });
 
         const entry = document.createElement('div');
         entry.className = 'log-entry';
         entry.innerHTML = `
-            <i data-lucide="${icons[type] || 'info'}" class="log-icon ${type}"></i>
+            <i data-lucide="${icon}" class="log-icon ${logEntry.key}"></i>
             <span class="log-text">${html}</span>
             <span class="log-time">${time}</span>
         `;
 
-        // Add to top
-        body.insertBefore(entry, body.firstChild);
+        if (appendToTop) {
+            body.insertBefore(entry, body.firstChild);
+        } else {
+            body.appendChild(entry);
+        }
 
-        // Limit entries
+        // Limit entries: manter os mais recentes; remover os mais antigos
         while (body.children.length > MAX_LOG_ENTRIES) {
-            body.removeChild(body.lastChild);
+            body.removeChild(appendToTop ? body.lastChild : body.firstChild);
         }
 
         // Refresh lucide icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
+        
+        // Scroll para o fim (mensagens mais recentes embaixo = estilo chat)
+        scrollCombatLogToBottom();
+    }
+    
+    function scrollCombatLogToBottom() {
+        const body = document.getElementById('combat-log-body');
+        if (body) body.scrollTop = body.scrollHeight;
+    }
+
+    // Função de compatibilidade (mantida para código existente)
+    function addLogEntry(type, html) {
+        // Mapear tipos antigos para novas chaves
+        const typeMap = {
+            'attack': 'attacked',
+            'skill': 'skill_used',
+            'move': 'moved',
+            'defeat': 'defeated',
+            'turn': 'turn_ended'
+        };
+
+        const key = typeMap[type] || 'attacked';
+        // Tentar extrair parâmetros do HTML (fallback)
+        addCombatLog(key, { message: html });
+    }
+
+    // Restaura logs do servidor (ordem do banco = cronológica; mais antigos em cima, mais recentes embaixo = estilo chat/timeline)
+    function restoreCombatLogs(logs) {
+        if (!Array.isArray(logs)) return;
+
+        const body = document.getElementById('combat-log-body');
+        if (!body) return;
+
+        body.innerHTML = '';
+        combatLogs.length = 0;
+
+        // API retorna ORDER BY turn ASC, created_at ASC (mais antigos primeiro)
+        // Adicionar em ordem: appendChild = mais antigo em cima, mais recente embaixo (estilo chat)
+        logs.forEach(log => {
+            if (log.key && log.params) {
+                const entry = {
+                    key: log.key,
+                    params: log.params,
+                    timestamp: log.timestamp || Math.floor(Date.now() / 1000),
+                    turn: log.turn || 1,
+                    phase: log.phase || 'player'
+                };
+                combatLogs.push(entry);
+                renderLogEntry(entry, false);
+            }
+        });
+
+        scrollCombatLogToBottom();
+        console.log(`[CombatLog] ${logs.length} logs restaurados do servidor`);
     }
 
     // Global function for toggle

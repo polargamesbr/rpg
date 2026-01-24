@@ -4,11 +4,12 @@ namespace App\Controllers;
 
 use App\Services\EntitySheetService;
 use App\Services\AuthService;
+use App\Services\StateEncryptionService;
 
 class EntityController
 {
     /**
-     * GET /game/api/entities?ids=hero_swordman,toxic_slime
+     * GET /game/api/entities?ids=hero_swordman,slime
      * Returns batch of entities as JSON
      */
     public function batch(): void
@@ -35,9 +36,22 @@ class EntityController
 
         $entities = EntitySheetService::findBatch($ids);
 
-        jsonResponse([
+        $responseData = [
             'entities' => $entities
-        ]);
+        ];
+
+        // Criptografar resposta se tiver usuário autenticado E se DEBUG_MODE=false
+        $shouldEncrypt = StateEncryptionService::shouldEncrypt();
+        $user = AuthService::getCurrentUser();
+        if ($shouldEncrypt && $user) {
+            $encryptionKey = StateEncryptionService::getUserEncryptionKey((int)$user['id']);
+            $encrypted = StateEncryptionService::encryptApiResponse($responseData, $encryptionKey);
+            jsonResponse($encrypted);
+            return;
+        }
+
+        // Se DEBUG_MODE=true, retornar sem criptografia (RAW)
+        jsonResponse($responseData);
     }
 
     /**
@@ -64,8 +78,41 @@ class EntityController
             return;
         }
 
-        jsonResponse([
+        $responseData = [
             'entity' => $entity
+        ];
+
+        // Criptografar resposta se tiver usuário autenticado E se DEBUG_MODE=false
+        $shouldEncrypt = StateEncryptionService::shouldEncrypt();
+        $user = AuthService::getCurrentUser();
+        if ($shouldEncrypt && $user) {
+            $encryptionKey = StateEncryptionService::getUserEncryptionKey((int)$user['id']);
+            $encrypted = StateEncryptionService::encryptApiResponse($responseData, $encryptionKey);
+            jsonResponse($encrypted);
+            return;
+        }
+
+        // Se DEBUG_MODE=true, retornar sem criptografia (RAW)
+        jsonResponse($responseData);
+    }
+
+    /**
+     * Get API encryption key for user
+     * POST /game/api/get-key
+     */
+    public function getApiKey(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $encryptionKey = StateEncryptionService::getUserEncryptionKey((int)$user['id']);
+        
+        jsonResponse([
+            'success' => true,
+            'key' => $encryptionKey
         ]);
     }
 }

@@ -39,13 +39,13 @@ return [
     'enemies' => [
         [
             'id' => 'slime_1',
-            'combat_key' => 'toxic_slime',
+            'combat_key' => 'slime',
             'x' => 24,
             'y' => 10,
         ],
         [
             'id' => 'slime_2',
-            'combat_key' => 'toxic_slime',
+            'combat_key' => 'slime',
             'x' => 28,
             'y' => 9,
         ],
