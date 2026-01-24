@@ -223,6 +223,8 @@ class ExploreController
             'portal' => $portal,
             'walls' => $walls, // Vem do config (imutável), necessário para renderização
             'mapConfig' => $mapConfig, // Vem do config (imutável), necessário para renderização
+            'intro_dialogue' => in_array($config['intro_dialogue'] ?? '', $state['seen_dialogues'] ?? []) ? '' : ($config['intro_dialogue'] ?? ''),
+            'outro_dialogue' => in_array($config['outro_dialogue'] ?? '', $state['seen_dialogues'] ?? []) ? '' : ($config['outro_dialogue'] ?? ''),
             'turn' => $state['turn'] ?? 1,
             'phase' => $state['phase'] ?? 'player',
             'unitsActed' => $state['unitsActed'] ?? [],
@@ -1174,5 +1176,50 @@ class ExploreController
                 // Continuar com próximo log mesmo se houver erro
             }
         }
+    }
+    /**
+     * Mark a dialogue as seen in the session state
+     * POST /game/explore/mark-dialogue-seen
+     */
+    public function markDialogueSeen(): void
+    {
+        $user = AuthService::getCurrentUser();
+        if (!$user) {
+            jsonResponse(['success' => false, 'error' => 'Not authenticated'], 401);
+            return;
+        }
+
+        $sessionUid = $_GET['session'] ?? null;
+        if (!$sessionUid) {
+            jsonResponse(['success' => false, 'error' => 'Missing session'], 400);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $dialogueId = $input['dialogue_id'] ?? null;
+
+        if (!$dialogueId) {
+            jsonResponse(['success' => false, 'error' => 'Missing dialogue_id'], 400);
+            return;
+        }
+
+        $sessionData = QuestService::getSessionState($sessionUid, (int)$user['id']);
+        if (!$sessionData) {
+            jsonResponse(['success' => false, 'error' => 'Invalid session'], 404);
+            return;
+        }
+
+        $state = $sessionData['state'] ?? [];
+        $seenDialogues = $state['seen_dialogues'] ?? [];
+
+        if (!in_array($dialogueId, $seenDialogues)) {
+            $seenDialogues[] = $dialogueId;
+            $state['seen_dialogues'] = $seenDialogues;
+            
+            // Update session state in DB
+            QuestService::updateSessionStateByUid($sessionUid, $state);
+        }
+
+        jsonResponse(['success' => true]);
     }
 }

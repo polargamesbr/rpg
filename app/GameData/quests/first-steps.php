@@ -10,6 +10,8 @@ return [
     'id' => 'first-steps',
     'name' => 'First Steps',
     'description' => 'Your first mission as an adventurer. Learn the basics of tactical combat.',
+    'intro_dialogue' => 'first_steps_intro',
+    'outro_dialogue' => 'first_steps_outro',
     
     // Map configuration
     'map' => [

@@ -57,5 +57,15 @@ class QuestSession
             ['id' => $id]
         ) > 0;
     }
+
+    public static function updateStateByUid(string $sessionUid, array $state): bool
+    {
+        return Database::update(
+            'quest_sessions',
+            ['state_json' => json_encode($state, JSON_UNESCAPED_SLASHES)],
+            'session_uid = :session_uid',
+            ['session_uid' => $sessionUid]
+        ) > 0;
+    }
 }
 

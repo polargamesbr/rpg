@@ -117,8 +117,12 @@ class QuestConfigService
         $config['objectives'] = is_array($config['objectives'] ?? null) ? $config['objectives'] : [];
         $config['rules'] = is_array($config['rules'] ?? null) ? $config['rules'] : [];
         
+        // Introductory and outro dialogues
+        $config['intro_dialogue'] = (string)($config['intro_dialogue'] ?? '');
+        $config['outro_dialogue'] = (string)($config['outro_dialogue'] ?? '');
+        
         // Portal is optional
-        if (!isset($config['portal'])) {
+        if (!array_key_exists('portal', $config)) {
             $config['portal'] = null;
         }
         

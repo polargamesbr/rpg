@@ -1399,6 +1399,15 @@
                 restoreCombatLogs(decryptedData.combatLogs);
             }
 
+            // TRIGGER INTRO DIALOGUE (Turn 1 only)
+            if (decryptedData.intro_dialogue && decryptedData.turn === 1 && window.initDialog) {
+                console.log('[MAP-ENGINE] Starting Intro Dialogue:', decryptedData.intro_dialogue);
+                // Pequeno delay para garantir que o mapa renderizou
+                setTimeout(() => {
+                    startQuestDialogue(decryptedData.intro_dialogue);
+                }, 1000);
+            }
+
             console.log('[DEBUG][loadSession] sessionData final:', sessionData);
         } catch (error) {
             console.error('[MapEngine] Erro ao carregar sessão:', error);
@@ -4321,7 +4330,7 @@
                             debuff: skill.name || skill.id || 'Debuff'
                         });
 
-                        playDebuffApplySfx();
+                        playSfx('debuff_apply.mp3', 0.6, 1.0);
                         const enemyX = (enemy.x - 0.5) * CONFIG.CELL_SIZE;
                         const enemyY = (enemy.y - 0.5) * CONFIG.CELL_SIZE;
                         showFloatingText('Intimidated!', enemyX, enemyY, '#ef4444');
@@ -4373,6 +4382,13 @@
             const dmgMult = typeof skill.dmgMult === 'number' ? skill.dmgMult : (typeof skill.dmg_mult === 'number' ? skill.dmg_mult : 1.0);
             const critChance = Math.min(95, Math.max(1, (caster.stats?.crit ?? caster.crit ?? 5) + (caster.buffedCritBonus || 0)));
 
+            // Tocar som da skill Apenas UMA vez no início
+            if (window.SoundManager) {
+                SoundManager.playSkillSound(caster, skill);
+            } else if (isMagic) {
+                playMagicSfx(false);
+            }
+
             // Loop de hits
             for (let hit = 0; hit < numHits; hit++) {
                 if (hit > 0) await sleep(hitDelay);
@@ -4382,17 +4398,8 @@
                 if (effectImpactMs > 0) {
                     await runDeferredSkillImpact({ caster, targetsToHit, skill, hit, numHits, dmgMult, baseDamage, critChance, isMagic, isPhysical, casterEntityId, effectImpactMs });
                 } else {
-                    // Impacto GERAL em todo hit; no 1º hit também arma por entidade do caster
                     if (window.SoundManager) SoundManager.playHitImpact(false);
                     else playHitImpactSfx(false);
-
-                    if (hit === 0) {
-                        if (window.SoundManager) {
-                            SoundManager.playSkillSound(caster, skill);
-                        } else if (isMagic) {
-                            playMagicSfx(false);
-                        }
-                    }
 
                     // Mostrar combo indicator para multi-hit
                     if (numHits > 1) {
@@ -4400,7 +4407,8 @@
                     }
 
                     for (const t of targetsToHit) {
-                        if (!t || t.hp <= 0) continue;
+                        if (!t) continue;
+                        // Permitir hits em alvos mortos (overkill) para multi-hit visual
 
                         const variance = 0.9 + Math.random() * 0.2;
                         const isCrit = Math.random() * 100 < critChance;
@@ -4447,7 +4455,11 @@
                             continue;
                         }
 
-                        t.hp = Math.max(0, t.hp - damage);
+                        if (t.hp > 0) {
+                            t.hp = Math.max(0, t.hp - damage);
+                        } else {
+                            // Overkill logic (optional: visual indication)
+                        }
 
                         // Log de dano da skill
                         addCombatLog('skill_damage', {
@@ -4467,10 +4479,12 @@
                         // Efeito de impacto no personagem (shake + flash)
                         applyHitEffect(t, isCrit ? 1.3 : 0.8);
 
+
                         const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE;
                         const targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
 
                         // SKILL IMPACT EFFECTS - Usar EffectsManager data-driven
+                        let skillEffectHandled = false;
                         if (window.EffectsManager) {
                             EffectsManager.playSkillEffect(caster, skill, targetX, targetY, isPhysical, isMagic);
                             skillEffectHandled = true;
@@ -4532,7 +4546,8 @@
                             triggerScreenShake(isCrit ? 12 : (numHits > 1 ? 6 : 8));
                         }
 
-                        if (t.hp <= 0) {
+                        if (t.hp <= 0 && !t.pendingDeath) {
+                            t.pendingDeath = true; // Marcar como morto para não repetir log
                             spawnDeathEffect(targetX, targetY);
                             showKillBanner(t.name);
                             skillAnyKill = true;
@@ -4559,7 +4574,7 @@
                         buff: skill.name || skill.id || 'Buff'
                     });
 
-                    playBuffApplySfx();
+                    playSfx('buff_apply.mp3', 0.6, 1.0);
                     const allyX = (ally.x - 0.5) * CONFIG.CELL_SIZE;
                     const allyY = (ally.y - 0.5) * CONFIG.CELL_SIZE;
                     showFloatingText(skill.name, allyX, allyY, '#a855f7');
@@ -4610,7 +4625,7 @@
                         buff: skill.name || skill.id || 'Buff'
                     });
 
-                    playBuffApplySfx();
+                    playSfx('buff_apply.mp3', 0.6, 1.0);
 
                     // Pack Leader: aplicar automaticamente em todos os summons quando o Beast Tamer usa
                     if (skill.id === 'pack_leader' && skill.buff) {
@@ -4646,7 +4661,7 @@
                         debuff: skill.name || skill.id || 'Debuff'
                     });
 
-                    playDebuffApplySfx();
+                    playSfx('debuff_apply.mp3', 0.6, 1.0);
                 }
 
                 showFloatingText(skill.name, (t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#a855f7');
@@ -4662,7 +4677,7 @@
                         t.isStunned = true;
                         t.stunDuration = skill.effect.duration || 1;
                         showFloatingText('STUN!', (t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE, '#eab308');
-                        playDebuffApplySfx();
+                        playSfx('debuff_apply.mp3', 0.6, 1.0);
                     }
                 }
 
@@ -5168,8 +5183,16 @@
 
         // 5. Final feedback
         if (result.outcome === 'victory') {
-            showNotification('Vitória! Área limpa.', 'success');
-            updateFreeExploreState();
+            if (sessionData && sessionData.outro_dialogue && window.initDialog) {
+                console.log('[MAP-ENGINE] Victory! Starting Outro Dialogue:', sessionData.outro_dialogue);
+                startQuestDialogue(sessionData.outro_dialogue, async () => {
+                    console.log('[MAP-ENGINE] Outro Dialogue finished. Completing quest...');
+                    await completeQuestAtPortal();
+                });
+            } else {
+                showNotification('Vitória! Área limpa.', 'success');
+                updateFreeExploreState();
+            }
         } else if (result.outcome === 'defeat') {
             if (playerUnits.filter(u => u.hp > 0).length === 0) {
                 setTimeout(() => triggerGameOver(), 500);
@@ -5652,24 +5675,26 @@
         if (portalPromptShown) return;
         portalPromptShown = true;
 
+        // Auto-complete directly without prompt (requested by user)
+        completeQuestAtPortal();
+    }
+
+    function triggerVictory() {
+        gameState.victory = true;
+        showNotification('Vitória! Área limpa.', 'success');
+        updateFreeExploreState();
+    }
+
+    function triggerGameOver() {
+        gameState.gameOver = true;
         showModal({
-            title: '✨ Missão concluída',
-            content: 'Você alcançou o portal e eliminou todos os inimigos. Deseja concluir a missão agora?',
+            title: 'Game Over',
+            content: 'Todas as suas unidades foram derrotadas.',
             buttons: [
                 {
-                    text: 'Ficar no mapa',
-                    class: '',
-                    action: () => {
-                        portalPromptShown = false;
-                    }
-                },
-                {
-                    text: 'Concluir missão',
+                    text: 'Tentar Novamente',
                     primary: true,
-                    action: async () => {
-                        portalPromptShown = false;
-                        await completeQuestAtPortal();
-                    }
+                    action: () => window.location.reload()
                 }
             ]
         });
@@ -6056,8 +6081,36 @@
 
     function hideActionMenu() {
         document.getElementById('action-menu')?.classList.remove('visible');
-        // Também fechar menu de skills se aberto
         hideSkillMenu();
+    }
+
+    /**
+     * Inicia um diálogo da quest e gerencia a UI
+     */
+    function startQuestDialogue(dialogueId, onComplete) {
+        if (window.initDialog) {
+            // Esconder UI do mapa
+            const footer = document.querySelector('.premium-footer');
+            if (footer) footer.style.opacity = '0';
+
+            window.initDialog(dialogueId, () => {
+                // Ao terminar, marcar como visto no backend
+                if (sessionUid) {
+                    fetch(`/game/explore/mark-dialogue-seen?session=${encodeURIComponent(sessionUid)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ dialogue_id: dialogueId })
+                    }).catch(err => console.warn('[MapEngine] Failed to mark dialogue seen:', err));
+                }
+
+                // Restaurar UI do mapa
+                if (footer) footer.style.opacity = '1';
+                if (onComplete) onComplete();
+            });
+        } else {
+            console.warn('[MapEngine] window.initDialog not found');
+            if (onComplete) onComplete();
+        }
     }
 
     // =====================================================

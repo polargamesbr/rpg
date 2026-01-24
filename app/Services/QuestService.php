@@ -653,8 +653,15 @@ class QuestService
             'enemies' => $enemies,
             // chests e portal são imutáveis e sempre vêm do config, não precisam estar no state
             'turn' => 1,
-            'phase' => 'player'
+            'phase' => 'player',
+            'unitsActed' => [],
+            'unitsActedThisTurn' => []
         ];
+    }
+
+    public static function updateSessionStateByUid(string $sessionUid, array $state): void
+    {
+        QuestSession::updateStateByUid($sessionUid, $state);
     }
 
     private static function mapClassToCombatKey(string $className): string
