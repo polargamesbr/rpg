@@ -1502,7 +1502,8 @@
             }
 
             // Calcular stats base usando TacticalSkillEngine
-            const stats = window.TacticalSkillEngine.calculateStatsFromAttributes(level, attributes);
+            // A nova lógica do TacticalSkillEngine já honra maxHp/maxSp manuais se isScaled não for true
+            const stats = window.TacticalSkillEngine.calculateStatsFromAttributes(level, attributes, unit);
 
             // Salvar em unit.stats (objeto completo)
             unit.stats = {
@@ -1529,23 +1530,10 @@
             unit.crit = stats.crit;
             unit.aspd = stats.aspd;
 
-            // HP e MP - Para monstros, usar valores do sheet diretamente (não recalcular baseado em level)
-            // Para players, usar cálculo baseado em level
-            const isMonster = unit.type === 'enemy' || unit.combatKey === 'slime' || unit.combatKey === 'wolf' || unit.combatKey === 'hawk';
-
-            if (isMonster) {
-                // Monstros: manter maxHp e maxSp do sheet (já vem correto do backend)
-                // Não sobrescrever com stats calculados pelo TacticalSkillEngine
-                // Apenas garantir que maxMana está definido
-                if (!unit.maxMana) {
-                    unit.maxMana = unit.maxSp || stats.maxMana;
-                }
-            } else {
-                // Players: usar cálculo baseado em level
-                unit.maxHp = Math.max(unit.maxHp || 0, stats.maxHp);
-                unit.maxSp = Math.max(unit.maxSp || 0, stats.maxMana);
-                unit.maxMana = stats.maxMana;
-            }
+            // HP e MP: O TacticalSkillEngine já retornou os valores corretos (manuais ou calculados)
+            unit.maxHp = stats.maxHp;
+            unit.maxMana = stats.maxMana;
+            unit.maxSp = stats.maxMana; // SP alias for Mana
 
             // Forçar HP/SP cheios se for nova batalha
             if (isNewBattle) {
@@ -1569,20 +1557,7 @@
 
             // Recalcular stats com buffs/debuffs (se houver)
             if (window.TacticalSkillEngine.recalculateStats) {
-                // Para monstros, salvar maxHp/maxSp antes de recalculateStats para não serem sobrescritos
-                const isMonster = unit.type === 'enemy' || unit.combatKey === 'slime' || unit.combatKey === 'wolf' || unit.combatKey === 'hawk';
-                const savedMaxHp = isMonster ? unit.maxHp : null;
-                const savedMaxSp = isMonster ? unit.maxSp : null;
-
                 window.TacticalSkillEngine.recalculateStats(unit);
-
-                // Restaurar maxHp/maxSp dos monstros se foram alterados
-                if (isMonster && savedMaxHp !== null) {
-                    unit.maxHp = savedMaxHp;
-                }
-                if (isMonster && savedMaxSp !== null) {
-                    unit.maxSp = savedMaxSp;
-                }
 
                 // Atualizar propriedades individuais após recalculateStats (para compatibilidade)
                 if (unit.stats) {
@@ -1756,7 +1731,8 @@
                 // Inicializar arrays de buffs/debuffs se não existirem
                 activeBuffs: ally.activeBuffs || [],
                 activeDebuffs: ally.activeDebuffs || [],
-                statusEffects: ally.statusEffects || []
+                statusEffects: ally.statusEffects || [],
+                growth_multipliers: ally.growth_multipliers || entityDef?.growth || null,
             };
 
             // Animação: apenas da ficha (entityDef); sem fallback
@@ -1822,7 +1798,8 @@
                 // Inicializar arrays de buffs/debuffs se não existirem
                 activeBuffs: enemy.activeBuffs || [],
                 activeDebuffs: enemy.activeDebuffs || [],
-                statusEffects: enemy.statusEffects || []
+                statusEffects: enemy.statusEffects || [],
+                growth_multipliers: enemy.growth_multipliers || entityDef?.growth || null,
             };
 
             // Animação: apenas da ficha (entityDef); sem fallback
@@ -1879,107 +1856,73 @@
     }
 
     /**
-     * Atualiza atributos das unidades com dados das entity sheets (se disponíveis)
-     */
+ * Atualiza unidades com metadados das entity sheets, mantendo atributos dinâmicos do banco
+ */
     function updateUnitsAttributesFromEntitySheets() {
         if (!window.TacticalDataLoader?.entityCache) {
             console.log('[MAP-ENGINE] updateUnitsAttributesFromEntitySheets: entityCache não disponível ainda');
             return;
         }
 
-        // Atualizar player units
-        playerUnits.forEach(unit => {
+        const allUnits = [...playerUnits, ...enemyUnits];
+
+        allUnits.forEach(unit => {
             const combatKey = unit.combatKey || unit.combat_key;
-            if (!combatKey) {
-                console.log(`[MAP-ENGINE] Unidade ${unit.id} não tem combatKey`);
-                return;
+            if (!combatKey) return;
+
+            const sheet = window.TacticalDataLoader.entityCache[combatKey];
+            if (!sheet) return;
+
+            // 1. Manter atributos dinâmicos do banco (str, agi, vit, etc.)
+            // Prioridade: unit.attributes (já carregado do state?session) > sheet.attributes
+            if (!unit.attributes && sheet.attributes) {
+                unit.attributes = { ...sheet.attributes };
             }
 
-            const entityDef = window.TacticalDataLoader.entityCache[combatKey];
-            if (!entityDef) {
-                console.log(`[MAP-ENGINE] Entity sheet não encontrada para combatKey: ${combatKey}`);
-                return;
+            // 2. Sempre ter baseAttributes para referência de buffs no motor tático
+            if (!unit.baseAttributes) {
+                unit.baseAttributes = sheet.attributes ? { ...sheet.attributes } : (unit.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 });
             }
 
-            console.log(`[MAP-ENGINE] Atualizando atributos de ${unit.name} com dados de ${entityDef.name}:`, {
-                entityAttributes: entityDef.attributes,
-                currentAttributes: unit.attributes,
-                entityLevel: entityDef.level,
-                currentLevel: unit.level
-            });
+            // 3. Level dinâmico (banco > sheet)
+            if (!unit.level || unit.level === 1) {
+                unit.level = sheet.level || sheet.base_level || unit.level || 1;
+            }
 
-            // SEMPRE atualizar atributos das entity sheets se disponíveis (sobrescrever salvos)
-            if (entityDef.attributes) {
-                unit.attributes = { ...entityDef.attributes };
+            // 4. HP/SP dinâmicos: Se já vieram do banco (state?session), NÃO sobrescrever pela sheet base
+            if (unit.maxHp === undefined || unit.maxHp <= 1) {
+                unit.maxHp = sheet.maxHp || 100;
             }
-            // Sempre atualizar baseAttributes
-            unit.baseAttributes = entityDef.attributes ? { ...entityDef.attributes } : (unit.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 });
-            // Atualizar level se entity sheet tiver
-            if (entityDef.level) {
-                unit.level = entityDef.level;
+            if (unit.maxSp === undefined || unit.maxSp <= 1) {
+                unit.maxSp = sheet.maxSp || 50;
+                unit.maxMana = unit.maxSp;
             }
-            // Atualizar nome se entity sheet tiver nome
-            if (entityDef.name) {
-                unit.name = entityDef.name;
+
+            // 5. DNA de Crescimento: Preservar multiplicadores da sessão (F5 fix)
+            if (!unit.growth_multipliers && sheet.growth) {
+                unit.growth_multipliers = { ...sheet.growth };
             }
-            // Atualizar elemento se entity sheet tiver
-            if (entityDef.element) {
-                unit.element = entityDef.element;
-            }
+
+            // 6. Stats Calculados (attack, defense): Só usa da sheet como último fallback se não tiver no banco
+            if (!unit.attack || unit.attack <= 1) unit.attack = sheet.attack || 10;
+            if (!unit.defense || unit.defense <= 0) unit.defense = sheet.defense || 2;
+
+            // 7. Metadados estáticos: Imagens, sons e descrições SEMPRE vêm da sheet (não salvamos isso no banco)
+            if (sheet.name && !unit.name) unit.name = sheet.name;
+            if (sheet.display_name) unit.display_name = sheet.display_name;
+            if (sheet.role) unit.role = sheet.role;
+            if (sheet.element) unit.element = sheet.element;
+            if (sheet.desc) unit.desc = sheet.desc;
+            if (sheet.images) unit.images = sheet.images;
+            if (sheet.animations) unit.animations = sheet.animations;
+            if (sheet.sounds) unit.sounds = sheet.sounds;
+            if (sheet.skills && !unit.skills) unit.skills = sheet.skills;
+            if (sheet.scale) unit.scale = parseFloat(sheet.scale);
+            if (sheet.moveRange && !unit.moveRange) unit.moveRange = sheet.moveRange;
+            if (sheet.attackRange && !unit.attackRange) unit.attackRange = sheet.attackRange;
         });
 
-        // Atualizar enemy units
-        enemyUnits.forEach(unit => {
-            const combatKey = unit.combatKey || unit.combat_key;
-            if (!combatKey) {
-                console.log(`[MAP-ENGINE] Unidade ${unit.id} não tem combatKey`);
-                return;
-            }
-
-            const entityDef = window.TacticalDataLoader.entityCache[combatKey];
-            if (!entityDef) {
-                console.log(`[MAP-ENGINE] Entity sheet não encontrada para combatKey: ${combatKey}`);
-                return;
-            }
-
-            console.log(`[MAP-ENGINE] Atualizando atributos de ${unit.name} com dados de ${entityDef.name}:`, {
-                entityAttributes: entityDef.attributes,
-                currentAttributes: unit.attributes,
-                entityLevel: entityDef.level,
-                currentLevel: unit.level
-            });
-
-            // SEMPRE atualizar atributos das entity sheets se disponíveis (sobrescrever salvos)
-            if (entityDef.attributes) {
-                unit.attributes = { ...entityDef.attributes };
-            }
-            // Sempre atualizar baseAttributes
-            unit.baseAttributes = entityDef.attributes ? { ...entityDef.attributes } : (unit.attributes || { str: 10, agi: 10, vit: 10, int: 10, dex: 10, luk: 10 });
-            // Para monstros, SEMPRE usar maxHp/maxSp do entity sheet (não recalcular)
-            if (unit.type === 'enemy' && entityDef.maxHp !== undefined) {
-                unit.maxHp = entityDef.maxHp;
-            }
-            if (unit.type === 'enemy' && entityDef.maxSp !== undefined) {
-                unit.maxSp = entityDef.maxSp;
-                unit.maxMana = entityDef.maxSp;
-            }
-            // Atualizar level se entity sheet tiver
-            if (entityDef.level) {
-                unit.level = entityDef.level;
-            }
-            // Atualizar nome se entity sheet tiver nome
-            if (entityDef.name) {
-                unit.name = entityDef.name;
-            }
-            // Atualizar elemento se entity sheet tiver
-            if (entityDef.element) {
-                unit.element = entityDef.element;
-            }
-        });
-
-        // Código duplicado removido - já atualizado acima
-
-        console.log('[MAP-ENGINE] Atributos atualizados das entity sheets');
+        console.log('[MAP-ENGINE] Atributos dinâmicos protegidos e metadados sincronizados.');
     }
 
     function loadImages() {
@@ -5018,8 +4961,8 @@
             mapId: mapUnit.id,
             isPlayer,
             name: mapUnit.name || base.name,
-            level: base.baseLevel || 1,
-            attributes: base.attributes || {},
+            level: mapUnit.level || base.level || base.baseLevel || 1,
+            attributes: mapUnit.attributes || base.attributes || {},
             skills,
             activeBuffs: [],
             activeDebuffs: [],
@@ -5467,32 +5410,45 @@
                 player: p0 ? {
                     id: 'player',
                     entity_id: p0.entity_id,
+                    combat_key: p0.combat_key || p0.combatKey,
+                    type: 'player',
                     x: p0.x,
                     y: p0.y,
                     hp: p0.hp,
                     sp: p0.sp,
+                    level: p0.level,
+                    attributes: p0.attributes,
                     hasMoved: !!p0.hasMoved,
                     facingRight: !!p0.facingRight
                 } : null,
                 allies: allies.map(a => ({
                     id: a.id,
                     entity_id: a.entity_id,
+                    combat_key: a.combat_key || a.combatKey,
+                    type: 'player',
                     x: a.x,
                     y: a.y,
                     hp: a.hp,
                     sp: a.sp,
+                    level: a.level,
+                    attributes: a.attributes,
                     hasMoved: !!a.hasMoved,
                     facingRight: !!a.facingRight,
                     activeBuffs: a.activeBuffs || [],
                     activeDebuffs: a.activeDebuffs || [],
-                    statusEffects: a.statusEffects || []
+                    statusEffects: a.statusEffects || [],
+                    growth_multipliers: a.growth_multipliers || null,
                 })),
                 enemies: enemyUnits.filter(e => e.hp > 0).map(e => ({
                     id: e.id,
                     entity_id: e.entity_id,
+                    combat_key: e.combat_key || e.combatKey,
+                    type: 'enemy',
                     x: e.x,
                     y: e.y,
-                    hp: e.hp
+                    hp: e.hp,
+                    level: e.level,
+                    attributes: e.attributes
                     // hasMoved e facingRight removidos - podem ser resetados/derivados
                 })),
                 // chests e portal são imutáveis e vêm do config, não precisam ser enviados

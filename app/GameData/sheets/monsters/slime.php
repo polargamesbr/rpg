@@ -9,7 +9,7 @@ return [
     'role' => 'Monster',
     'element' => 'neutral',
     'desc' => 'Uma criatura gelatinosa comum encontrada em lugares escuros. Apesar de sua aparência simples, pode ser perigosa em grupos.',
-    'base_level' => 1, // Slime é level 1 (monstro fraco)
+    'base_level' => 1,
     'images' => [
         'default' => 'assets/entities/slime/avatar.webp',
     ],
@@ -21,6 +21,15 @@ return [
     'sounds' => [
         'death' => ['monster_death1', 'monster_death2'],
         'idle' => ['slime'],
+    ],
+    'growth' => [
+        'hp_base_per_level' => 10,
+        'hp_vit_mult'       => 2,
+        'sp_base_per_level' => 30,
+        'sp_int_mult'       => 5,
+        'atk_base'          => 10,
+        'atk_str_mult'      => 1.5,
+        'atk_lvl_mult'      => 1.0,
     ],
     'attributes' => [
         'str' => 5,

@@ -11,6 +11,16 @@ return [
     'images' => [
         'default' => 'assets/img/archer-female.webp',
     ],
+    'growth' => [
+        'hp_base_per_level' => 15,
+        'hp_vit_mult'       => 3,
+        'sp_base_per_level' => 20,
+        'sp_int_mult'       => 2,
+        'atk_base'          => 20,
+        'atk_str_mult'      => 0.3,
+        'atk_dex_mult'      => 2.2,
+        'atk_lvl_mult'      => 1.8,
+    ],
     'video' => 'assets/video/archer-female.mp4', // optional (only used if you add the asset)
     'attributes' => [
         'str' => 10,

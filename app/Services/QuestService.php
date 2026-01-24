@@ -272,9 +272,13 @@ class QuestService
             if (empty($player['entity_id']) && $entityId) {
                 $player['entity_id'] = $entityId;
             }
+            $player['level'] = $inst['level'] ?? $character['level'] ?? 1;
+            $player['attributes'] = $inst['attributes'] ?? $character['attributes'] ?? [];
             $player['name'] = $inst['name'] ?? $character['name'] ?? 'Hero';
             $player['type'] = 'player';
             $player['combatKey'] = $inst['combat_key'] ?? $entityId;
+            $player['level'] = (int)($inst['level'] ?? $character['level'] ?? 1);
+            $player['attributes'] = $inst['attributes'] ?? $character['attributes'] ?? [];
             $player['maxHp'] = (int)($inst['maxHp'] ?? 100);
             $player['maxSp'] = (int)($inst['maxSp'] ?? 50);
             if (($player['hp'] ?? 0) <= 0) $player['hp'] = $player['maxHp'];
@@ -310,23 +314,36 @@ class QuestService
                     if (($ca['id'] ?? '') === ($a['id'] ?? '')) { $cfg = $ca; break; }
                 }
                 $c = $cfg ?? [];
-                $stats = EntitySheetService::getCombatStats($sheet);
+                
+                // Atributos: Priorizar o que já está no state (podem ser do DB), senão usar ficha
+                $attrs = $a['attributes'] ?? $sheet['attributes'] ?? ['str' => 10, 'agi' => 10, 'vit' => 10, 'int' => 10, 'dex' => 10, 'luk' => 10];
+                $level = (int)($a['level'] ?? $c['level'] ?? $sheet['base_level'] ?? 1);
+
+                // Calcular stats reais via CombatStatsService (Fonte da Verdade)
+                $computed = CombatStatsService::calculateAll($level, $attrs);
+                
                 $a['name'] = $c['name'] ?? $sheet['name'] ?? 'Ally';
                 $a['type'] = 'player';
                 $a['combatKey'] = $sheet['combat_key'] ?? $eid;
-                $a['attributes'] = $sheet['attributes'] ?? [];
-                $a['level'] = (int)($c['level'] ?? $sheet['base_level'] ?? 1);
-                $a['maxHp'] = $stats['maxHp'];
-                $a['maxSp'] = $stats['maxSp'];
+                $a['attributes'] = $attrs;
+                $a['level'] = $level;
+                $a['maxHp'] = $computed['maxHp'];
+                $a['maxSp'] = $computed['maxSp'];
                 if (($a['sp'] ?? 0) <= 0) $a['sp'] = $a['maxSp'];
-                $a['attack'] = $stats['attack'];
-                $a['defense'] = $stats['defense'];
+                
+                // Outros stats calculados (opcional, para UI)
+                $a['attack'] = $computed['atk'];
+                $a['defense'] = $computed['def']['soft'];
+                
+                // Stats fixos da ficha/config
+                $stats = EntitySheetService::getCombatStats($sheet);
                 $a['moveRange'] = $stats['moveRange'];
                 $a['attackRange'] = $stats['attackRange'];
                 $a['scale'] = (float)($c['scale'] ?? $stats['scale']);
                 $a['class'] = strtolower((string)($c['class'] ?? $sheet['role'] ?? ''));
                 $img = $sheet['images']['default'] ?? '';
                 $a['avatar'] = $img ? ((str_starts_with($img, '/') ? $img : '/public/' . ltrim($img, '/'))) : '';
+                
                 if (isset($c['animations']) && is_array($c['animations'])) {
                     $a['animations'] = $c['animations'];
                 } elseif (!empty($sheet['animations'])) {
@@ -338,6 +355,11 @@ class QuestService
                 if (!isset($a['activeBuffs'])) $a['activeBuffs'] = [];
                 if (!isset($a['activeDebuffs'])) $a['activeDebuffs'] = [];
                 if (!isset($a['statusEffects'])) $a['statusEffects'] = [];
+                
+                // Garantir campos para persistência
+                $a['level'] = $level;
+                $a['attributes'] = $attrs;
+                $a['type'] = 'player';
             }
             unset($a);
         }
@@ -354,17 +376,22 @@ class QuestService
                     if (($cand['id'] ?? '') === ($e['id'] ?? '')) { $ce = $cand; break; }
                 }
                 $c = $ce ?? [];
-                $stats = EntitySheetService::getCombatStats($sheet);
+                $growth = $sheet['growth'] ?? [];
+                $dynamicStats = CombatStatsService::calculateAll($e['level'] ?? 1, $e['attributes'] ?? $sheet['attributes'] ?? [], $growth);
+                $staticStats = EntitySheetService::getCombatStats($sheet);
+
                 $e['name'] = $c['name'] ?? $sheet['name'] ?? 'Enemy';
                 $e['type'] = 'enemy';
                 $e['combatKey'] = $sheet['combat_key'] ?? $eid;
-                $e['maxHp'] = $stats['maxHp'];
-                $e['attack'] = $stats['attack'];
-                $e['defense'] = $stats['defense'];
-                $e['moveRange'] = $stats['moveRange'];
-                $e['attackRange'] = $stats['attackRange'];
-                $e['behavior'] = $c['behavior'] ?? $stats['behavior'];
-                $e['scale'] = (float)($c['scale'] ?? $stats['scale']);
+                $e['maxHp'] = $dynamicStats['maxHp'];
+                $e['maxSp'] = $dynamicStats['maxSp'];
+                $e['growth_multipliers'] = $growth;
+                $e['attack'] = $dynamicStats['atk'];
+                $e['defense'] = $dynamicStats['def']['soft'];
+                $e['moveRange'] = $staticStats['moveRange'];
+                $e['attackRange'] = $staticStats['attackRange'];
+                $e['behavior'] = $c['behavior'] ?? $staticStats['behavior'];
+                $e['scale'] = (float)($c['scale'] ?? $staticStats['scale']);
                 $e['facingRight'] = (bool)($e['facingRight'] ?? false);
                 $img = $sheet['images']['default'] ?? '';
                 $e['avatar'] = $img ? ((str_starts_with($img, '/') ? $img : '/public/' . ltrim($img, '/'))) : '';
@@ -400,9 +427,9 @@ class QuestService
      */
     public static function mergeStateInput(array $state, array $stateInput): array
     {
-        $allowPlayer = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight'];
-        $allowAlly = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight', 'activeBuffs', 'activeDebuffs', 'statusEffects'];
-        $allowEnemy = ['id', 'entity_id', 'x', 'y', 'hp'];
+        $allowPlayer = ['id', 'entity_id', 'combat_key', 'type', 'x', 'y', 'hp', 'sp', 'level', 'attributes', 'hasMoved', 'facingRight'];
+        $allowAlly = ['id', 'entity_id', 'combat_key', 'type', 'x', 'y', 'hp', 'sp', 'level', 'attributes', 'hasMoved', 'facingRight', 'activeBuffs', 'activeDebuffs', 'statusEffects'];
+        $allowEnemy = ['id', 'entity_id', 'combat_key', 'type', 'x', 'y', 'hp', 'level', 'attributes'];
         
         if (array_key_exists('player', $stateInput)) {
             if ($stateInput['player'] === null) {
@@ -450,10 +477,10 @@ class QuestService
      */
     private static function slimState(array $state): array
     {
-        $keepPlayer = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight'];
-        $keepAlly = ['id', 'entity_id', 'x', 'y', 'hp', 'sp', 'hasMoved', 'facingRight', 'activeBuffs', 'activeDebuffs', 'statusEffects'];
+        $keepPlayer = ['id', 'entity_id', 'combat_key', 'type', 'isScaled', 'growth_multipliers', 'x', 'y', 'hp', 'sp', 'level', 'attributes', 'hasMoved', 'facingRight'];
+        $keepAlly = ['id', 'entity_id', 'combat_key', 'type', 'isScaled', 'growth_multipliers', 'x', 'y', 'hp', 'sp', 'level', 'attributes', 'hasMoved', 'facingRight', 'activeBuffs', 'activeDebuffs', 'statusEffects'];
         // Inimigos: remover hasMoved e facingRight (podem ser resetados/derivados)
-        $keepEnemy = ['id', 'entity_id', 'x', 'y', 'hp'];
+        $keepEnemy = ['id', 'entity_id', 'combat_key', 'type', 'isScaled', 'growth_multipliers', 'x', 'y', 'hp', 'level', 'attributes'];
 
         if (isset($state['player']) && is_array($state['player'])) {
             $state['player'] = array_intersect_key($state['player'], array_flip($keepPlayer));
@@ -512,14 +539,23 @@ class QuestService
         $ck = $enemyConfig['combat_key'] ?? $enemyConfig['combatKey'] ?? null;
         $entityDef = $ck ? EntitySheetService::findByCombatKey($ck) : null;
         $eid = $entityDef['id'] ?? $ck ?? null;
-        $stats = $entityDef ? EntitySheetService::getCombatStats($entityDef) : ['maxHp' => 20, 'maxSp' => 50, 'attack' => 5, 'defense' => 2, 'moveRange' => 2, 'attackRange' => 1, 'behavior' => 'aggressive', 'scale' => 1.0];
-        
+        $growth = $entityDef['growth'] ?? [];
+        $level = (int)($enemyConfig['level'] ?? $entityDef['base_level'] ?? 1);
+        $attrs = $enemyConfig['attributes'] ?? $entityDef['attributes'] ?? [];
+        $stats = CombatStatsService::calculateAll($level, $attrs, $growth);
+
         return [
             'id' => $enemyConfig['id'] ?? ('enemy_' . ($index + 1)),
             'entity_id' => $eid,
+            'combat_key' => $ck,
+            'type' => 'enemy',
             'x' => (int)($enemyConfig['x'] ?? 1),
             'y' => (int)($enemyConfig['y'] ?? 1),
             'hp' => $stats['maxHp'],
+            'sp' => $stats['maxSp'],
+            'level' => $level,
+            'attributes' => $attrs,
+            'growth_multipliers' => $growth,
         ];
     }
 
@@ -542,10 +578,14 @@ class QuestService
         $player = [
             'id' => 'player',
             'entity_id' => $entityId,
+            'combat_key' => $inst['combat_key'] ?? $entityId,
+            'type' => 'player',
             'x' => $playerX,
             'y' => $playerY,
             'hp' => (int)($character['hp'] ?? $inst['maxHp']),
             'sp' => (int)$inst['maxSp'],
+            'level' => (int)($character['level'] ?? $inst['level'] ?? 1),
+            'attributes' => $inst['attributes'] ?? [],
             'hasMoved' => false,
             'facingRight' => true,
         ];

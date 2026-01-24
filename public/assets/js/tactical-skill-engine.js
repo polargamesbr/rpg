@@ -444,7 +444,7 @@ class TacticalSkillEngine {
         }
 
         // Recalculate derived stats from modified attributes (simplified)
-        const recalculated = this.calculateStatsFromAttributes(entity.level || entity.baseLevel || 1, attributes);
+        const recalculated = this.calculateStatsFromAttributes(entity.level || entity.baseLevel || 1, attributes, entity);
 
         // Merge recalculated stats with direct buffs
         // ATK/MATK: preserve buff multipliers while updating base from attributes
@@ -518,10 +518,10 @@ class TacticalSkillEngine {
      * @returns {Object} Base stats
      */
     static calculateBaseStats(entity) {
-        const a = entity.attributes || { str: 1, agi: 1, vit: 1, int: 1, dex: 1, luk: 1 };
+        const a = entity.attributes || entity.baseAttributes || { str: 1, agi: 1, vit: 1, int: 1, dex: 1, luk: 1 };
         const lvl = entity.level || entity.baseLevel || 1;
 
-        return this.calculateStatsFromAttributes(lvl, a);
+        return this.calculateStatsFromAttributes(lvl, a, entity);
     }
 
     /**
@@ -530,26 +530,45 @@ class TacticalSkillEngine {
      * @param {Object} attributes - Entity attributes
      * @returns {Object} Calculated stats
      */
-    static calculateStatsFromAttributes(lvl, a) {
-        // HP/MP: Level has strong impact for survivability scaling
-        const maxHp = Math.floor((lvl * 100) + (a.vit * 25));
-        const maxMana = Math.floor((lvl * 15) + (a.int * 8));
+    static calculateStatsFromAttributes(lvl, a, entity = null) {
+        // Fallback multipliers (Hero Defaults)
+        const g = entity?.growth_multipliers || {
+            hp_base_per_level: 100,
+            hp_vit_mult: 20,
+            sp_base_per_level: 10,
+            sp_int_mult: 5,
+            atk_base: 50,
+            atk_str_mult: 2,
+            atk_dex_mult: 0.5,
+            atk_lvl_mult: 1.5,
+            matk_base: 30,
+            matk_int_mult: 2,
+            matk_str_mult: 0,
+            matk_lvl_mult: 1.2
+        };
 
-        // ATK: STR principal, level importa bastante — escalar forte para Lv99/999 sentir “destruir”
-        const statusAtk = Math.floor(
-            (a.str * 5.5) + (lvl * 6.5) +
-            (a.dex * 0.5) +
-            (a.luk * 0.3)
+        // HP/MP: Growth dependent
+        const maxHp = Math.floor((lvl * g.hp_base_per_level) + (a.vit * g.hp_vit_mult));
+        const maxMana = Math.floor((lvl * g.sp_base_per_level) + (a.int * g.sp_int_mult));
+
+        // ATK: Growth dependent + secondary attributes
+        const atk = Math.floor(
+            (a.str * g.atk_str_mult) +
+            (a.dex * (g.atk_dex_mult || 0.5)) +
+            (lvl * g.atk_lvl_mult) +
+            (a.luk * 0.3) +
+            g.atk_base
         );
-        const atk = statusAtk + 10;
 
         // MATK: INT principal, level amplifica
-        const statusMatk = Math.floor(
-            (a.int * 5.5) + (lvl * 6.5) +
+        const matk = Math.floor(
+            (a.int * g.matk_int_mult) +
+            (a.str * (g.matk_str_mult || 0)) +
+            (lvl * g.matk_lvl_mult) +
             (a.dex * 0.4) +
-            (a.luk * 0.3)
+            (a.luk * 0.3) +
+            g.matk_base
         );
-        const matk = statusMatk + 10;
 
         // ATK Ranged: DEX principal (arqueiro), level amplifica
         const atkRanged = Math.floor(

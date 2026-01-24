@@ -33,14 +33,17 @@ class EntityInstanceBuilder
         ];
 
         $level = (int)($character['level'] ?? $base['base_level'] ?? 1);
-        // HP e SP derivados de nível e atributos (mesma fórmula do CharacterController)
-        // HP: mais VIT e level -> mais HP.  SP: mais INT e level -> mais SP.
-        $maxHp = ($level * 100) + ($attrs['vit'] * 20);
-        $maxSp = ($level * 10) + ($attrs['int'] * 5);
-
         $stats = EntitySheetService::getCombatStats($base);
-        $attack = (isset($character['attack']) && is_numeric($character['attack'])) ? (int)$character['attack'] : $stats['attack'];
-        $defense = (isset($character['defense']) && is_numeric($character['defense'])) ? (int)$character['defense'] : $stats['defense'];
+        
+        // Calculate all base stats using centralized service
+        $computed = CombatStatsService::calculateAll($level, $attrs, $base['growth'] ?? []);
+
+        $maxHp = $computed['maxHp'];
+        $maxSp = $computed['maxSp'];
+        
+        // Character table might have overrides for attack/defense, otherwise use computed
+        $attack = (isset($character['attack']) && is_numeric($character['attack'])) ? (int)$character['attack'] : $computed['atk'];
+        $defense = (isset($character['defense']) && is_numeric($character['defense'])) ? (int)$character['defense'] : $computed['def']['soft'];
 
         $skills = $base['skills'] ?? [];
         $skills = array_values(array_filter($skills, function ($s) use ($level) {
@@ -76,6 +79,7 @@ class EntityInstanceBuilder
             'animations' => $base['animations'] ?? [],
             'sounds' => $base['sounds'] ?? [],
             'element' => $base['element'] ?? 'neutral',
+            'growth_multipliers' => $base['growth'] ?? [],
         ];
     }
 }

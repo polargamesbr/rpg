@@ -100,8 +100,8 @@ class ExperienceService
         $vit = (int)($character['vit'] ?? 10);
         $int = (int)($character['int'] ?? 10);
 
-        $maxHp = ($newLevel * 100) + ($vit * 20);
-        $maxMana = ($newLevel * 10) + ($int * 5);
+        $maxHp = CombatStatsService::calculateMaxHp($newLevel, $vit);
+        $maxMana = CombatStatsService::calculateMaxSp($newLevel, $int);
 
         $currentHp = (int)($character['hp'] ?? $maxHp);
         $currentMana = (int)($character['mana'] ?? $maxMana);

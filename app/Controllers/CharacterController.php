@@ -137,10 +137,10 @@ class CharacterController
         }
         $baseAttributes = $sheet['attributes'] ?? ['str' => 10, 'agi' => 10, 'vit' => 10, 'int' => 10, 'dex' => 10, 'luk' => 10];
 
-        // Calculate initial stats
+        // Calculate initial stats using centralized service
         $level = 1;
-        $maxHp = ($level * 100) + ($baseAttributes['vit'] * 20);
-        $maxMana = ($level * 10) + ($baseAttributes['int'] * 5);
+        $maxHp = CombatStatsService::calculateMaxHp($level, (int)$baseAttributes['vit']);
+        $maxMana = CombatStatsService::calculateMaxSp($level, (int)$baseAttributes['int']);
 
         $characterData = [
             'uuid' => UuidService::generate(),

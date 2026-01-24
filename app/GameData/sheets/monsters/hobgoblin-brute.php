@@ -11,6 +11,15 @@ return [
     'images' => [
         'default' => 'assets/img/swordman-female.webp',
     ],
+    'growth' => [
+        'hp_base_per_level' => 50,
+        'hp_vit_mult'       => 8,
+        'sp_base_per_level' => 10,
+        'sp_int_mult'       => 2,
+        'atk_base'          => 40,
+        'atk_str_mult'      => 3.5,
+        'atk_lvl_mult'      => 2.2,
+    ],
     'attributes' => [
         'str' => 35,
         'agi' => 5,

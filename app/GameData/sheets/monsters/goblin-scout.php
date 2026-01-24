@@ -11,6 +11,17 @@ return [
     'images' => [
         'default' => 'assets/img/mage-male.webp',
     ],
+    'growth' => [
+        'hp_base_per_level' => 12,
+        'hp_vit_mult'       => 2,
+        'sp_base_per_level' => 25,
+        'sp_int_mult'       => 6,
+        'atk_base'          => 15,
+        'atk_str_mult'      => 0.5,
+        'matk_base'         => 30,
+        'matk_int_mult'     => 1.8,
+        'matk_lvl_mult'     => 1.5,
+    ],
     'attributes' => [
         'str' => 5,
         'agi' => 15,

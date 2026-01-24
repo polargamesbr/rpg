@@ -13,6 +13,18 @@ return [
         'male' => 'assets/img/mage-male.webp',
         'female' => 'assets/img/mage-female.webp',
     ],
+    'growth' => [
+        'hp_base_per_level' => 60,
+        'hp_vit_mult'       => 10,
+        'sp_base_per_level' => 50,
+        'sp_int_mult'       => 25,
+        'atk_base'          => 15,
+        'atk_str_mult'      => 0.5,
+        'atk_lvl_mult'      => 0.5,
+        'matk_base'         => 60,
+        'matk_int_mult'     => 3.5,
+        'matk_lvl_mult'     => 2.5,
+    ],
     'attributes' => [
         'str' => 5,
         'agi' => 7,

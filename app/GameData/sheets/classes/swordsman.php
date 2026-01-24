@@ -34,6 +34,18 @@ return [
         'debuff_apply' => ['debuff_apply'],
         'parry' => ['parry1', 'parry2'],
     ],
+    'growth' => [
+        'hp_base_per_level' => 100,
+        'hp_vit_mult'       => 20,
+        'sp_base_per_level' => 10,
+        'sp_int_mult'       => 5,
+        'atk_base'          => 50,
+        'atk_str_mult'      => 2,
+        'atk_lvl_mult'      => 1.5,
+        'matk_base'         => 30,
+        'matk_int_mult'     => 2,
+        'matk_lvl_mult'     => 1.2,
+    ],
     'attributes' => [
         'str' => 12,
         'agi' => 8,

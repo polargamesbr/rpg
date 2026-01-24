@@ -19,8 +19,17 @@ return [
         'idle'  => ['animationFPS' => 12, 'animationScale' => 1.4, 'animationOffsetX' => -2, 'animationOffsetXWhenFacingRight' => 2,  'animationOffsetY' => 30],
     ],
     'sounds' => [
-        'hit' => ['bow1', 'bow2', 'bow3'],
         'death' => ['monster_death1', 'monster_death2'],
+    ],
+    'growth' => [
+        'hp_base_per_level' => 15,
+        'hp_vit_mult'       => 3,
+        'sp_base_per_level' => 10,
+        'sp_int_mult'       => 3,
+        'atk_base'          => 15,
+        'atk_str_mult'      => 0.5,
+        'atk_dex_mult'      => 2.5,
+        'atk_lvl_mult'      => 1.5,
     ],
     'attributes' => [
         'str' => 5,

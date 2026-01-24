@@ -26,10 +26,18 @@ return [
         'hit' => ['bow1', 'bow2', 'bow3'],
         'attack_prepare' => ['bow1', 'bow2', 'bow3'],
         'death' => ['hero_death'],
-        'damage_taken' => ['damage_taken1', 'damage_taken2', 'damage_taken3', 'damage_taken4'],
-        'crit' => ['critical'],
         'buff_apply' => ['buff_apply1', 'buff_apply2', 'buff_apply3'],
         'debuff_apply' => ['debuff_apply'],
+    ],
+    'growth' => [
+        'hp_base_per_level' => 80,
+        'hp_vit_mult'       => 15,
+        'sp_base_per_level' => 15,
+        'sp_int_mult'       => 8,
+        'atk_base'          => 40,
+        'atk_str_mult'      => 0.5, // Low STR impact
+        'atk_lvl_mult'      => 2.5, // High Level impact (technique)
+        'atk_dex_mult'      => 4.0, // High DEX impact (I'll need to modify CombatStatsService to support dex_mult)
     ],
     'attributes' => [
         'str' => 8,

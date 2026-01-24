@@ -176,6 +176,15 @@ class SkillEngine {
      * @param {Object} entity - The entity to recalculate
      */
     static recalculateStats(entity) {
+        // Para monstros, o maxHp/maxSp é fixo (balanço manual no PHP/Entity Sheet)
+        // Verificar 'enemy', 'monster' e combatKeys conhecidas (incluindo combat_key do PHP)
+        const entityType = String(entity.type || '').toLowerCase();
+        const combatKey = String(entity.combatKey || entity.combat_key || '').toLowerCase();
+        const isMonster = entityType === 'enemy' || entityType === 'monster' || ['slime', 'wolf', 'hawk'].includes(combatKey);
+
+        const savedMaxHp = isMonster ? entity.maxHp : null;
+        const savedMaxSp = isMonster ? (entity.maxSp || entity.maxMana || entity.mana) : null;
+
         // Persist base attributes if not already set (snapshot on first call)
         if (!entity.baseAttributes) {
             entity.baseAttributes = { ...entity.attributes };
@@ -294,6 +303,19 @@ class SkillEngine {
         // Store current attributes (after buffs/debuffs) for overlay display
         entity.currentAttributes = { ...attributes };
 
+        // Restaurar maxHp/maxSp se for monstro (proteger balanço manual)
+        if (isMonster && savedMaxHp !== null) {
+            entity.maxHp = savedMaxHp;
+            if (savedMaxSp !== null) {
+                entity.maxMana = savedMaxSp;
+                entity.maxSp = savedMaxSp;
+                // Se a mana for inválida ou maior que o novo max, ajustar
+                if (entity.mana === undefined || entity.mana > entity.maxMana) {
+                    entity.mana = entity.maxMana;
+                }
+            }
+        }
+
         // Safety fallbacks for HP/MP (only for invalid values, NOT for dead entities)
         // Don't restore HP if entity is dead (hp <= 0 is valid for dead entities)
         if (entity.hp === undefined || entity.hp === null || isNaN(entity.hp)) {
@@ -329,8 +351,8 @@ class SkillEngine {
      */
     static calculateStatsFromAttributes(lvl, a) {
         // HP/MP: Level has strong impact for survivability scaling
-        const maxHp = Math.floor((lvl * 100) + (a.vit * 25));
-        const maxMana = Math.floor((lvl * 15) + (a.int * 8));
+        const maxHp = Math.floor((lvl * 100) + (a.vit * 20));
+        const maxMana = Math.floor((lvl * 10) + (a.int * 5));
 
         // ATK: STR is primary, level amplifies significantly
         const statusAtk = Math.floor(

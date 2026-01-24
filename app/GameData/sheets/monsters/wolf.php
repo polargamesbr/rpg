@@ -25,6 +25,15 @@ return [
         'death' => ['monster_death1', 'monster_death2'],
         'skill_special' => ['howling_wolf'],
     ],
+    'growth' => [
+        'hp_base_per_level' => 25,
+        'hp_vit_mult'       => 4,
+        'sp_base_per_level' => 15,
+        'sp_int_mult'       => 3,
+        'atk_base'          => 20,
+        'atk_str_mult'      => 1.8,
+        'atk_lvl_mult'      => 1.8,
+    ],
     'attributes' => [
         'str' => 8,
         'agi' => 10,

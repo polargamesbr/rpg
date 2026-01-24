@@ -160,6 +160,23 @@ class EntitySheetService
         $data['animations'] = is_array($data['animations'] ?? null) ? $data['animations'] : [];
         $data['sounds'] = is_array($data['sounds'] ?? null) ? $data['sounds'] : [];
 
+        // Global Growth Multipliers for Scaling
+        $defaultGrowth = [
+            'hp_base_per_level' => 100, // Hero default
+            'hp_vit_mult'       => 20,
+            'sp_base_per_level' => 10,
+            'sp_int_mult'       => 5,
+            'atk_base'          => 50,
+            'atk_str_mult'      => 2,
+            'atk_dex_mult'      => 0.5,
+            'atk_lvl_mult'      => 1.5,
+            'matk_base'         => 30,
+            'matk_int_mult'     => 2,
+            'matk_str_mult'     => 0,
+            'matk_lvl_mult'     => 1.2,
+        ];
+        $data['growth'] = array_merge($defaultGrowth, $data['growth'] ?? []);
+
         // Element field (defaults to 'neutral' if not specified)
         if (!isset($data['element'])) {
             $data['element'] = 'neutral';

@@ -13,6 +13,18 @@ return [
         'male' => 'assets/img/blacksmith-male.webp',
         'female' => 'assets/img/blacksmith-female.webp',
     ],
+    'growth' => [
+        'hp_base_per_level' => 110,
+        'hp_vit_mult'       => 25,
+        'sp_base_per_level' => 8,
+        'sp_int_mult'       => 4,
+        'atk_base'          => 45,
+        'atk_str_mult'      => 3.0,
+        'atk_lvl_mult'      => 2.0,
+        'matk_base'         => 15,
+        'matk_int_mult'     => 1.0,
+        'matk_lvl_mult'     => 0.8,
+    ],
     'attributes' => [
         'str' => 14,
         'agi' => 6,
