@@ -3979,6 +3979,8 @@
         });
     </script>
     <script src="<?= asset('js/map-debug.js') ?>"></script>
+    <script src="<?= asset('js/sound-manager.js') ?>"></script>
+    <script src="<?= asset('js/effects-manager.js') ?>"></script>
     <script src="<?= asset('js/map-engine.js') ?>"></script>
     <script src="<?= asset('js/performance-monitor.js') ?>"></script>
     <script src="<?= asset('js/dialogue-system.js') ?>"></script>

@@ -476,24 +476,31 @@
      */
     function getEntityIdForUnit(unit) {
         if (!unit) return null;
+
+        // Se já tiver entity_id definido (recomendado), usar direto
         if (unit.entity_id) return unit.entity_id;
-        const combatKey = (unit.combatKey || unit.combat_key || '').toLowerCase();
-        const combatMap = {
-            'hero_swordman': 'swordsman', 'swordman': 'swordsman',
-            'hero_archer': 'archer', 'archer': 'archer',
-            'hero_acolyte': 'acolyte', 'acolyte': 'acolyte',
-            'slime': 'slime',
-            'wolf': 'wolf'
-        };
-        if (combatMap[combatKey]) return combatMap[combatKey];
+
+        // Fallback genérico para combatKey ou class
+        let idFromKey = (unit.combatKey || unit.combat_key || '').toLowerCase();
+
+        // Limpeza básica: se começar com 'hero_', tentar remover para bater com a pasta do asset
+        if (idFromKey.startsWith('hero_')) {
+            const stripped = idFromKey.replace('hero_', '');
+            // Se for swordman -> swordsman (fix para discrepância comum)
+            if (stripped === 'swordman') return 'swordsman';
+            return stripped;
+        }
+
+        // Fix específico para espadachim que em alguns lugares é swordman e na pasta é swordsman
+        if (idFromKey === 'swordman') return 'swordsman';
+
+        if (idFromKey) return idFromKey;
+
+        // Último fallback: classe
         const className = (unit.class || '').toLowerCase();
-        const classMap = {
-            'swordsman': 'swordsman', 'swordman': 'swordsman', 'warrior': 'swordsman',
-            'archer': 'archer', 'ranged': 'archer', 'hero': 'swordsman',
-            'acolyte': 'acolyte',
-            'slime': 'slime', 'wolf': 'wolf'
-        };
-        return classMap[className] || combatKey || null;
+        if (className === 'warrior' || className === 'swordsman' || className === 'swordman') return 'swordsman';
+
+        return className || null;
     }
 
     /**
@@ -851,78 +858,7 @@
         if (isCrit) setTimeout(() => playSfx('critical.mp3', 0.6, 1.0), 50);
     }
 
-    /** Buff aplicado – GERAL (mp3) */
-    function playBuffApplySfx() {
-        const s = pickRandom(['buff_apply1.mp3', 'buff_apply2.mp3', 'buff_apply3.mp3']);
-        playSfx(s, 0.5, 1.0);
-    }
 
-    /** Debuff aplicado – GERAL (mp3) */
-    function playDebuffApplySfx() {
-        playSfx('debuff_apply.mp3', 0.5, 1.0);
-    }
-
-    function playSwordSfx(entityId, isCrit = false) {
-        const swing = pickRandom(['sword1.mp3', 'sword2.mp3', 'sword3.mp3', 'sword4.mp3']);
-        playSfxEntity(entityId, swing, 0.5, 1.0);
-        setTimeout(() => playHitImpactSfx(isCrit), 80);
-    }
-
-    function playClawSfx(entityId) {
-        const claw = pickRandom(['wolf_claw_hit1.mp3', 'wolf_claw_hit2.mp3', 'wolf_claw_hit3.mp3', 'wolf_claw_hit4.mp3']);
-        playSfxEntity(entityId, claw, 0.55, 1.0);
-        setTimeout(() => playHitImpactSfx(false), 40);
-    }
-
-    function playBowSfx(entityId, isCrit = false) {
-        const bow = pickRandom(['bow1.mp3', 'bow2.mp3', 'bow3.mp3']);
-        playSfxEntity(entityId, bow, 0.5, 1.0);
-        setTimeout(() => playHitImpactSfx(isCrit), 100);
-    }
-
-    function playSlimeSfx(entityId) {
-        playSfxEntity(entityId, 'slime.mp3', 0.5, 1.0);
-        setTimeout(() => playHitImpactSfx(false), 60);
-    }
-
-    function playStaffSfx(entityId, isCrit = false) {
-        const staff = pickRandom(['staff_hit.mp3', 'staff_hit2.mp3', 'staff_hit3.mp3']);
-        playSfxEntity(entityId, staff, 0.5, 1.0);
-        setTimeout(() => playHitImpactSfx(isCrit), 80);
-    }
-
-    function playMagicSfx(isCrit = false) {
-        const start = pickRandom(['skill_start1.mp3', 'skill_start2.mp3', 'skill_start3.mp3']);
-        playSfx(start, 0.45, 1.0);
-        if (isCrit) setTimeout(() => playSfx('critical.mp3', 0.6, 1.0), 150);
-    }
-
-    function playSkillVoice(skillId, entityId = null) {
-        // Som de voz específico para certas skills (ultimate etc)
-        // Usa paths de entidades quando disponível
-        console.log('[AUDIO DEBUG] playSkillVoice called:', skillId);
-        if (skillId === 'deadly_aim') {
-            // Archer ultimate
-            const src = '/public/assets/entities/archer/sounds/deadly_aim.mp3';
-            console.log('[AUDIO DEBUG] Playing deadly_aim from:', src);
-            const audio = new Audio(src);
-            audio.volume = 0.7;
-            audio.play().catch(err => {
-                console.log('[AUDIO DEBUG] deadly_aim FAILED:', err.message);
-            });
-        } else if (skillId === 'champions_slash') {
-            // Swordsman ultimate
-            const src = '/public/assets/entities/swordsman/sounds/champions_slash.mp3';
-            console.log('[AUDIO DEBUG] Playing champions_slash from:', src);
-            const audio = new Audio(src);
-            audio.volume = 0.7;
-            audio.play().catch(err => {
-                console.log('[AUDIO DEBUG] champions_slash FAILED:', err.message);
-            });
-        } else if (skillId === 'berserk_mode') {
-            playSfx('swordman_skill_start1.mp3', 0.6, 1.0);
-        }
-    }
 
     function getAudioContext() {
         if (!audioCtx) {
@@ -1400,23 +1336,23 @@
             console.log('[DEBUG][loadSession] Carregando sessão UID:', uid);
             const response = await fetch(`/game/explore/state?session=${encodeURIComponent(uid)}`);
             const data = await response.json();
-            
+
             // Verificar se resposta está criptografada
             let decryptedData = data;
             if (data?.encrypted && data?.data && data?.iv) {
                 console.log('[DEBUG][loadSession] Resposta criptografada, descriptografando...');
-                
+
                 if (!sessionEncryptionKey) {
                     // Tentar obter chave se não tiver
                     await getEncryptionKey();
                 }
-                
+
                 if (sessionEncryptionKey && typeof CryptoJS !== 'undefined') {
                     try {
                         const keyWordArray = CryptoJS.enc.Hex.parse(sessionEncryptionKey);
                         const ivWordArray = CryptoJS.enc.Base64.parse(data.iv);
                         const encryptedWordArray = CryptoJS.enc.Base64.parse(data.data);
-                        
+
                         const decrypted = CryptoJS.AES.decrypt(
                             { ciphertext: encryptedWordArray },
                             keyWordArray,
@@ -1426,7 +1362,7 @@
                                 padding: CryptoJS.pad.Pkcs7
                             }
                         );
-                        
+
                         const plaintext = decrypted.toString(CryptoJS.enc.Utf8);
                         decryptedData = JSON.parse(plaintext);
                         console.log('[DEBUG][loadSession] ✅ Resposta descriptografada com sucesso');
@@ -1438,7 +1374,7 @@
                     console.warn('[DEBUG][loadSession] ⚠️ Chave ou CryptoJS não disponível, tentando sem descriptografia');
                 }
             }
-            
+
             console.log('[DEBUG][loadSession] Resposta do servidor:', decryptedData);
 
             if (!decryptedData?.success) {
@@ -1457,12 +1393,12 @@
 
             sessionData = decryptedData;
             applySessionConfig(decryptedData);
-            
+
             // Restaurar logs de combate se fornecidos
             if (decryptedData.combatLogs && Array.isArray(decryptedData.combatLogs)) {
                 restoreCombatLogs(decryptedData.combatLogs);
             }
-            
+
             console.log('[DEBUG][loadSession] sessionData final:', sessionData);
         } catch (error) {
             console.error('[MapEngine] Erro ao carregar sessão:', error);
@@ -1596,7 +1532,7 @@
             // HP e MP - Para monstros, usar valores do sheet diretamente (não recalcular baseado em level)
             // Para players, usar cálculo baseado em level
             const isMonster = unit.type === 'enemy' || unit.combatKey === 'slime' || unit.combatKey === 'wolf' || unit.combatKey === 'hawk';
-            
+
             if (isMonster) {
                 // Monstros: manter maxHp e maxSp do sheet (já vem correto do backend)
                 // Não sobrescrever com stats calculados pelo TacticalSkillEngine
@@ -1637,7 +1573,7 @@
                 const isMonster = unit.type === 'enemy' || unit.combatKey === 'slime' || unit.combatKey === 'wolf' || unit.combatKey === 'hawk';
                 const savedMaxHp = isMonster ? unit.maxHp : null;
                 const savedMaxSp = isMonster ? unit.maxSp : null;
-                
+
                 window.TacticalSkillEngine.recalculateStats(unit);
 
                 // Restaurar maxHp/maxSp dos monstros se foram alterados
@@ -2110,7 +2046,7 @@
         addCombatLog('turn_ended', {
             unit: 'Jogador'
         });
-        
+
         // Persistir IMEDIATAMENTE a mudança de fase para evitar que refresh reverta
         // Usar await para garantir que a persistência aconteça antes de continuar
         await persistSessionState(true);
@@ -2168,7 +2104,7 @@
     async function processEnemyTurn() {
         for (const enemy of enemyUnits) {
             if (enemy.hp <= 0) continue;
-            
+
             // CRÍTICO: Verificar se o inimigo já agiu neste turno
             // Isso previne que inimigos que já agiram (após refresh) ajam novamente
             if (gameState.unitsActedThisTurn.has(String(enemy.id))) {
@@ -2195,13 +2131,13 @@
 
             // 2. DECISÃO: Usar skill, atacar ou mover
             let actionTaken = false;
-            
+
             // Verificar distância para ataque melee
             const dist = Math.max(Math.abs(enemy.x - closestPlayer.x), Math.abs(enemy.y - closestPlayer.y));
-            
+
             // Para slime (monstro fraco), balancear entre ataque e skill (50% cada)
             const isSlime = enemy.combatKey === 'slime' || enemy.entity_id === 'slime';
-            const shouldUseSkill = isSlime 
+            const shouldUseSkill = isSlime
                 ? (viableSkills.length > 0 && Math.random() < 0.5) // 50% chance de usar skill
                 : (viableSkills.length > 0); // Outros monstros sempre usam skill se disponível
 
@@ -2211,7 +2147,7 @@
                 enemy.intent = 'skill';
                 await executeSkill(enemy, closestPlayer, bestSkill);
                 actionTaken = true;
-                
+
                 // Persistir estado imediatamente após skill do inimigo
                 await persistSessionState(true);
             } else if (dist <= (enemy.attackRange || 1)) {
@@ -2219,7 +2155,7 @@
                 enemy.intent = 'attack';
                 await executeAttack(enemy, closestPlayer);
                 actionTaken = true;
-                
+
                 // Persistir estado imediatamente após ataque do inimigo
                 await persistSessionState(true);
             } else {
@@ -2245,14 +2181,14 @@
                             await animateMove(enemy, step.x, step.y, true);
                             enemy.x = step.x;
                             enemy.y = step.y;
-                            
+
                             // Log de movimento do inimigo
                             addCombatLog('moved', {
                                 unit: enemy.name || enemy.id || 'Inimigo',
                                 x: enemy.x,
                                 y: enemy.y
                             });
-                            
+
                             // Persistir estado imediatamente após cada movimento do inimigo
                             // Isso previne que refresh (F5) reverta o movimento
                             await persistSessionState(true);
@@ -2264,7 +2200,7 @@
                             enemy.intent = 'attack';
                             await executeAttack(enemy, closestPlayer);
                             actionTaken = true;
-                            
+
                             // Persistir estado imediatamente após ataque do inimigo
                             await persistSessionState(true);
                         }
@@ -2274,18 +2210,18 @@
                 if (!actionTaken) {
                     enemy.intent = 'wait';
                     gameState.unitsActedThisTurn.add(String(enemy.id));
-                    
+
                     // Persistir estado quando inimigo não age (wait)
                     await persistSessionState(true);
                 }
             }
-            
+
             // CRÍTICO: Marcar inimigo como tendo agido APÓS qualquer ação (movimento, ataque, skill, wait)
             // Isso garante que mesmo se refresh acontecer, o inimigo não agirá novamente
             if (!gameState.unitsActedThisTurn.has(String(enemy.id))) {
                 gameState.unitsActedThisTurn.add(String(enemy.id));
                 console.log(`[processEnemyTurn] Inimigo ${enemy.id} marcado como tendo agido`);
-                
+
                 // Persistir imediatamente após marcar como agido
                 await persistSessionState(true);
             }
@@ -2306,7 +2242,7 @@
         addCombatLog('turn_ended', {
             unit: 'Inimigo'
         });
-        
+
         // Persistência final ao término do turno inimigo (redundante, mas garante sincronização)
         await persistSessionState(true);
 
@@ -2736,7 +2672,7 @@
 
             // Mark unit as having moved this turn
             unit.hasMoved = true;
-            
+
             // Log de movimento
             if (unit && unit.x !== undefined && unit.y !== undefined) {
                 addCombatLog('moved', {
@@ -4111,30 +4047,12 @@
         const targetPxX = (target.x - 0.5) * CONFIG.CELL_SIZE;
         const targetPxY = (target.y - 0.5) * CONFIG.CELL_SIZE;
 
-        // Deriva tipo de atacante (entity_id/combatKey/class) para efeitos e sons
-        const _aid = (attackerEntityId || attacker.entity_id || attacker.combatKey || attacker.combat_key || attacker.class || '').toLowerCase();
-        const attackerSprite = _aid.includes('slime') ? 'slime' : _aid.includes('wolf') ? 'wolf' : _aid.includes('sword') || _aid === 'hero_swordman' ? 'swordman' : _aid.includes('archer') || _aid === 'hero_archer' ? 'archer' : _aid.includes('acolyte') || _aid === 'hero_acolyte' ? 'acolyte' : _aid.includes('mage') || _aid === 'hero_mage' ? 'mage' : null;
-
-        // Determinar tipo de unidade atacante para efeito apropriado
-        const isWarrior = attacker.class === 'warrior' || attacker.class === 'swordman' || attacker.class === 'swordsman' || attackerSprite === 'swordman';
-        const isArcher = attacker.class === 'archer' || attackerSprite === 'archer';
-        const isMage = attacker.class === 'mage' || attackerSprite === 'mage';
-        const isAcolyte = attacker.class === 'acolyte' || attackerSprite === 'acolyte';
-
-        if (isWarrior || (!isArcher && !isMage && !isAcolyte)) {
-            // Slash effect para warriors/melee
+        // Efeitos visuais: usar EffectsManager data-driven (lê entity.role/class do PHP)
+        if (window.EffectsManager) {
+            EffectsManager.playAttackEffect(attacker, targetPxX, targetPxY, isCrit);
+        } else {
+            // Fallback: efeito genérico de slash
             spawnSwordSlashEffect(targetPxX, targetPxY);
-        } else if (isArcher) {
-            // Efeito de impacto de flecha para archer (QuickShot impact)
-            if (window.MapSFX?.archerQuickShotImpact) {
-                window.MapSFX.archerQuickShotImpact(targetPxX, targetPxY);
-            }
-        } else if (isMage) {
-            // Efeito mágico para magos
-            spawnMagicEffect(targetPxX, targetPxY, '#a855f7');
-        } else if (isAcolyte) {
-            // Efeito santo para acolyte (staff/holy)
-            spawnMagicEffect(targetPxX, targetPxY, '#fef3c7');
         }
 
         // Efeito de impacto universal premium
@@ -4144,19 +4062,12 @@
         triggerScreenShake(isCrit ? 10 : 6);
         hitFlash = Math.max(hitFlash, isCrit ? 0.4 : 0.25);
 
-        // Som: arma (entity ou mp3) + impacto GERAL (hit/impact) – ataque ou recebe ataque
-        if (attackerSprite === 'swordman') {
-            playSwordSfx(attackerEntityId, isCrit);
-        } else if (attackerSprite === 'archer') {
-            playBowSfx(attackerEntityId, isCrit);
-        } else if (attackerSprite === 'wolf') {
-            playClawSfx(attackerEntityId);
-        } else if (attackerSprite === 'slime') {
-            playSlimeSfx(attackerEntityId);
-        } else if (attackerSprite === 'acolyte') {
-            playStaffSfx(attackerEntityId, isCrit);
+        // Som: usar SoundManager data-driven (lê entity.sounds do PHP)
+        if (window.SoundManager) {
+            SoundManager.playWeaponSound(attacker, isCrit);
         } else {
-            playHitImpactSfx(isCrit);
+            if (window.SoundManager) SoundManager.playHitImpact(isCrit);
+            else playHitImpactSfx(isCrit);
         }
 
         await Promise.all(effectPromises);
@@ -4194,7 +4105,7 @@
 
             // Show kill banner
             showKillBanner(target.name || 'Inimigo');
-            
+
             // Log de derrota
             addCombatLog('defeated', {
                 target: target.name || target.id || 'Inimigo'
@@ -4228,14 +4139,11 @@
      */
     async function runDeferredSkillImpact(o) {
         const { caster, targetsToHit, skill, hit, numHits, dmgMult, baseDamage, critChance, isMagic, isPhysical, casterEntityId, effectImpactMs } = o;
-        if (hit === 0) {
-            const archerSkills = ['quick_shot', 'poison_arrow', 'focused_shot', 'piercing_arrow', 'multishot', 'tactical_retreat', 'rain_of_arrows', 'crippling_shot', 'deadly_aim'];
-            const swordsmanSkills = ['quick_slash', 'shield_bash', 'berserk_mode', 'power_thrust', 'provoke', 'double_attack', 'sword_mastery', 'war_cry', 'bash', 'heavy_slash', 'champions_slash', 'relentless_strike', 'life_steal', 'crushing_blow', 'guarded_strike', 'cleave'];
-            if (casterEntityId === 'wolf') playClawSfx(casterEntityId);
-            else if (casterEntityId === 'slime') playSlimeSfx(casterEntityId);
-            else if (archerSkills.includes(skill.id)) playBowSfx(casterEntityId, false);
-            else if (swordsmanSkills.includes(skill.id) || isPhysical) playSwordSfx(casterEntityId, false);
-            else if (isMagic) playMagicSfx(false);
+        // Som de skill: usar SoundManager data-driven (lê entity.sounds do PHP)
+        if (window.SoundManager) {
+            SoundManager.playSkillSound(caster, skill);
+        } else if (isMagic) {
+            playMagicSfx(false);
         }
         if (numHits > 1) showHitCombo(hit + 1);
         const deferred = [];
@@ -4261,20 +4169,14 @@
                 addLogEntry('attack', `<span class="target">${t.name}</span> defendeu o ataque!`);
                 continue;
             }
-            let skillEffectHandled = false;
-            if (window.MapSFX) {
-                const sId = skill.id, dx = t.x - caster.x, dy = t.y - caster.y, angle = Math.atan2(dy, dx);
-                if (sId === 'holy_bolt' && window.MapSFX.spawnDivineJudgment) { window.MapSFX.spawnDivineJudgment(targetX, targetY, 1); skillEffectHandled = true; }
-                else if (sId === 'supernova' && window.MapSFX.spawnSupernova) { window.MapSFX.spawnSupernova(targetX, targetY, 1); skillEffectHandled = true; }
-                else if (sId === 'quick_shot' && window.MapSFX.spawnImpactBurst) { window.MapSFX.spawnImpactBurst(targetX, targetY, '#fbbf24'); skillEffectHandled = true; }
-                else if (sId === 'poison_arrow' && window.MapSFX.spawnPoisonCloud) { window.MapSFX.spawnPoisonCloud(targetX, targetY, 1); skillEffectHandled = true; }
-                else if (sId === 'piercing_arrow' && window.MapSFX.spawnLaserBeam) { window.MapSFX.spawnLaserBeam(targetX, targetY, 1, angle); skillEffectHandled = true; }
-                else if (sId === 'multishot' && window.MapSFX.spawnSwordCombo) { window.MapSFX.spawnSwordCombo(targetX, targetY, 1); skillEffectHandled = true; }
-                else if (sId === 'rain_of_arrows' && window.MapSFX.spawnBloodSplash) { window.MapSFX.spawnBloodSplash(targetX, targetY, 1); skillEffectHandled = true; }
-                else if (sId === 'crippling_shot' && window.MapSFX.spawnLifeDrain) { window.MapSFX.spawnLifeDrain(targetX, targetY, 1); skillEffectHandled = true; }
-                else if (sId === 'deadly_aim' && window.MapSFX.spawnNovaExplosion) { window.MapSFX.spawnNovaExplosion(targetX, targetY, 1); triggerScreenShake(15); skillEffectHandled = true; }
-            }
-            if (!skillEffectHandled) {
+            // Efeitos visuais da skill: usar EffectsManager data-driven
+            if (window.EffectsManager) {
+                const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE;
+                const targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
+                EffectsManager.playSkillEffect(caster, skill, targetX, targetY, isPhysical, isMagic);
+            } else {
+                // Fallback legado
+                const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE, targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
                 if (isPhysical || ['bash', 'sword_mastery', 'heavy_slash'].includes(skill.id)) spawnSwordSlashEffect(targetX, targetY);
                 else if (isMagic) { const c = { fire: '#ef4444', ice: '#60a5fa', lightning: '#fbbf24', holy: '#fef3c7', dark: '#6b21a8' }[skill.element] || '#a855f7'; spawnMagicEffect(targetX, targetY, c); }
                 else spawnImpactBurst(targetX, targetY, '#ef4444', isCrit ? 1.5 : 1);
@@ -4282,7 +4184,8 @@
             deferred.push({ t, damage, isCrit });
         }
         await sleep(effectImpactMs);
-        playHitImpactSfx(deferred.some(d => d.isCrit));
+        if (window.SoundManager) SoundManager.playHitImpact(deferred.some(d => d.isCrit));
+        else playHitImpactSfx(deferred.some(d => d.isCrit));
         for (const { t, damage, isCrit } of deferred) {
             t.hp = Math.max(0, t.hp - damage);
             if (gameState.selectedUnit && (gameState.selectedUnit.id === t.id || gameState.selectedUnit === t)) showTacticalHUD(t);
@@ -4302,12 +4205,12 @@
                 });
                 spawnDeathEffect(targetX, targetY);
                 showKillBanner(t.name);
-                
+
                 // Log de derrota por skill
                 addCombatLog('defeated', {
                     target: t.name || t.id || 'Inimigo'
                 });
-                
+
                 // EXP será concedido automaticamente no backend quando o state for salvo
                 // Não precisamos fazer requisição separada aqui
                 if (t.type === 'enemy') {
@@ -4392,7 +4295,7 @@
         } else {
             await showSkillBanner(skill.name, skill.icon || 'zap', skillType, skillImg);
         }
-        
+
         // Log de skill usada
         addCombatLog('skill_used', {
             caster: caster.name || caster.id || 'Unidade',
@@ -4403,53 +4306,24 @@
         // Trigger attack animation for caster (igual ao executeAttack)
         const casterSpriteAnims = casterEntityId ? spriteCache.get(casterEntityId) : null;
 
-        // Lobos: uivo (howling_wolf) no início de toda skill (lunar_rampage, pack_howl, savage_bite, etc.)
-        if (casterEntityId === 'wolf') {
-            playSfxEntity('wolf', 'howling_wolf.mp3', 0.55, 1.0);
-        }
-        // Acolyte: som de preparo de skill (acolyte_skill_prepare)
-        if (casterEntityId === 'acolyte') {
-            const aco = pickRandom(['acolyte_skill_prepare.mp3', 'acolyte_skill_prepare2.mp3', 'acolyte_skill_prepare3.mp3', 'acolyte_skill_prepare4.mp3']);
-            playSfxEntity('acolyte', aco, 0.5, 1.0);
+        // Som de início da skill: usar SoundManager data-driven
+        if (window.SoundManager) {
+            SoundManager.playSkillSound(caster, skill);
+        } else {
+            // Fallback legado
+            if (casterEntityId === 'wolf') playSfxEntity('wolf', 'howling_wolf.mp3', 0.55, 1.0);
+            if (casterEntityId === 'acolyte') playSfxEntity('acolyte', pickRandom(['acolyte_skill_prepare.mp3', 'acolyte_skill_prepare2.mp3', 'acolyte_skill_prepare3.mp3', 'acolyte_skill_prepare4.mp3']), 0.5, 1.0);
+            if (skill.ultimate) playSkillVoice(skill.id);
         }
 
         // Posição do caster em pixels
         const casterPxX = (caster.x - 0.5) * CONFIG.CELL_SIZE;
         const casterPxY = (caster.y - 0.5) * CONFIG.CELL_SIZE;
 
-        // Som de voz para skills especiais (ultimates)
-        if (skill.ultimate) {
-            playSkillVoice(skill.id);
-        }
-
-        // SKILL CAST EFFECTS - Dispara efeito de cast baseado no skill.id (independente da classe)
-        if (window.MapSFX) {
-            const sId = skill.id;
-            if (sId === 'quick_shot' && window.MapSFX.archerQuickShotCast) {
-                window.MapSFX.archerQuickShotCast(casterPxX, casterPxY);
-            } else if (sId === 'poison_arrow' && window.MapSFX.archerPoisonArrowCast) {
-                window.MapSFX.archerPoisonArrowCast(casterPxX, casterPxY);
-            } else if (sId === 'focused_shot' && window.MapSFX.archerFocusedShotCast) {
-                window.MapSFX.archerFocusedShotCast(casterPxX, casterPxY);
-            } else if (sId === 'piercing_arrow' && window.MapSFX.archerPiercingArrowCast) {
-                window.MapSFX.archerPiercingArrowCast(casterPxX, casterPxY);
-            } else if (sId === 'multishot' && window.MapSFX.archerMultishotCast) {
-                window.MapSFX.archerMultishotCast(casterPxX, casterPxY);
-            } else if (sId === 'hunters_focus' && window.MapSFX.archerHuntersFocusCast) {
-                window.MapSFX.archerHuntersFocusCast(casterPxX, casterPxY);
-            } else if (sId === 'tactical_retreat' && window.MapSFX.archerTacticalRetreatCast) {
-                window.MapSFX.archerTacticalRetreatCast(casterPxX, casterPxY);
-            } else if (sId === 'rain_of_arrows' && window.MapSFX.archerRainOfArrowsCast) {
-                window.MapSFX.archerRainOfArrowsCast(casterPxX, casterPxY);
-            } else if (sId === 'crippling_shot' && window.MapSFX.archerCripplingShotCast) {
-                window.MapSFX.archerCripplingShotCast(casterPxX, casterPxY);
-            } else if (sId === 'deadly_aim' && window.MapSFX.archerDeadlyAimCast) {
-                window.MapSFX.archerDeadlyAimCast(casterPxX, casterPxY);
-            }
-        }
-
-        // Acolyte: efeito de magia no caster ao soltar skill (heal, bless, holy_bolt, etc.)
-        if (casterEntityId === 'acolyte') {
+        // Efeitos visuais de cast: usar EffectsManager data-driven
+        if (window.EffectsManager) {
+            EffectsManager.playCastEffect(caster, skill, casterPxX, casterPxY);
+        } else if (window.MapSFX && casterEntityId === 'acolyte') {
             spawnMagicEffect(casterPxX, casterPxY, '#fef3c7');
         }
 
@@ -4497,13 +4371,13 @@
                     if (skill.debuff && window.TacticalSkillEngine) {
                         window.TacticalSkillEngine.applyDebuff(enemy, skill.debuff, caster, skill.id);
                         console.log(`[MAP-ENGINE] Debuff aplicado: ${skill.name} em ${enemy.name}`, skill.debuff);
-                        
+
                         // Log de debuff aplicado
                         addCombatLog('debuff_applied', {
                             target: enemy.name || enemy.id || 'Inimigo',
                             debuff: skill.name || skill.id || 'Debuff'
                         });
-                        
+
                         playDebuffApplySfx();
                         const enemyX = (enemy.x - 0.5) * CONFIG.CELL_SIZE;
                         const enemyY = (enemy.y - 0.5) * CONFIG.CELL_SIZE;
@@ -4566,22 +4440,12 @@
                     await runDeferredSkillImpact({ caster, targetsToHit, skill, hit, numHits, dmgMult, baseDamage, critChance, isMagic, isPhysical, casterEntityId, effectImpactMs });
                 } else {
                     // Impacto GERAL em todo hit; no 1º hit também arma por entidade do caster
-                    playHitImpactSfx(false);
-                    if (hit === 0) {
-                        const archerSkills = ['quick_shot', 'poison_arrow', 'focused_shot', 'piercing_arrow',
-                            'multishot', 'tactical_retreat', 'rain_of_arrows', 'crippling_shot', 'deadly_aim'];
-                        const swordsmanSkills = ['quick_slash', 'shield_bash', 'berserk_mode', 'power_thrust',
-                            'provoke', 'double_attack', 'sword_mastery', 'war_cry', 'bash', 'heavy_slash',
-                            'champions_slash', 'relentless_strike', 'life_steal', 'crushing_blow', 'guarded_strike', 'cleave'];
+                    if (window.SoundManager) SoundManager.playHitImpact(false);
+                    else playHitImpactSfx(false);
 
-                        if (casterEntityId === 'wolf') {
-                            playClawSfx(casterEntityId);
-                        } else if (casterEntityId === 'slime') {
-                            playSlimeSfx(casterEntityId);
-                        } else if (archerSkills.includes(skill.id)) {
-                            playBowSfx(casterEntityId, false);
-                        } else if (swordsmanSkills.includes(skill.id) || isPhysical) {
-                            playSwordSfx(casterEntityId, false);
+                    if (hit === 0) {
+                        if (window.SoundManager) {
+                            SoundManager.playSkillSound(caster, skill);
                         } else if (isMagic) {
                             playMagicSfx(false);
                         }
@@ -4663,9 +4527,13 @@
                         const targetX = (t.x - 0.5) * CONFIG.CELL_SIZE;
                         const targetY = (t.y - 0.5) * CONFIG.CELL_SIZE;
 
-                        // SKILL IMPACT EFFECTS - Efeitos específicos por skill.id com cálculo de ângulo
-                        let skillEffectHandled = false;
-                        if (window.MapSFX) {
+                        // SKILL IMPACT EFFECTS - Usar EffectsManager data-driven
+                        if (window.EffectsManager) {
+                            EffectsManager.playSkillEffect(caster, skill, targetX, targetY, isPhysical, isMagic);
+                            skillEffectHandled = true;
+                        }
+
+                        if (!skillEffectHandled && window.MapSFX) {
                             const sId = skill.id;
                             // Calcular ângulo do caster para o target
                             const dx = t.x - caster.x;
@@ -4700,7 +4568,7 @@
                             }
                         }
 
-                        // Efeitos visuais fallback se skill não teve efeito específico
+                        // Efeitos visuais fallback legacy (se não houver EffectsManager ou effect handled)
                         if (!skillEffectHandled) {
                             if (isPhysical || skill.id === 'bash' || skill.id === 'sword_mastery' || skill.id === 'heavy_slash') {
                                 spawnSwordSlashEffect(targetX, targetY);
@@ -4741,13 +4609,13 @@
                 for (const ally of allAllies) {
                     window.TacticalSkillEngine.applyBuff(ally, skill.buff, caster, skill.id);
                     console.log(`[MAP-ENGINE] Buff aplicado: ${skill.name} em ${ally.name}`, skill.buff);
-                    
+
                     // Log de buff aplicado
                     addCombatLog('buff_applied', {
                         target: ally.name || ally.id || 'Aliado',
                         buff: skill.name || skill.id || 'Buff'
                     });
-                    
+
                     playBuffApplySfx();
                     const allyX = (ally.x - 0.5) * CONFIG.CELL_SIZE;
                     const allyY = (ally.y - 0.5) * CONFIG.CELL_SIZE;
@@ -4771,14 +4639,14 @@
                     healing += Math.floor((caster.matk || 0) * (skill.healMatk ?? 0.5));
                     healing = Math.max(1, healing);
                     t.hp = Math.min(t.maxHp, t.hp + healing);
-                    
+
                     // Log de cura
                     addCombatLog('skill_heal', {
                         caster: caster.name || caster.id || 'Unidade',
                         target: t.name || t.id || 'Alvo',
                         heal: healing
                     });
-                    
+
                     showHealNumber(t.x, t.y, healing);
                     spawnHealEffect((t.x - 0.5) * CONFIG.CELL_SIZE, (t.y - 0.5) * CONFIG.CELL_SIZE);
                 }
@@ -4792,13 +4660,13 @@
                 if (skill.buff && window.TacticalSkillEngine) {
                     window.TacticalSkillEngine.applyBuff(t, skill.buff, caster, skill.id);
                     console.log(`[MAP-ENGINE] Buff aplicado: ${skill.name} em ${t.name}`, skill.buff);
-                    
+
                     // Log de buff aplicado
                     addCombatLog('buff_applied', {
                         target: t.name || t.id || 'Alvo',
                         buff: skill.name || skill.id || 'Buff'
                     });
-                    
+
                     playBuffApplySfx();
 
                     // Pack Leader: aplicar automaticamente em todos os summons quando o Beast Tamer usa
@@ -4828,13 +4696,13 @@
                 if (skill.debuff && window.TacticalSkillEngine) {
                     window.TacticalSkillEngine.applyDebuff(t, skill.debuff, caster, skill.id);
                     console.log(`[MAP-ENGINE] Debuff aplicado: ${skill.name} em ${t.name}`, skill.debuff);
-                    
+
                     // Log de debuff aplicado
                     addCombatLog('debuff_applied', {
                         target: t.name || t.id || 'Alvo',
                         debuff: skill.name || skill.id || 'Debuff'
                     });
-                    
+
                     playDebuffApplySfx();
                 }
 
@@ -5223,9 +5091,9 @@
 
 
     /**
- * Handle battle result when returning from combat
- * SIMPLIFIED: No camera movement during death effects to prevent camera bugs
- */
+    * Handle battle result when returning from combat
+    * SIMPLIFIED: No camera movement during death effects to prevent camera bugs
+    */
     async function handleBattleResult(result) {
         console.log('[DEBUG][handleBattleResult] START - result:', {
             outcome: result.outcome,
@@ -5477,7 +5345,7 @@
                     const newLevel = expResult.level_after || expResult.new_level;
                     const newXp = expResult.exp_after;
                     const expForNext = expResult.exp_for_next_level;
-                    
+
                     console.log('[MAP-ENGINE][awardExpForEnemy] ✅ EXP AWARDED SUCCESSFULLY!', {
                         enemy_id: enemyId,
                         enemy_name: enemyUnit.name || 'Unknown',
@@ -5490,7 +5358,7 @@
                         exp_for_next_level: expForNext,
                         attribute_points: expResult.attribute_points
                     });
-                    
+
                     // Show visual feedback
                     if (leveledUp) {
                         showNotification(`🎉 Level Up! Level ${newLevel}`, 'success');
@@ -5565,7 +5433,7 @@
 
     async function persistSessionState(immediate = false) {
         console.log('[persistSessionState] Called, immediate:', immediate, 'sessionUid:', sessionUid);
-        
+
         if (!sessionUid) {
             console.warn('[persistSessionState] No sessionUid, skipping');
             return Promise.resolve();
@@ -5648,7 +5516,7 @@
             keyLength: sessionEncryptionKey ? sessionEncryptionKey.length : 0,
             sessionUid: sessionUid
         });
-        
+
         if (!sessionEncryptionKey && sessionUid) {
             console.log('[persistSessionState] Key not available, requesting...');
             try {
@@ -5658,11 +5526,11 @@
                 console.warn('[persistSessionState] Failed to get encryption key:', err);
             }
         }
-        
+
         let requestBody;
         // Verificar se DEBUG_MODE está habilitado (dados em texto plano)
         const shouldEncrypt = !(window.ENCRYPTION_DEBUG_MODE === true);
-        
+
         if (shouldEncrypt && sessionEncryptionKey) {
             console.log('[persistSessionState] Attempting to encrypt payload...');
             try {
@@ -5703,38 +5571,38 @@
     async function encryptPayload(payload, key) {
         try {
             console.log('[encryptPayload] Starting encryption...');
-            
+
             // Verificar se CryptoJS está disponível
             if (typeof CryptoJS === 'undefined') {
                 throw new Error('CryptoJS library not loaded');
             }
-            
+
             const payloadJson = JSON.stringify(payload);
-            
+
             // A chave vem como hex string (64 chars = 32 bytes)
             // CryptoJS precisa da chave como WordArray
             const keyWordArray = CryptoJS.enc.Hex.parse(key);
-            
+
             // Gerar IV aleatório (16 bytes)
             const iv = CryptoJS.lib.WordArray.random(16);
-            
+
             // Criptografar usando AES-256-CBC (compatível com PHP openssl)
             const encrypted = CryptoJS.AES.encrypt(payloadJson, keyWordArray, {
                 iv: iv,
                 mode: CryptoJS.mode.CBC,
                 padding: CryptoJS.pad.Pkcs7
             });
-            
+
             // Extrair ciphertext e IV em base64
             const ciphertext = encrypted.ciphertext;
             const ivBase64 = iv.toString(CryptoJS.enc.Base64);
-            
+
             const result = {
                 encrypted: ciphertext.toString(CryptoJS.enc.Base64),
                 iv: ivBase64,
                 tag: '' // CBC não usa tag, mas mantemos para compatibilidade
             };
-            
+
             console.log('[encryptPayload] ✅ Encryption successful');
             return result;
         } catch (err) {
@@ -5755,33 +5623,33 @@
             console.log('[getEncryptionKey] Key already available');
             return sessionEncryptionKey; // Já tem chave
         }
-        
+
         try {
             console.log('[getEncryptionKey] Requesting key from server...');
             const response = await fetch(`/game/explore/get-key?session=${encodeURIComponent(sessionUid)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.warn('[getEncryptionKey] Failed to get key:', response.status, errorText);
                 return null;
             }
-            
+
             const data = await response.json();
             if (!data.success) {
                 console.warn('[getEncryptionKey] Server returned success=false:', data);
                 return null;
             }
-            
+
             if (!data.key) {
                 console.warn('[getEncryptionKey] No key in response:', data);
                 return null;
             }
-            
+
             encryptionToken = data.token;
-            
+
             // Chave vem diretamente do servidor (sem criptografia adicional)
             // A segurança vem da validação do estado esperado no servidor, não da ocultação da chave
             sessionEncryptionKey = data.key;
@@ -7172,9 +7040,9 @@
             title: '💀 Derrota',
             content: 'Todos os seus heróis foram derrotados...',
             buttons: [
-                { 
-                    text: 'Tentar Novamente', 
-                    primary: true, 
+                {
+                    text: 'Tentar Novamente',
+                    primary: true,
                     action: () => {
                         // Resetar sessão e voltar para tavern para começar a quest novamente
                         if (sessionUid) {
@@ -7182,22 +7050,22 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' }
                             })
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.success) {
-                                    // Redirecionar para tavern onde pode começar a quest novamente
-                                    window.location.href = '/game/tavern';
-                                } else {
-                                    console.error('[GameOver] Erro ao resetar sessão:', data.error);
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        // Redirecionar para tavern onde pode começar a quest novamente
+                                        window.location.href = '/game/tavern';
+                                    } else {
+                                        console.error('[GameOver] Erro ao resetar sessão:', data.error);
+                                        alert('Erro ao reiniciar missão. Redirecionando para tavern...');
+                                        window.location.href = '/game/tavern';
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error('[GameOver] Erro ao resetar sessão:', err);
                                     alert('Erro ao reiniciar missão. Redirecionando para tavern...');
                                     window.location.href = '/game/tavern';
-                                }
-                            })
-                            .catch(err => {
-                                console.error('[GameOver] Erro ao resetar sessão:', err);
-                                alert('Erro ao reiniciar missão. Redirecionando para tavern...');
-                                window.location.href = '/game/tavern';
-                            });
+                                });
                         } else {
                             // Se não tiver sessionUid, apenas voltar para tavern
                             window.location.href = '/game/tavern';
@@ -7961,40 +7829,40 @@
 
     // Sistema de tradução de logs (chaves para multilíngua)
     const logTranslations = {
-        'attacked': (params) => 
+        'attacked': (params) =>
             `<span class="attacker">${params.attacker}</span> atacou <span class="target">${params.target}</span> causando <span class="damage">${params.damage}</span> de dano.`,
-        
-        'defended': (params) => 
+
+        'defended': (params) =>
             `<span class="target">${params.target}</span> defendeu o ataque!`,
-        
-        'moved': (params) => 
+
+        'moved': (params) =>
             `<span class="attacker">${params.unit}</span> moveu-se para (${params.x}, ${params.y}).`,
-        
-        'skill_used': (params) => 
+
+        'skill_used': (params) =>
             `<span class="attacker">${params.caster}</span> usou <span class="skill">${params.skill}</span>${params.target ? ` em <span class="target">${params.target}</span>` : ''}.`,
-        
-        'skill_damage': (params) => 
+
+        'skill_damage': (params) =>
             `<span class="skill">${params.skill}</span> causou <span class="damage">${params.damage}</span> de dano em <span class="target">${params.target}</span>.`,
-        
-        'skill_heal': (params) => 
+
+        'skill_heal': (params) =>
             `<span class="attacker">${params.caster}</span> curou <span class="target">${params.target}</span> em <span class="heal">${params.heal}</span> HP.`,
-        
-        'buff_applied': (params) => 
+
+        'buff_applied': (params) =>
             `<span class="target">${params.target}</span> recebeu <span class="buff">${params.buff}</span>.`,
-        
-        'debuff_applied': (params) => 
+
+        'debuff_applied': (params) =>
             `<span class="target">${params.target}</span> recebeu <span class="debuff">${params.debuff}</span>.`,
-        
-        'turn_ended': (params) => 
+
+        'turn_ended': (params) =>
             `${params.unit ? `<span class="attacker">${params.unit}</span> ` : ''}passou o turno.`,
-        
-        'turn_started': (params) => 
+
+        'turn_started': (params) =>
             `Turno ${params.turn} - ${params.phase === 'player' ? 'Jogador' : 'Inimigo'}.`,
-        
-        'defeated': (params) => 
+
+        'defeated': (params) =>
             `<span class="target">${params.target}</span> foi derrotado!`,
-        
-        'critical_hit': (params) => 
+
+        'critical_hit': (params) =>
             `<span class="attacker">${params.attacker}</span> acertou um <span class="critical">crítico</span> em <span class="target">${params.target}</span> causando <span class="damage">${params.damage}</span> de dano!`
     };
 
@@ -8064,10 +7932,10 @@
 
         const html = translateLog(logEntry.key, logEntry.params);
         const icon = logIcons[logEntry.key] || 'info';
-        const time = new Date(logEntry.timestamp * 1000).toLocaleTimeString('pt-BR', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit' 
+        const time = new Date(logEntry.timestamp * 1000).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
         });
 
         const entry = document.createElement('div');
@@ -8091,11 +7959,11 @@
 
         // Refresh lucide icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
-        
+
         // Scroll para o fim (mensagens mais recentes embaixo = estilo chat)
         scrollCombatLogToBottom();
     }
-    
+
     function scrollCombatLogToBottom() {
         const body = document.getElementById('combat-log-body');
         if (body) body.scrollTop = body.scrollHeight;
